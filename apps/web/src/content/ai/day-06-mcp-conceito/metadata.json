@@ -1,0 +1,20 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 2,
+  "title": "MCP — conceito & arquitetura",
+  "slug": "mcp-conceito",
+  "topics": [
+    "o que é MCP e por que existe",
+    "arquitetura host/client/server",
+    "transporte (stdio, HTTP)",
+    "tools, resources, prompts",
+    "ecossistema MCP"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

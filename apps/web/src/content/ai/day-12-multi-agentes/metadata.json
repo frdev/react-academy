@@ -1,0 +1,20 @@
+{
+  "id": "day-12",
+  "day": 12,
+  "week": 4,
+  "title": "Multi-agentes",
+  "slug": "multi-agentes",
+  "topics": [
+    "orquestração",
+    "subagents",
+    "padrão orchestrator-worker",
+    "execução paralela",
+    "comunicação entre agentes"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,20 @@
+{
+  "id": "day-11",
+  "day": 11,
+  "week": 3,
+  "title": "Claude Agent SDK",
+  "slug": "agent-sdk",
+  "topics": [
+    "Claude Agent SDK",
+    "construir um agente end-to-end",
+    "configurar tools e permissões",
+    "ciclo de vida do agente",
+    "boas práticas"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-10"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,20 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 2,
+  "title": "RAG & embeddings",
+  "slug": "rag-embeddings",
+  "topics": [
+    "retrieval-augmented generation",
+    "embeddings",
+    "vector search",
+    "chunking",
+    "RAG vs. contexto direto"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}
