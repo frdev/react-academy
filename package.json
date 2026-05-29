@@ -8,5 +8,11 @@
     "test:run": "pnpm -r test:run",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck"
+  },
+  "pnpm": {
+    "overrides": {
+      "@rollup/pluginutils": "5.3.0",
+      "electron-to-chromium": "1.5.363"
+    }
   }
 }
