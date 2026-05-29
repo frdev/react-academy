@@ -1,1 +1,261 @@
-# Conteúdo em breve
+# Type Narrowing
+
+TypeScript analisa o fluxo de controle do seu código para refinar tipos dentro de branches. Quando você escreve `if (typeof x === 'string')`, o TypeScript sabe que dentro desse bloco `x` é `string`. Esse processo se chama narrowing — estreitar um tipo amplo para um mais específico.
+
+## `typeof` — Narrowing Primitivos
+
+```typescript
+function formatValue(value: string | number | boolean): string {
+  if (typeof value === 'string') {
+    return value.toUpperCase()  // TypeScript sabe: value é string aqui
+  }
+  if (typeof value === 'number') {
+    return value.toFixed(2)     // TypeScript sabe: value é number aqui
+  }
+  return value ? 'yes' : 'no'  // TypeScript sabe: value é boolean aqui
+}
+
+// typeof funciona com: 'string' | 'number' | 'boolean' | 'bigint' | 'symbol' | 'undefined' | 'function' | 'object'
+// Atenção: typeof null === 'object' — cuidado com isso
+function processData(data: string | null) {
+  if (typeof data === 'object') {
+    // data ainda pode ser null aqui!
+  }
+  if (data !== null && typeof data === 'object') {
+    // agora sim, mas string | null: melhor checar null direto
+  }
+  if (typeof data === 'string') {
+    data.trim()  // ✓ — string, não null
+  }
+}
+```
+
+## `instanceof` — Narrowing de Classes
+
+```typescript
+class NetworkError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message)
+  }
+}
+
+class ValidationError extends Error {
+  constructor(public field: string, message: string) {
+    super(message)
+  }
+}
+
+function handleError(error: NetworkError | ValidationError): string {
+  if (error instanceof NetworkError) {
+    return `HTTP ${error.statusCode}: ${error.message}`
+    // TypeScript sabe: error é NetworkError — statusCode disponível
+  }
+  return `Invalid field '${error.field}': ${error.message}`
+  // TypeScript sabe: error é ValidationError — field disponível
+}
+```
+
+## `in` — Narrowing por Propriedade
+
+O operador `in` verifica se uma propriedade existe em um objeto — útil para discriminar tipos sem campo literal explícito:
+
+```typescript
+interface Cat {
+  meow(): void
+  purr(): void
+}
+
+interface Dog {
+  bark(): void
+  fetch(item: string): void
+}
+
+function makeSound(animal: Cat | Dog): void {
+  if ('meow' in animal) {
+    animal.meow()    // TypeScript sabe: animal é Cat
+    animal.purr()
+  } else {
+    animal.bark()    // TypeScript sabe: animal é Dog
+  }
+}
+
+// Útil também para APIs de forma livre
+interface AdminUser {
+  role: 'admin'
+  permissions: string[]
+}
+
+interface RegularUser {
+  role: 'user'
+}
+
+function getPermissions(user: AdminUser | RegularUser): string[] {
+  if ('permissions' in user) {
+    return user.permissions  // TypeScript sabe: user é AdminUser
+  }
+  return []
+}
+```
+
+## Truthiness Narrowing
+
+TypeScript entende que valores falsy (`false`, `0`, `''`, `null`, `undefined`, `NaN`) se comportam como `false` em condicionais:
+
+```typescript
+function processInput(input: string | null | undefined): string {
+  if (input) {
+    return input.trim()  // TypeScript sabe: input é string (não null/undefined/"")
+  }
+  return ''
+}
+
+// Atenção: string vazia também é falsy
+function greet(name: string | null): string {
+  if (name) {
+    return `Hello, ${name}`  // name é string, mas "" seria excluído
+  }
+  return 'Hello, stranger'
+}
+
+// Mais preciso para null/undefined:
+function greetPrecise(name: string | null | undefined): string {
+  if (name != null) {
+    return `Hello, ${name}`  // exclui null e undefined, mas aceita ""
+  }
+  return 'Hello, stranger'
+}
+```
+
+## Equality Narrowing
+
+Comparações com `===`, `!==`, `==`, `!=` fazem narrowing:
+
+```typescript
+type Direction = 'north' | 'south' | 'east' | 'west'
+type Orientation = 'north' | 'south' | 'vertical'
+
+function classify(d: Direction | Orientation): string {
+  if (d === 'north' || d === 'south') {
+    // d: 'north' | 'south' — comum às duas unions
+    return 'vertical axis'
+  }
+  if (d === 'east' || d === 'west') {
+    // d: 'east' | 'west' — apenas de Direction
+    return 'horizontal axis'
+  }
+  // d: 'vertical' — apenas de Orientation, o único que sobrou
+  return 'orientation only'
+}
+
+// null/undefined com loose equality
+function process(value: string | null | undefined): void {
+  if (value == null) {
+    // value: null | undefined — == null captura ambos
+    return
+  }
+  value.trim()  // ✓ — string
+}
+```
+
+## Type Guards com `is`
+
+Funções que retornam `x is T` ensinam o TypeScript a refinar o tipo em quem chama:
+
+```typescript
+// Sem type guard — TypeScript não consegue inferir
+function isString(value: unknown): boolean {
+  return typeof value === 'string'
+}
+
+function process(value: unknown) {
+  if (isString(value)) {
+    value.toUpperCase()  // ERRO — TypeScript não sabe que é string
+  }
+}
+
+// Com type guard — TypeScript aprende
+function isString(value: unknown): value is string {
+  return typeof value === 'string'
+}
+
+function process(value: unknown) {
+  if (isString(value)) {
+    value.toUpperCase()  // ✓ — TypeScript sabe que é string aqui
+  }
+}
+
+// Type guards mais ricos
+interface User {
+  id: string
+  name: string
+  email: string
+}
+
+function isUser(value: unknown): value is User {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).id === 'string' &&
+    typeof (value as Record<string, unknown>).name === 'string' &&
+    typeof (value as Record<string, unknown>).email === 'string'
+  )
+}
+
+// Verificação em runtime — seguro para dados externos (APIs, JSON)
+const data: unknown = JSON.parse(response)
+if (isUser(data)) {
+  console.log(data.name)  // ✓
+}
+```
+
+## Assertion Functions
+
+Uma alternativa ao type guard para quando você quer lançar em vez de retornar `false`:
+
+```typescript
+function assertIsString(value: unknown): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new Error(`Expected string, got ${typeof value}`)
+  }
+}
+
+function processConfig(config: unknown): void {
+  assertIsString(config)
+  // A partir daqui, TypeScript sabe que config é string
+  config.trim()  // ✓
+}
+```
+
+## Control Flow Analysis
+
+O TypeScript rastreia narrowing por todo o fluxo de controle — incluindo early returns, throws e atribuições:
+
+```typescript
+function getLength(value: string | string[] | null): number {
+  if (value === null) {
+    return 0  // retorno precoce — null eliminado abaixo
+  }
+
+  // value: string | string[]
+  if (typeof value === 'string') {
+    return value.length  // retorno precoce — string eliminado abaixo
+  }
+
+  // value: string[] — TypeScript eliminou string e null
+  return value.reduce((sum, s) => sum + s.length, 0)
+}
+
+// TypeScript também rastreia reatribuição
+function example(value: string | number): void {
+  let x = value  // x: string | number
+
+  if (typeof x === 'string') {
+    x = x.toUpperCase()  // x: string
+    // x: string (reatribuído dentro do bloco string)
+  }
+
+  // x: string | number novamente — TypeScript sabe que branch pode não ter executado
+}
+```
+
+> **Resumo:** Narrowing é o TypeScript refletindo seu código de controle de fluxo nos tipos. `typeof` refina primitivos, `instanceof` refina classes, `in` refina por propriedade, truthiness e equality refinam por valor. Type guards com `is` ensinam narrowing ao TypeScript para funções de validação custom. Control flow analysis rastreia esses refinamentos por todo o código.

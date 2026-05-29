@@ -1,1 +1,97 @@
-{"lessonId": "day-11", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-11",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o resultado de `{ [K in keyof T]-?: T[K] }` comparado a `{ [K in keyof T]?: T[K] }`?",
+      "options": [
+        "São idênticos — `-?` e `?` têm o mesmo efeito",
+        "`-?` remove o modificador opcional (equivale a `Required<T>`); `?` adiciona o modificador opcional (equivale a `Partial<T>`). O sinal de menos remove, sem sinal ou com `+` adiciona",
+        "`-?` torna a propriedade `never`; `?` torna opcional",
+        "`-?` só funciona com propriedades que são `string | undefined`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Modificadores em mapped types: `?` adiciona opcionalidade (equivale a `+?`), `-?` remove opcionalidade. `readonly` adiciona readonly (equivale a `+readonly`), `-readonly` remove. Portanto: `{ [K in keyof T]-?: T[K] }` = `Required<T>` (remove todos os `?`). `{ [K in keyof T]?: T[K] }` = `Partial<T>` (adiciona `?` a todos). `{ -readonly [K in keyof T]: T[K] }` = `Mutable<T>` (remove `readonly`)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como você usaria a cláusula `as` em um mapped type para filtrar propriedades?",
+      "options": [
+        "Usando `as` com uma condição boolean",
+        "Retornando `never` na cláusula `as` para as chaves que deseja remover — TypeScript omite propriedades mapeadas para `never`",
+        "`as` em mapped types apenas renomeia chaves, não filtra",
+        "Usando `as undefined` para remover a propriedade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`{ [K in keyof T as T[K] extends string ? K : never]: T[K] }` — para cada chave K: se o tipo de `T[K]` é subtipo de string, mantém K; senão mapeia para `never`. TypeScript omite chaves mapeadas para `never`. O resultado é um tipo com apenas as propriedades cujos valores são string. Esse padrão de 'conditional key filtering via never' é poderoso para derivar subsets de tipos baseados no tipo dos valores."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que `type MyRecord<K extends PropertyKey, V> = { [P in K]: V }` é um mapped type, enquanto `interface Dict { [key: string]: number }` é uma index signature?",
+      "options": [
+        "São a mesma coisa — apenas sintaxe diferente",
+        "Mapped type itera sobre uma union específica de chaves (`K`) — o conjunto é finito e conhecido; index signature aceita qualquer chave do tipo especificado — conjunto infinito/dinâmico. Mapped type preserva os literais das chaves; index signature não",
+        "Index signatures são mais performáticas em runtime",
+        "Mapped types só funcionam com `extends PropertyKey`; index signatures com qualquer tipo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Record<'a' | 'b', number>` = `{ a: number; b: number }` — TypeScript sabe que existem exatamente as chaves 'a' e 'b'. Acessar `rec.c` é erro. `{ [key: string]: number }` = TypeScript aceita qualquer string como chave — `dict.qualquerCoisa` é `number`. Para objetos com chaves conhecidas em tempo de compilação, use mapped types. Para objetos com chaves dinâmicas (dicionários), use index signatures ou `Map<K,V>`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a implementação de `Omit<T, K>` usando mapped types?",
+      "options": [
+        "`{ [P in keyof T]: P extends K ? never : T[P] }`",
+        "`Pick<T, Exclude<keyof T, K>>` — `Exclude<keyof T, K>` filtra as chaves, `Pick` constrói o tipo final",
+        "`{ [P in keyof T as P extends K ? never : P]: T[P] }`",
+        "Tanto a opção 2 quanto a 3 são implementações válidas de `Omit`"
+      ],
+      "correctAnswer": 3,
+      "explanation": "A opção 2 é a implementação original da biblioteca padrão: `Pick<T, Exclude<keyof T, K>>`. A opção 3 é uma implementação direta via `as` com key remapping: `{ [P in keyof T as P extends K ? never : P]: T[P] }` — equivalente. A opção 1 parece mapped type mas transforma o VALOR para `never` ao invés de remover a CHAVE — resulta em `{ id: string; name: string; email: never }` para `Omit<User, 'email'>`, que não é o comportamento correto."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `{ [K in keyof T]: Promise<T[K]> }` é um tipo útil para representar a versão async de uma interface?",
+      "options": [
+        "Não é útil — funções async devem ser declaradas explicitamente",
+        "Permite derivar automaticamente uma versão 'toda async' de qualquer interface — quando a interface base muda (novos campos), o tipo async atualiza junto, sem duplicação",
+        "TypeScript executa as Promises automaticamente quando usa esse padrão",
+        "Funciona apenas com interfaces que têm apenas métodos, não propriedades"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se você tem `interface DataService { getUser(id: string): User; listPosts(): Post[] }` e quer a versão async, sem mapped types seria uma interface manual. Com `type AsyncVersion<T> = { [K in keyof T]: T[K] extends (...args: infer A) => infer R ? (...args: A) => Promise<R> : never }`, você deriva automaticamente. Quando `DataService` adicionar `deleteUser()`, `AsyncVersion<DataService>` atualiza. Sem duplicação, sem sincronização manual."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Dado `type EventHandlers<E extends string> = { [K in E as \\`on${Capitalize<K>}\\`]: () => void }`, o que `EventHandlers<'click' | 'focus'>` produz?",
+      "options": [
+        "`{ onClick: () => void } | { onFocus: () => void }` — union de objetos",
+        "`{ onClick: () => void; onFocus: () => void }` — um objeto com as duas propriedades, chaves renomeadas com prefixo 'on' e Capitalize",
+        "`{ on: () => void }` — o template literal colapsa para uma única chave",
+        "ERRO — `Capitalize` não funciona com `as` em mapped types"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`[K in E as \\`on${Capitalize<K>}\\`]` — itera sobre cada membro de `E` e renomeia. Para `'click'`: `` `on${Capitalize<'click'>}` `` = `` `on${'Click'}` `` = `'onClick'`. Para `'focus'`: `'onFocus'`. Resultado: `{ onClick: () => void; onFocus: () => void }`. É um objeto, não uma union — mapped types sempre produzem objetos. A distribuição sobre unions nas chaves resulta em um objeto com uma propriedade para cada membro da union."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `Readonly<T>` (mapped type raso) e um `DeepReadonly<T>` recursivo?",
+      "options": [
+        "Não há diferença — `Readonly` já congela todos os níveis",
+        "`Readonly<T>` torna apenas o nível superior readonly; propriedades aninhadas ainda são mutáveis. `DeepReadonly<T>` aplica `Readonly` recursivamente em todos os níveis — precisaria de conditional types para implementar (Semana 3)",
+        "`Readonly<T>` é mais eficiente porque não precisa percorrer todos os níveis",
+        "`DeepReadonly` existe na biblioteca padrão — use `Readonly.Deep<T>`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Readonly<{ users: User[] }>` = `{ readonly users: User[] }`. Mas `users` ainda é um `User[]` mutável — você pode fazer `obj.users.push(newUser)`. Só não pode reatribuir `obj.users = []`. `DeepReadonly<T>` recursivamente torna também `User[]` readonly e cada `User` readonly. Implementação usa conditional types: `type DeepReadonly<T> = T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> } : T`. Veremos isso na Semana 3."
+    }
+  ]
+}

@@ -1,1 +1,241 @@
-# Conteúdo em breve
+# Utility Types I
+
+TypeScript inclui um conjunto de tipos utilitários na biblioteca padrão — tipos genéricos que transformam outros tipos. Eles eliminam a necessidade de reescrever variantes manuais de tipos existentes e expressam relações entre tipos de forma declarativa.
+
+## `Partial<T>` — Todas as Propriedades Opcionais
+
+```typescript
+interface User {
+  id: string
+  name: string
+  email: string
+  role: 'admin' | 'user'
+}
+
+// Partial<User> = { id?: string; name?: string; email?: string; role?: 'admin' | 'user' }
+type UserUpdate = Partial<User>
+
+function updateUser(id: string, changes: Partial<User>): Promise<User> {
+  // changes pode ter qualquer subconjunto das propriedades
+  return fetch(`/api/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes)
+  }).then(r => r.json())
+}
+
+updateUser('u-1', { name: 'Ana' })                // ✓
+updateUser('u-1', { name: 'Ana', role: 'admin' }) // ✓
+updateUser('u-1', {})                              // ✓ — vazio é válido
+```
+
+## `Required<T>` — Todas as Propriedades Obrigatórias
+
+```typescript
+interface Config {
+  host?: string
+  port?: number
+  timeout?: number
+}
+
+// Required<Config> = { host: string; port: number; timeout: number }
+type ResolvedConfig = Required<Config>
+
+function createServer(config: Required<Config>): void {
+  // Garante que todas as opções foram resolvidas antes de criar o servidor
+  console.log(`${config.host}:${config.port}`)
+}
+
+function resolveConfig(partial: Config): Required<Config> {
+  return {
+    host: partial.host ?? 'localhost',
+    port: partial.port ?? 3000,
+    timeout: partial.timeout ?? 5000,
+  }
+}
+```
+
+## `Readonly<T>` — Todas as Propriedades Imutáveis
+
+```typescript
+interface State {
+  users: User[]
+  currentUser: User | null
+  loading: boolean
+}
+
+// Readonly<State> = { readonly users: User[]; readonly currentUser: User | null; readonly loading: boolean }
+type FrozenState = Readonly<State>
+
+function renderUI(state: Readonly<State>): void {
+  // state.users = []  // ERRO — readonly
+  state.users.forEach(user => console.log(user.name))  // ✓ — leitura ok
+}
+
+// Readonly raso — não congela objetos aninhados
+const state: Readonly<State> = { users: [], currentUser: null, loading: false }
+state.users.push({ id: '1', name: 'Ana', email: 'a@a.com', role: 'user' })  // ✓ — array ainda é mutável
+// Para deep readonly, use Semana 3 (Recursive Types)
+```
+
+## `Pick<T, K>` — Selecionar Propriedades
+
+```typescript
+interface User {
+  id: string
+  name: string
+  email: string
+  password: string  // nunca deve ser exposto
+  role: 'admin' | 'user'
+  createdAt: Date
+}
+
+// Pick<User, 'id' | 'name' | 'email'> = { id: string; name: string; email: string }
+type PublicUser = Pick<User, 'id' | 'name' | 'email'>
+
+function getPublicProfile(user: User): PublicUser {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    // password: user.password  // ERRO — não existe em PublicUser
+  }
+}
+
+// Útil para componentes que recebem apenas parte de um objeto
+type UserCardProps = Pick<User, 'name' | 'email' | 'role'>
+```
+
+## `Omit<T, K>` — Excluir Propriedades
+
+```typescript
+// O inverso de Pick — remove propriedades
+// Omit<User, 'password' | 'createdAt'> = { id: string; name: string; email: string; role: 'admin' | 'user' }
+type SafeUser = Omit<User, 'password' | 'createdAt'>
+
+// Útil para formulários — id é gerado, não preenchido
+type CreateUserPayload = Omit<User, 'id' | 'createdAt'>
+
+function createUser(payload: CreateUserPayload): Promise<User> {
+  return fetch('/api/users', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }).then(r => r.json())
+}
+
+// Pick vs Omit: use Pick quando o subconjunto é pequeno (você sabe o que quer)
+// use Omit quando a maioria das propriedades é mantida (você sabe o que remover)
+```
+
+## `NonNullable<T>` — Remover `null` e `undefined`
+
+```typescript
+type MaybeString = string | null | undefined
+
+// NonNullable<MaybeString> = string
+type DefinitelyString = NonNullable<MaybeString>
+
+// Útil em combinação com outras operações
+interface Config {
+  apiUrl?: string | null
+}
+
+function getApiUrl(config: Config): string {
+  const url = config.apiUrl
+  if (url == null) throw new Error('apiUrl is required')
+  // url: NonNullable<string | null | undefined> = string
+  return url
+}
+
+// Uso com mapped types (preview da Semana 2)
+type RequiredFields<T> = {
+  [K in keyof T]: NonNullable<T[K]>
+}
+```
+
+## `ReturnType<T>` — Tipo de Retorno de Função
+
+```typescript
+function createUser(name: string, email: string) {
+  return {
+    id: Math.random().toString(36),
+    name,
+    email,
+    createdAt: new Date(),
+  }
+}
+
+// ReturnType<typeof createUser> = { id: string; name: string; email: string; createdAt: Date }
+type User = ReturnType<typeof createUser>
+
+// Útil quando o tipo não tem nome mas você precisa referenciá-lo
+const users: ReturnType<typeof createUser>[] = []
+
+// Com funções async — ReturnType dá Promise<T>
+async function fetchUser(id: string) {
+  const response = await fetch(`/api/users/${id}`)
+  return response.json() as Promise<{ id: string; name: string }>
+}
+
+type FetchUserResult = Awaited<ReturnType<typeof fetchUser>>
+// FetchUserResult = { id: string; name: string }
+```
+
+## `Parameters<T>` — Tipos dos Parâmetros
+
+```typescript
+function createServer(host: string, port: number, options: { timeout: number }): void {
+  // ...
+}
+
+// Parameters<typeof createServer> = [host: string, port: number, options: { timeout: number }]
+type CreateServerParams = Parameters<typeof createServer>
+
+// Útil para wrappers e decorators
+function withLogging<T extends (...args: unknown[]) => unknown>(fn: T) {
+  return function(...args: Parameters<T>): ReturnType<T> {
+    console.log('Calling with:', args)
+    const result = fn(...args) as ReturnType<T>
+    console.log('Result:', result)
+    return result
+  }
+}
+
+const loggedCreate = withLogging(createServer)
+loggedCreate('localhost', 3000, { timeout: 5000 })  // tipos preservados
+
+// ConstructorParameters<T> — parâmetros do constructor
+class HttpClient {
+  constructor(baseUrl: string, headers: Record<string, string>) {}
+}
+
+type ClientArgs = ConstructorParameters<typeof HttpClient>
+// [baseUrl: string, headers: Record<string, string>]
+```
+
+## Compondo Utility Types
+
+```typescript
+// Combinações úteis no dia a dia
+interface BlogPost {
+  id: string
+  title: string
+  content: string
+  authorId: string
+  publishedAt: Date | null
+  tags: string[]
+}
+
+// Payload para criar post — sem id e publishedAt
+type CreatePostPayload = Omit<BlogPost, 'id' | 'publishedAt'>
+
+// Payload para atualizar post — tudo opcional exceto id
+type UpdatePostPayload = { id: string } & Partial<Omit<BlogPost, 'id'>>
+
+// Post em lista — sem content longo
+type PostSummary = Pick<BlogPost, 'id' | 'title' | 'authorId' | 'publishedAt' | 'tags'>
+
+// Post com author populado
+type PostWithAuthor = Omit<BlogPost, 'authorId'> & { author: Pick<User, 'id' | 'name'> }
+```
+
+> **Resumo:** Utility types transformam tipos existentes sem código duplicado. `Partial`/`Required` controlam opcionalidade, `Readonly` previne mutação em compile time, `Pick`/`Omit` selecionam subconjuntos de propriedades, `NonNullable` remove null/undefined, `ReturnType`/`Parameters` extraem tipos de funções. Composição com `&` e aninhamento são a chave para criar variantes precisas de tipos existentes.

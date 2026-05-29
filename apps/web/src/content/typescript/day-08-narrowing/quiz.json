@@ -1,1 +1,97 @@
-{"lessonId": "day-08", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-08",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `typeof null === 'object'` é um problema ao usar narrowing com `typeof`?",
+      "options": [
+        "Porque TypeScript não suporta `typeof null` — deve usar `=== null` diretamente",
+        "Porque `typeof null` retorna `'object'` (bug histórico do JS), então `if (typeof x === 'object')` não exclui `null` — TypeScript mantém `null` no tipo dentro do bloco",
+        "Porque `typeof` só funciona com primitivos; para objetos deve usar `instanceof`",
+        "Porque `null` é um tipo especial que requer `strictNullChecks` para funcionar com narrowing"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`typeof null` retorna `'object'` — é um bug do JavaScript que não pode ser corrigido por razões de compatibilidade. Então `if (typeof x === 'object')` não elimina `null` do tipo. Para excluir null explicitamente: `if (x !== null && typeof x === 'object')` ou simplesmente `if (x != null)` (que exclui null e undefined com loose equality). TypeScript replica esse comportamento do JavaScript."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que diferencia uma type guard function com `value is T` de uma função normal que retorna `boolean`?",
+      "options": [
+        "Type guards são executadas em runtime pelo JavaScript — funções boolean só em compile time",
+        "Uma função `boolean` não refina o tipo no call site; uma function com `value is T` instrui o TypeScript a refinar o tipo do argumento para `T` quando retorna `true`",
+        "Type guards não podem lançar exceções; funções boolean podem",
+        "Não há diferença — TypeScript infere automaticamente quando uma função retorna boolean é um type guard"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem o predicado `is`: `function isUser(v: unknown): boolean { ... }` — TypeScript não sabe o que o retorno `true` implica sobre o tipo de `v`. Com o predicado: `function isUser(v: unknown): v is User { ... }` — TypeScript aprende que dentro do `if (isUser(data))`, `data` é `User`. Ambas as funções têm a mesma implementação; o predicado é apenas uma instrução ao type checker sobre o significado semântico do retorno."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Dado `function process(value: string | null | undefined)`, qual comparação exclui APENAS `null` (mantendo `undefined`)?",
+      "options": [
+        "`if (value)` — truthiness exclui null e undefined",
+        "`if (value !== null)` — strict inequality exclui apenas null; undefined permanece no tipo",
+        "`if (value != null)` — loose inequality exclui null E undefined",
+        "`if (typeof value === 'string')` — exclui null e undefined simultaneamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`value !== null` (strict) remove apenas `null` do tipo — `undefined` permanece. `value != null` (loose) remove tanto `null` quanto `undefined` — porque `null == undefined` em JavaScript. `if (value)` exclui null, undefined E string vazia. `typeof value === 'string'` exclui null e undefined mas é equivalente à option 4 nos efeitos práticos. Para excluir apenas null sem afetar undefined, use `!== null`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a vantagem do operador `in` para narrowing em comparação com `typeof`?",
+      "options": [
+        "`in` é mais rápido em runtime que `typeof`",
+        "`in` funciona com tipos de objetos e interfaces — permite distinguir entre variantes de uma union baseado na presença de propriedades específicas, onde `typeof` só distingue primitivos",
+        "`in` é o único operador que funciona com `strictNullChecks: true`",
+        "`in` funciona com qualquer tipo; `typeof` só funciona com variáveis locais"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`typeof` distingue primitivos: `'string'`, `'number'`, `'boolean'`, `'object'`, etc. Para distinguir entre `Cat` e `Dog` (ambos objetos), `typeof` retorna `'object'` para ambos — inútil. `'meow' in animal` verifica se a propriedade existe no objeto — discrimina entre `Cat` e `Dog` baseado em sua estrutura. É o narrowing natural para unions de objetos sem campo discriminante literal."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que o TypeScript faz com o tipo de uma variável após um `return` ou `throw` em um branch?",
+      "options": [
+        "Nada — o TypeScript não rastreia early returns",
+        "Control flow analysis: o tipo da variável é refinado para excluir a variante tratada no branch com early return, então nos branches seguintes o tipo é mais estreito",
+        "O TypeScript exige que você anote explicitamente o tipo após o early return",
+        "O TypeScript marca a variável como `never` após qualquer early return"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TypeScript faz control flow analysis — rastreia quais tipos foram 'eliminados' por retornos ou throws. `if (x === null) return` → após esse if, TypeScript sabe que `x` não pode ser `null`. Cada branch que retorna ou lança elimina uma variante do tipo. Ao final, o tipo residual contém apenas as variantes não tratadas. Isso permite o padrão 'early return' sem `else` aninhado — código mais linear com tipos precisos."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual é o propósito de `asserts value is T` em assertion functions?",
+      "options": [
+        "É idêntico a `value is T` — apenas sintaxe alternativa para type guards",
+        "Assertion functions com `asserts` refinem o tipo do argumento para o restante do escopo chamador — sem retornar boolean; se a asserção falha, a função lança, garantindo que após a chamada o tipo é `T`",
+        "Assertion functions executam validação em runtime que type guards com `is` não executam",
+        "`asserts` é obrigatório em funções de validação com `strict: true` no tsconfig"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Type guard: `function isString(v: unknown): v is string { return typeof v === 'string' }` — retorna boolean, você usa dentro do `if`. Assertion function: `function assertString(v: unknown): asserts v is string { if (typeof v !== 'string') throw new Error() }` — não retorna nada, lança em falha. Após `assertString(x)`, TypeScript refina `x` para `string` para o resto do escopo — sem `if`. Útil quando a falha deve ser fatal (inicialização, pré-condições)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `instanceof` funciona para narrowing de classes mas não para interfaces TypeScript?",
+      "options": [
+        "TypeScript não suporta `instanceof` com interfaces — use `typeof` sempre",
+        "Interfaces são apagadas em runtime — não existe `interface User` em JavaScript. `instanceof` precisa de um constructor (valor real), não de um tipo TypeScript que só existe em compile time",
+        "`instanceof` só funciona com classes nativas do JavaScript como `Error`, `Date`, `Map`",
+        "`instanceof` não é type-safe em TypeScript — o compilador avisa e exige cast manual"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TypeScript é apagado pelo compilador — `interface User { id: string }` vira zero bytes de JavaScript. `instanceof` é um operador JavaScript que verifica a chain de protótipos: `x instanceof User` procura `User` como valor no prototype chain. Classes compilam para funções/classes JavaScript (existem em runtime); interfaces não. Para narrowing de objetos via interface, use `in` ou type guards manuais que verificam a estrutura."
+    }
+  ]
+}

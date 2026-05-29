@@ -1,1 +1,227 @@
-# Conteúdo em breve
+# Index Types
+
+Index types são dois operadores complementares: `keyof` extrai as chaves de um tipo como union, e `T[K]` (indexed access) obtém o tipo de uma propriedade específica. Juntos, permitem criar tipos derivados de outros tipos de forma precisa e type-safe.
+
+## `keyof` — União de Chaves
+
+```typescript
+interface User {
+  id: string
+  name: string
+  email: string
+  age: number
+}
+
+type UserKeys = keyof User
+// 'id' | 'name' | 'email' | 'age'
+
+// keyof com tipos primitivos
+type StringKeys = keyof string
+// 'length' | 'charAt' | 'charCodeAt' | 'concat' | ... (todos os métodos de string)
+
+type ArrayKeys = keyof string[]
+// 'length' | 'push' | 'pop' | 'map' | ... (todos os métodos de array)
+
+// keyof com index signatures
+interface Dict {
+  [key: string]: number
+}
+
+type DictKeys = keyof Dict  // string | number
+// (string porque é o tipo das chaves, number porque índices numéricos também funcionam em JS)
+```
+
+## Indexed Access — `T[K]`
+
+```typescript
+type UserName = User['name']   // string
+type UserId = User['id']       // string
+type UserAge = User['age']     // number
+
+// Acessar múltiplas chaves de uma vez
+type UserContact = User['name' | 'email']
+// string (ambas são string)
+
+// Com keyof — obter o tipo de qualquer propriedade
+type AnyUserValue = User[keyof User]
+// string | number ('id', 'name', 'email' são string; 'age' é number)
+```
+
+## Combinando `keyof` e `T[K]` em Funções
+
+O padrão mais importante: garantir que o valor retornado é do tipo correto para a chave fornecida:
+
+```typescript
+// Sem generics — não type-safe
+function get(obj: object, key: string): unknown {
+  return (obj as Record<string, unknown>)[key]
+}
+
+// Com keyof e T[K] — completamente type-safe
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key]
+}
+
+const user: User = { id: 'u-1', name: 'Ana', email: 'ana@a.com', age: 30 }
+
+const name = getProperty(user, 'name')   // string — TypeScript infere
+const age = getProperty(user, 'age')     // number — TypeScript infere
+const bad = getProperty(user, 'phone')   // ERRO — 'phone' não é keyof User
+
+// Setando propriedade type-safe
+function setProperty<T, K extends keyof T>(obj: T, key: K, value: T[K]): void {
+  obj[key] = value
+}
+
+setProperty(user, 'name', 'Maria')  // ✓
+setProperty(user, 'age', 'thirty')  // ERRO — 'thirty' não é number
+```
+
+## Index Signatures
+
+Index signatures permitem que um tipo aceite chaves dinâmicas:
+
+```typescript
+// Aceita qualquer chave string com valor string
+interface StringMap {
+  [key: string]: string
+}
+
+const headers: StringMap = {
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer token',
+  'X-Custom': 'value',
+}
+
+// Misto — propriedades específicas + index signature
+interface Config {
+  host: string     // específica — deve ser string
+  port: number     // ERRO: number não é compatível com index signature string
+  [key: string]: string  // qualquer outra chave deve ser string
+}
+
+// Para misturar, o tipo da propriedade deve ser compatível com o index
+interface FlexConfig {
+  host: string
+  [key: string]: string | number  // aceita string ou number
+  port: number  // ✓ — number é subtipo de string | number
+}
+
+// Index com número
+interface NumberIndexed {
+  [index: number]: string  // como array
+  length: number           // propriedade específica
+}
+```
+
+## `Record<K, V>` — Index Type Simplificado
+
+`Record<K, V>` é um mapped type que cria um objeto com chaves `K` e valores `V`:
+
+```typescript
+// Record é equivalente a { [P in K]: V }
+type Permissions = Record<'read' | 'write' | 'delete', boolean>
+// { read: boolean; write: boolean; delete: boolean }
+
+// Substituto para index signature quando as chaves são conhecidas
+const permissions: Permissions = {
+  read: true,
+  write: false,
+  delete: false,
+}
+
+// Com string arbitrária — substituto legível para { [key: string]: V }
+type HttpHeaders = Record<string, string>
+type RouteHandlers = Record<string, (req: Request) => Response>
+
+// Casos práticos
+type UserRoles = Record<string, 'admin' | 'user' | 'guest'>
+const roles: UserRoles = {
+  'u-1': 'admin',
+  'u-2': 'user',
+}
+```
+
+## `PropertyKey` — Tipo das Chaves Válidas
+
+```typescript
+// PropertyKey = string | number | symbol
+// É o tipo de qualquer chave JavaScript válida
+
+function hasKey<T extends object>(obj: T, key: PropertyKey): key is keyof T {
+  return key in obj
+}
+
+const user = { id: 1, name: 'Ana' }
+if (hasKey(user, 'name')) {
+  user.name  // ✓ — TypeScript sabe que 'name' é keyof typeof user
+}
+
+// Symbol como chave
+const symbolKey = Symbol('id')
+interface WithSymbol {
+  [symbolKey]: string
+  name: string
+}
+
+type Keys = keyof WithSymbol  // typeof symbolKey | 'name'
+```
+
+## Indexed Access com Arrays
+
+```typescript
+const COLORS = ['red', 'green', 'blue'] as const
+
+type Color = typeof COLORS[number]
+// 'red' | 'green' | 'blue'
+// typeof COLORS = readonly ['red', 'green', 'blue']
+// number como índice = acessa qualquer elemento = 'red' | 'green' | 'blue'
+
+// Com arrays de objetos
+const ROUTES = [
+  { path: '/', name: 'Home' },
+  { path: '/about', name: 'About' },
+] as const
+
+type Route = typeof ROUTES[number]
+// { readonly path: '/'; readonly name: 'Home' } | { readonly path: '/about'; readonly name: 'About' }
+
+type RoutePath = typeof ROUTES[number]['path']
+// '/' | '/about'
+```
+
+## Casos Práticos Avançados
+
+```typescript
+// Acessar tipo de propriedade aninhada
+interface ApiResponse {
+  data: {
+    user: {
+      profile: {
+        avatar: string
+        bio: string
+      }
+    }
+  }
+}
+
+type UserProfile = ApiResponse['data']['user']['profile']
+// { avatar: string; bio: string }
+
+type AvatarType = ApiResponse['data']['user']['profile']['avatar']
+// string
+
+// Criar pick function genérica multi-key
+function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+  const result = {} as Pick<T, K>
+  keys.forEach(key => {
+    result[key] = obj[key]
+  })
+  return result
+}
+
+const userSummary = pick(user, ['name', 'email'])
+// { name: string; email: string } — inferido automaticamente
+```
+
+> **Resumo:** `keyof T` extrai a union de chaves de um tipo. `T[K]` acessa o tipo de uma propriedade — com `K extends keyof T`, o TypeScript garante que o acesso é válido e o tipo é preciso. Index signatures aceitam chaves dinâmicas; `Record<K,V>` é a forma moderna de expressar isso. `typeof arr[number]` extrai a union dos elementos de um array `as const`. Combinar `keyof`, indexed access e generics é o padrão central para funções de objeto type-safe.

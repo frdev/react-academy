@@ -1,1 +1,97 @@
-{"lessonId": "day-13", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-13",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `keyof { [key: string]: number }` retorna e por quê?",
+      "options": [
+        "`string` — o tipo das chaves de um index signature string",
+        "`string | number` — porque em JavaScript, índices numéricos também são válidos em objetos com index signature string (arrays são acessados com número mas as chaves são convertidas para string internamente)",
+        "`PropertyKey` — o tipo de todas as chaves possíveis em JavaScript",
+        "`never` — index signatures não têm chaves tipadas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em JavaScript, `obj[0]` e `obj['0']` acessam o mesmo valor em objetos. O TypeScript modela isso: para `{ [key: string]: number }`, `keyof` retorna `string | number` porque índices numéricos são válidos (convertidos para string em runtime). Isso pode surpreender — você esperaria `string`. Para arrays (index signature `[index: number]`), `keyof` retorna `number | 'length' | 'push' | ...` — as chaves numéricas mais os métodos de array."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `function get<T, K extends keyof T>(obj: T, key: K): T[K]` é mais type-safe que `function get(obj: object, key: string): unknown`?",
+      "options": [
+        "Não há diferença de segurança — ambas funcionam em runtime",
+        "A versão genérica: (1) garante que `key` é uma chave real de `T` (não aceita chaves inexistentes), e (2) o tipo de retorno é `T[K]` — o tipo exato da propriedade, não `unknown`. O chamador recebe o tipo correto sem precisar de cast",
+        "A versão genérica é apenas mais legível — o compilador trata ambas igual",
+        "A versão genérica funciona apenas com interfaces; a `object` funciona com qualquer tipo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `get(user, 'name')`: versão com `object/string` retorna `unknown` — você precisa de cast manual para `string`. Versão genérica retorna `string` automaticamente (inferência: `K = 'name'`, `T[K] = string`). Além disso, `get(user, 'phone')` na versão string compilaria e retornaria `undefined` em runtime sem aviso. Na versão genérica, `'phone' extends keyof User` falha — erro em compile time. Segurança + tipo de retorno correto."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como `typeof arr[number]` extrai a union dos elementos de `const arr = ['a', 'b', 'c'] as const`?",
+      "options": [
+        "`typeof arr` retorna os elementos; `[number]` filtra apenas os tipos numéricos",
+        "`typeof arr` = `readonly ['a', 'b', 'c']` (tuple type); `[number]` é indexed access com `number` como índice — TypeScript retorna a union de todos os tipos acessíveis por um índice numérico = `'a' | 'b' | 'c'`",
+        "`typeof arr[number]` é uma operação JavaScript que retorna o comprimento do array",
+        "`number` como índice acessa apenas o primeiro elemento do array"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Passo a passo: `typeof arr` = `readonly ['a', 'b', 'c']` — um tuple. Indexed access `T[K]` pergunta 'qual é o tipo de T na posição K'. Com `K = number`, TypeScript responde 'qual tipo pode estar em qualquer posição numérica do tuple' = `'a' | 'b' | 'c'`. É como dizer 'me dê o tipo de qualquer elemento acessível por um número'. Para arrays de objetos: `typeof routes[number]` dá a union dos tipos de cada objeto no array."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quando você usaria `Record<string, V>` vs uma index signature `{ [key: string]: V }`?",
+      "options": [
+        "São equivalentes — escolha pelo estilo",
+        "`Record<string, V>` é um mapped type (mais explícito sobre a intenção); `{ [key: string]: V }` é index signature. Na prática, `Record` é preferível para dicionários de chaves dinâmicas porque comunica a intenção mais claramente e se integra melhor com outros utility types",
+        "`Record` funciona apenas com unions finitas de string; index signature aceita string genérico",
+        "Index signatures permitem propriedades adicionais específicas; `Record` não"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Tecnicamente, `Record<string, V>` e `{ [key: string]: V }` são quase equivalentes. Diferença sutil: com index signature, você pode adicionar propriedades específicas se compatíveis com o tipo do índice. Com `Record`, é um tipo puro. Na prática, prefira `Record` por clareza semântica ('isso é um dicionário') e consistência. Para chaves finitas conhecidas, use `Record<'a' | 'b' | 'c', V>` — TypeScript verifica completude e previne chaves inexistentes."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é o tipo de `ApiResponse['data']['user']['profile']` dado `interface ApiResponse { data: { user: { profile: { avatar: string } } } }`?",
+      "options": [
+        "`unknown` — indexed access aninhado não funciona em TypeScript",
+        "`{ avatar: string }` — indexed access pode ser encadeado para acessar tipos de propriedades aninhadas",
+        "`string` — TypeScript acessa o tipo final recursivamente",
+        "ERRO — você precisa criar interfaces intermediárias para cada nível"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Indexed access (`T[K]`) pode ser encadeado exatamente como acesso de propriedade em JavaScript. `ApiResponse['data']` = `{ user: { profile: { avatar: string } } }`. `['user']` = `{ profile: { avatar: string } }`. `['profile']` = `{ avatar: string }`. Isso é poderoso para extrair tipos de estruturas aninhadas sem criar interfaces intermediárias: `type UserProfile = ApiResponse['data']['user']['profile']` — se a estrutura muda, o tipo derivado atualiza automaticamente."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que `PropertyKey` é útil como constraint em generics (`K extends PropertyKey`)?",
+      "options": [
+        "`PropertyKey` é apenas um alias para `string` — não há diferença",
+        "`PropertyKey = string | number | symbol` — é o tipo exato de qualquer chave JavaScript válida. Usar `K extends PropertyKey` aceita symbols como chaves, enquanto `K extends string` rejeita symbols",
+        "`PropertyKey` é necessário para trabalhar com ES6 Maps",
+        "`PropertyKey` previne que chaves numéricas sejam usadas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`PropertyKey` é o tipo de qualquer chave JavaScript: `string | number | symbol`. Quando você escreve `function hasKey<T>(obj: T, key: PropertyKey): key is keyof T`, aceita verificações com symbols: `const sym = Symbol('id'); hasKey(user, sym)`. Com `K extends string`, symbols seriam rejeitados. Na biblioteca padrão, `Record<K extends keyof any, V>` usa `keyof any` = `string | number | symbol` = equivalente a `PropertyKey`. Use `PropertyKey` quando quiser ser explícito sobre aceitar qualquer tipo de chave JS."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Como `Pick<User, 'name' | 'email'>` e `User['name' | 'email']` diferem?",
+      "options": [
+        "São equivalentes — ambos retornam o mesmo tipo",
+        "`Pick<User, 'name' | 'email'>` retorna um objeto `{ name: string; email: string }`; `User['name' | 'email']` retorna a union dos TIPOS das propriedades: `string | string` = `string`",
+        "`User['name' | 'email']` retorna um objeto parcial; `Pick` retorna um objeto completo",
+        "ERRO — indexed access não aceita union de strings como índice"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Operações distintas: `Pick<User, 'name' | 'email'>` = objeto `{ name: string; email: string }` — preserva a estrutura de objeto com as propriedades selecionadas. `User['name' | 'email']` = indexed access com union = `User['name'] | User['email']` = `string | string` = `string` — é a union dos TIPOS de valor. O primeiro serve para criar sub-objetos; o segundo para extrair a union de tipos de valores de múltiplas propriedades."
+    }
+  ]
+}

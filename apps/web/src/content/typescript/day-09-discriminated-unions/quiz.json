@@ -1,1 +1,97 @@
-{"lessonId": "day-09", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-09",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que torna um campo 'discriminante' em uma discriminated union?",
+      "options": [
+        "Qualquer campo string — TypeScript usa o primeiro campo string como discriminante automaticamente",
+        "Um campo com tipo literal específico em cada variante — `kind: 'circle'`, `kind: 'rectangle'` — que permite ao TypeScript identificar exatamente qual variante está sendo usada",
+        "Um campo marcado com o decorator `@discriminant` do TypeScript",
+        "Qualquer campo obrigatório presente em todas as variantes da union"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O discriminante é um campo com tipo literal diferente em cada variante. Não pode ser `string` genérico — deve ser um literal como `'circle'`, `'rectangle'`, `'triangle'`. Quando você checa `shape.kind === 'circle'`, TypeScript usa o fato de que só `Circle` tem `kind: 'circle'` para refinar o tipo completo para `Circle`. Um campo com tipo `string` genérico não funcionaria — TypeScript não poderia inferir qual variante é."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é o papel de `assertNever(x: never): never` em um exhaustive check?",
+      "options": [
+        "É uma função de runtime que lança erro — não tem relação com o sistema de tipos",
+        "Se você esquecer uma variante no switch/if, TypeScript emitirá erro em compile time porque `x` não será `never` — ele terá o tipo da variante esquecida, que não é atribuível a `never`",
+        "Marca o código após o switch como código morto (dead code)",
+        "`assertNever` é um tipo especial do TypeScript, não uma função real"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Após tratar todos os casos, a variável deve ter tipo `never` (nenhum valor possível restante). Se você passa `x` (que deveria ser `never`) para `assertNever(x: never)`, TypeScript verifica em compile time que `x` é de fato `never`. Se você esqueceu uma variante (ex: adicionou `Pentagon` mas não tratou no switch), `x` terá tipo `Pentagon` — e o erro será: 'Argument of type Pentagon is not assignable to parameter of type never'. Erro em compile time, não runtime."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que o padrão `Result<T>` com `{ success: true; data: T } | { success: false; error: Error }` é preferível a lançar exceções?",
+      "options": [
+        "Porque exceções são mais lentas em JavaScript",
+        "Porque o Result type força quem chama a tratar ambos os casos — TypeScript garante que você checou `result.success` antes de acessar `result.data`; exceções podem ser ignoradas silenciosamente",
+        "Porque Promise não suporta exceções TypeScript — apenas erros JavaScript",
+        "Porque Result type é mais eficiente em memória que try/catch"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com exceções, `const user = await fetchUser(id)` parece retornar `User` — mas pode lançar. Se o chamador não envolve em try/catch, o erro é silencioso. Com Result type: `const result = await fetchUser(id)` retorna `Result<User>`. Acessar `result.data` sem checar `result.success` primeiro é erro de compilação — TypeScript força o tratamento explícito. A API é honest por design: o tipo do retorno expressa que pode falhar."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre usar `type` field em uma discriminated union vs usar o operador `in` para narrowing?",
+      "options": [
+        "Não há diferença — ambos são equivalentes",
+        "Campo discriminante literal (`kind: 'circle'`) é mais robusto — TypeScript refina para o tipo exato; `in` verifica presença de propriedade mas pode ser menos preciso se a propriedade existir em múltiplas variantes",
+        "`in` é preferível porque não exige modificar as interfaces",
+        "`type` field funciona apenas com interfaces; `in` funciona com qualquer tipo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Campo discriminante com literal é o padrão recomendado: TypeScript usa o valor do campo para identificar a variante exata, e o exhaustive check funciona com `never`. `in` verifica presença de propriedade — funciona, mas é frágil se a propriedade aparecer em múltiplas variantes ou se você adicionar uma variante sem essa propriedade. Discriminated unions com campo `kind`/`type` são mais explícitas, escaláveis (novas variantes detectadas pelo exhaustive check), e intencionalmente projetadas para narrowing."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Dado `type LoadingState<T> = { status: 'idle' } | { status: 'loading' } | { status: 'success'; data: T } | { status: 'error'; message: string }`, o que acontece se você acessa `state.data` sem checar `status`?",
+      "options": [
+        "TypeScript infere `data: T | undefined` — é acessível mas pode ser undefined",
+        "ERRO de compilação — `data` não existe em todas as variantes; TypeScript só permite acessar propriedades comuns a todas as variantes de uma union",
+        "TypeScript permite — `data` existe em pelo menos uma variante",
+        "TypeScript emite warning mas não erro"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em uma union, TypeScript só permite acesso a propriedades que existem em TODAS as variantes. `state.data` só existe em `{ status: 'success'; data: T }`. As variantes `idle`, `loading` e `error` não têm `data`. Sem checar `state.status === 'success'` primeiro, TypeScript emite erro. Isso é uma das principais vantagens do padrão: impossível acessar `data` acidentalmente quando está em estado de loading ou error."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que o padrão Redux de ações com `type: 'ACTION_NAME'` é naturalmente uma discriminated union?",
+      "options": [
+        "Porque Redux é escrito em TypeScript e usa esse padrão internamente",
+        "Porque cada action tem `type` com um string literal único — o discriminante — permitindo que o reducer use switch/case para refinar o tipo completo de cada action e acessar `payload` específico de forma type-safe",
+        "Porque Redux actions são objetos imutáveis e discriminated unions também são imutáveis",
+        "Porque o Redux DevTools reconhece automaticamente discriminated unions"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O padrão Redux nasceu antes do TypeScript se popularizar, mas mapeia perfeitamente para discriminated unions. `type UserAction = { type: 'LOGIN'; payload: Credentials } | { type: 'LOGOUT' } | { type: 'UPDATE'; payload: Partial<User> }` — o campo `type` é o discriminante. No reducer, `switch (action.type) { case 'LOGIN': action.payload.email ... }` — dentro do case, TypeScript sabe que `action.payload` é `Credentials`. Cada case é type-safe sem casts."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que acontece ao TypeScript quando você adiciona uma nova variante a uma discriminated union sem atualizar todos os switches que a usam (com exhaustive check)?",
+      "options": [
+        "Nada — TypeScript não rastreia isso",
+        "TypeScript emite erro de compilação nos switches com exhaustive check — o novo tipo não é `never` no default, quebrando a atribuição para `assertNever`",
+        "TypeScript emite apenas um warning em modo strict",
+        "O código compila mas falha em runtime na primeira execução com a nova variante"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Este é o principal benefício do exhaustive check. Quando você adiciona `type Shape = Circle | Rectangle | Triangle | Pentagon`, todos os switches com `default: assertNever(shape)` passam a emitir erro: 'Argument of type Pentagon is not assignable to parameter of type never'. O compilador aponta exatamente onde você precisa adicionar o novo case. Sem exhaustive check, o código compilaria mas o case `default` (ou ausência de case) seria executado silenciosamente para Pentagon."
+    }
+  ]
+}

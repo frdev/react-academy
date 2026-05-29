@@ -1,1 +1,97 @@
-{"lessonId": "day-10", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-10",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Quando você usaria `Partial<T>` vs criar uma nova interface com campos opcionais?",
+      "options": [
+        "Nunca — criar interface nova é sempre mais claro",
+        "`Partial<T>` quando você precisa de uma variante 'tudo opcional' de um tipo existente e quer manter o vínculo — se `T` mudar, `Partial<T>` atualiza automaticamente; interface nova ficaria dessincronizada",
+        "`Partial<T>` é apenas para funções de update de banco de dados",
+        "São equivalentes — use o que preferir"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se você tem `interface User { id: string; name: string; email: string }` e cria `interface PartialUser { id?: string; name?: string; email?: string }` separado, quando adicionar um campo em `User` (ex: `role`), terá que atualizar `PartialUser` manualmente. Com `type UserUpdate = Partial<User>`, a atualização é automática. O vínculo semântico ('é uma versão parcial de User') também fica explícito no código."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `Readonly<T>` e `Object.freeze()` em JavaScript?",
+      "options": [
+        "São equivalentes — TypeScript usa `Readonly` para marcar objetos que serão congelados",
+        "`Readonly<T>` é verificado apenas em compile time — TypeScript emite erro se você tentar reatribuir; `Object.freeze()` cria imutabilidade real em runtime; ambos são rasos (não afetam propriedades aninhadas)",
+        "`Readonly<T>` congela o objeto em runtime E em compile time; `Object.freeze()` só funciona em runtime",
+        "`Readonly<T>` é deep — congela todos os níveis aninhados; `Object.freeze()` é raso"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Readonly<T>` é zero runtime — é apagado pelo compilador, protege apenas em compile time. Se você fizer `(obj as any).name = 'hack'`, funciona. `Object.freeze()` impede mutação em runtime mas não tem efeito no sistema de tipos sem anotação. Ambos são rasos: `const obj = Object.freeze({ nested: { x: 1 } })` — `obj.nested.x = 2` ainda funciona. Para deep readonly em tipos, precisamos de recursive types (Semana 3)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é a regra prática para escolher entre `Pick` e `Omit`?",
+      "options": [
+        "Use `Pick` para interfaces, `Omit` para type aliases",
+        "Use `Pick` quando você quer um subconjunto pequeno (lista o que QUER); use `Omit` quando a maioria das propriedades é mantida (lista o que REMOVE) — o que der uma lista menor",
+        "`Pick` funciona apenas com tipos com menos de 10 propriedades",
+        "Não há diferença prática — escolha pelo gosto pessoal"
+      ],
+      "correctAnswer": 1,
+      "explanation": "É uma questão de clareza e manutenção. `Pick<User, 'name' | 'email'>` — você quer apenas 2 campos de 10. Claro: 'quero name e email'. `Omit<User, 'password' | 'salt'>` — você quer 8 dos 10 campos. Claro: 'quero tudo exceto campos sensíveis'. Se usar `Pick` para o segundo caso, teria que listar 8 campos. Se usar `Omit` para o primeiro, teria que listar 8 campos a remover. Menor lista = menos manutenção."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "`ReturnType<typeof fn>` retorna `Promise<User>` para uma função `async`. Como obter `User` diretamente?",
+      "options": [
+        "`ReturnType<typeof fn>` já resolve automaticamente Promises",
+        "`Awaited<ReturnType<typeof fn>>` — `Awaited<T>` extrai o tipo interno de `Promise<T>`, resolvendo até o tipo final",
+        "`Unwrap<ReturnType<typeof fn>>` é o tipo correto para unwrap de Promise",
+        "Não é possível — você precisa criar uma interface separada para o tipo de retorno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`async function fetchUser(): Promise<User>` — `ReturnType<typeof fetchUser>` = `Promise<User>`. Para obter `User`: `Awaited<ReturnType<typeof fetchUser>>` = `User`. `Awaited<T>` recursivamente extrai o tipo de qualquer Promise (ou thenable): `Awaited<Promise<Promise<string>>>` = `string`. É o padrão correto para trabalhar com retornos de funções async sem duplicar as interfaces."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `NonNullable<T>` é especialmente útil ao trabalhar com propriedades opcionais?",
+      "options": [
+        "Porque transforma `undefined` em valor padrão automaticamente",
+        "Propriedades opcionais têm tipo `T | undefined`; após validar que a propriedade existe, você pode usar `NonNullable` para comunicar ao TypeScript que o tipo é `T` — ou com narrowing, o compilador já refina automaticamente",
+        "`NonNullable` é útil apenas em combinação com `strict: false` no tsconfig",
+        "NonNullable apenas remove `null`; para remover `undefined` de opcionais, use `Required`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`interface Config { apiUrl?: string }` — `Config['apiUrl']` é `string | undefined`. Após validar: `if (config.apiUrl)`, TypeScript refina para `string` automaticamente (narrowing). `NonNullable<Config['apiUrl']>` = `string` — útil em tipos derivados: `type ResolvedApiUrl = NonNullable<Config['apiUrl']>`. Clareza: `Required<Config>` remove `?` (torna obrigatório), `NonNullable` remove `null | undefined` do tipo do valor — são operações diferentes."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como `Parameters<T>` é útil para criar wrappers de funções (higher-order functions)?",
+      "options": [
+        "Não é útil — wrappers sempre precisam de tipos anotados manualmente",
+        "`Parameters<T>` captura os tipos dos parâmetros de `T`; combinado com `ReturnType<T>`, permite criar wrappers que preservam os tipos originais sem duplicar as anotações",
+        "`Parameters<T>` só funciona com funções que não têm generics",
+        "`Parameters<T>` retorna um array JavaScript dos parâmetros em runtime"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem `Parameters`: `function withCache(fn: (id: string, options: Options) => Promise<User>)` — você duplica a assinatura. Com: `function withCache<T extends (...args: unknown[]) => unknown>(fn: T): (...args: Parameters<T>) => ReturnType<T>` — o wrapper preserva automaticamente os tipos de `fn`, seja qual for. Se `fn` muda de assinatura, o wrapper atualiza. Especialmente valioso para logging, caching, retry, e outros cross-cutting concerns."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `{ id: string } & Partial<Omit<User, 'id'>>` é um padrão útil para payloads de update?",
+      "options": [
+        "Não é um padrão válido — `&` não funciona com utility types",
+        "Garante que `id` é sempre obrigatório (você sabe o que está atualizando) enquanto todos os outros campos são opcionais (você pode atualizar qualquer subconjunto) — e o vínculo com `User` garante que não inventa campos inexistentes",
+        "É equivalente a `Partial<User>` — ambos permitem qualquer subconjunto de campos",
+        "Esse padrão só funciona com `exactOptionalPropertyTypes: true` no tsconfig"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Partial<User>` tornaria `id` também opcional — você poderia enviar uma atualização sem saber qual registro está atualizando. `{ id: string } & Partial<Omit<User, 'id'>>` = `id` obrigatório (você sempre sabe o que atualiza) + todos os outros campos opcionais (você manda apenas o que quer mudar). O `Omit<User, 'id'>` garante que os outros campos são exatamente os de `User` — se `User` ganhar um campo `role`, o tipo de update atualiza automaticamente."
+    }
+  ]
+}

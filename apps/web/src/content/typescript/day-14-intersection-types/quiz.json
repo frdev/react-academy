@@ -1,1 +1,97 @@
-{"lessonId": "day-14", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-14",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que acontece quando você cria `type AB = { x: string } & { x: number }`?",
+      "options": [
+        "`x` fica com tipo `string | number` — TypeScript faz a union dos conflitos",
+        "`x` fica com tipo `never` — a intersecção de `string` e `number` é `never` (nenhum valor é simultaneamente string e number). Um objeto do tipo `AB` não pode existir",
+        "ERRO em tempo de compilação — TypeScript rejeita intersecções com propriedades conflitantes",
+        "`x` fica com tipo `string` — o primeiro tipo na intersecção tem precedência"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Intersecção é literal: `A & B` = 'deve ser A E B'. `string & number` = 'deve ser string E number'. Nenhum valor satisfaz isso — resultado é `never`. O tipo `AB = { x: never }` compila sem erro, mas você nunca poderá criar um objeto válido do tipo `AB`. Isso não é um erro de compilação — TypeScript aceita a definição mas qualquer tentativa de criar `AB` falhará. Conflitos em intersecções são um dos casos onde o tipo resultante é tecnicamente válido mas inutilizável."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença entre `extends` e `&` para combinar tipos de objetos?",
+      "options": [
+        "São semanticamente idênticos — apenas sintaxe diferente",
+        "`extends` é para hierarquias formais com herança (disponível para interface e class); `&` é para composição ad-hoc (type aliases, generics, inline). `extends` detecta conflitos de propriedades em compile time; `&` resulta em `never` para propriedades conflitantes",
+        "`&` funciona apenas com type aliases; `extends` funciona apenas com interfaces",
+        "`extends` suporta apenas um tipo pai; `&` suporta múltiplos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`interface Dog extends Animal` — herança formal, Dog é uma Animal. `type Employee = Person & WorkDetails` — composição, não hierarquia. Diferença importante em conflitos: `interface B extends A { x: number }` quando `A` tem `x: string` → ERRO imediato. `type B = A & { x: number }` quando `A` tem `x: string` → x fica `never`, sem erro imediato. `extends` também é necessário para herança de classes. `&` é mais flexível para composição de tipos em generics e tipos utilitários."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como o mixin pattern usa intersection types para compor comportamento?",
+      "options": [
+        "Mixins em TypeScript usam herança múltipla de classes — não intersection types",
+        "Funções mixin recebem `T extends object` e retornam `T & Additions` — preservam o tipo base e adicionam novos campos. Ao encadear mixins, os tipos se acumulam: cada camada expande o tipo anterior via `&`",
+        "Intersection types em mixins servem apenas para documentação — não afetam a type safety",
+        "Mixins com intersection types só funcionam com classes, não com objetos literais"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`function withId<T extends object>(obj: T): T & { id: string }` — recebe qualquer objeto e retorna ele mais `{ id: string }`. O tipo de retorno `T & { id: string }` preserva todos os campos originais de `T` e adiciona `id`. Encadeando: `withTimestamps(withId(basePost))` → `typeof basePost & { id: string } & { createdAt: Date; updatedAt: Date }`. TypeScript resolve a intersecção — você tem todos os campos. É composição horizontal de comportamento, alternativa à herança vertical."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como `A & (B | C)` é avaliado pelo TypeScript?",
+      "options": [
+        "`A & (B | C)` não é uma expressão válida — intersecção não distribui sobre union",
+        "Distribui: `(A & B) | (A & C)` — TypeScript aplica a lei distributiva da álgebra de tipos",
+        "É avaliado da esquerda para direita: `(A & B) | C`",
+        "Resulta em `A` — a union é ignorada na intersecção"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Álgebra de tipos segue a mesma distributividade da álgebra booleana: `A & (B | C)` = `(A & B) | (A & C)`. Exemplo: `{ id: string } & ({ role: 'admin'; perms: string[] } | { role: 'user' })` = `{ id: string; role: 'admin'; perms: string[] } | { id: string; role: 'user' }`. Isso é poderoso para modelar variantes com campos comuns — o campo `id` aparece em ambas as variantes sem repetição na definição. Discriminated unions compostas com `&` são um padrão avançado mas elegante."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Dado `type WithMetadata<T> = T & { metadata: { version: number } }`, o que `WithMetadata<User>` representa?",
+      "options": [
+        "Um tipo que herda de `User` e adiciona `metadata`",
+        "Um tipo que deve satisfazer simultaneamente `User` e `{ metadata: { version: number } }` — tem todas as propriedades de `User` mais `metadata`",
+        "`User` com a propriedade `metadata` tornada opcional",
+        "Um wrapper em torno de `User` — `WithMetadata<User>.user` seria o `User` original"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`WithMetadata<User>` = `User & { metadata: { version: number } }` = `{ id: string; name: string; email: string; role: 'admin' | 'user' } & { metadata: { version: number } }` = objeto com todas as propriedades de `User` mais `metadata`. Não é uma relação de herança — é composição. O genérico `WithMetadata<T>` funciona com qualquer `T`: `WithMetadata<Post>`, `WithMetadata<Comment>` — todos ganham `metadata` preservando seus campos originais. Padrão útil para adicionar campos cross-cutting."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Quando a intersecção de funções cria behavior de overload? Dado `type F = ((x: string) => string) & ((x: number) => number)`, como `F` se comporta?",
+      "options": [
+        "ERRO — intersecção de funções não é permitida",
+        "Uma função do tipo `F` pode ser chamada com `string` (retorna `string`) ou com `number` (retorna `number`) — a intersecção cria o efeito de overload com tipos correlacionados",
+        "Apenas o primeiro tipo de função é usado — o segundo é ignorado",
+        "`F` aceita `string | number` mas retorna `string | number` — sem correlação entre entrada e saída"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Intersecção de tipos de função cria overloads: `F` pode ser chamada com `string` (retorna `string`) ou com `number` (retorna `number`). TypeScript usa o tipo do argumento para determinar o tipo de retorno — correlação entre entrada e saída. Isso é diferente de `(x: string | number) => string | number` onde a correlação é perdida. Mapped types com `as` e conditional types usam esse comportamento de intersecção de funções para criar APIs com overloads derivados."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `class DataStore implements Serializable & Loggable` é válido, mas você não pode `class DataStore extends SerializableMixin & LoggableMixin`?",
+      "options": [
+        "TypeScript não suporta `implements` com intersection types — deve listar as interfaces separadamente",
+        "`implements` verifica que a classe satisfaz um contrato (type or interface) — `&` cria um tipo, que pode ser usado em `implements`. `extends` herda implementação de uma classe específica — você não pode herdar de uma expressão de tipo `&` porque ela não é um constructor (não existe em runtime)",
+        "Ambos são válidos — `extends` com `&` é equivalente a `implements`",
+        "Intersection types só podem ser usados com interfaces, não com classes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`implements` usa um tipo para verificação estática — TypeScript checa que a classe tem todos os membros. Tipos intersection são válidos aqui. `extends` herda implementação de um constructor real — `SerializableMixin & LoggableMixin` é uma expressão de tipo que não existe em runtime como constructor. JavaScript/TypeScript não tem herança múltipla de classes. Para compor implementações de múltiplas 'classes', use mixins (funções que recebem uma classe e retornam outra) ou composition over inheritance."
+    }
+  ]
+}

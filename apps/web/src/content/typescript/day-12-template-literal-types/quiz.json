@@ -1,1 +1,97 @@
-{"lessonId": "day-12", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-12",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que o tipo `` `${'a' | 'b'}-${'1' | '2'}` `` produz?",
+      "options": [
+        "`string` — template literals com unions sempre resultam em string genérico",
+        "`'a-1' | 'a-2' | 'b-1' | 'b-2'` — TypeScript distribui o template sobre o produto cartesiano das unions",
+        "`'a' | 'b' | '1' | '2'` — as unions são concatenadas",
+        "ERRO — template literal types não suportam múltiplas unions"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Template literal types distribuem automaticamente sobre unions — gerando o produto cartesiano. Para cada combinação possível, TypeScript cria uma entrada: `a-1`, `a-2`, `b-1`, `b-2`. Com 2 unions de 2 membros = 4 combinações. Com 3 unions de 3 membros = 27 combinações. Isso é extremamente poderoso para gerar tipos de eventos, CSS utilities, API routes e qualquer padrão de string com estrutura previsível."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `Capitalize<T>` e `Uppercase<T>` em template literal types?",
+      "options": [
+        "São sinônimos — `Capitalize` e `Uppercase` produzem o mesmo resultado",
+        "`Capitalize<'hello world'>` = `'Hello world'` (apenas primeira letra); `Uppercase<'hello world'>` = `'HELLO WORLD'` (todas as letras). São operações distintas de manipulação de string",
+        "`Capitalize` funciona apenas com string literals; `Uppercase` funciona com qualquer tipo",
+        "`Uppercase` está deprecated — use `Capitalize` sempre"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quatro tipos distintos: `Uppercase<'hello'>` = `'HELLO'`, `Lowercase<'HELLO'>` = `'hello'`, `Capitalize<'hello'>` = `'Hello'` (apenas o primeiro caractere), `Uncapitalize<'Hello'>` = `'hello'` (apenas o primeiro caractere). No padrão de event handlers: `Capitalize<'click'>` = `'Click'` → `` `on${Capitalize<'click'>}` `` = `'onClick'`. Se usasse `Uppercase`, geraria `'onCLICK'` — incorreto."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como você criaria um tipo `{ onClick: Handler; onFocus: Handler; onBlur: Handler }` a partir de `type Events = 'click' | 'focus' | 'blur'` usando mapped types?",
+      "options": [
+        "`` { [E in Events]: Handler } `` — gera `{ click: Handler; focus: Handler; blur: Handler }`",
+        "`` { [E in Events as `on${Capitalize<E>}`]: Handler } `` — usa key remapping com template literal",
+        "`` { [E in Events]: `on${Capitalize<E>}`: Handler } `` — ERRO de sintaxe",
+        "Não é possível — renomear chaves requer uma função JavaScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A cláusula `as` em mapped types permite transformar a chave. `[E in Events as \\`on${Capitalize<E>}\\`]` — para cada `E` em `Events`, a chave resultante é `` `on${Capitalize<E>}` ``. Para `'click'`: `` `on${Capitalize<'click'>}` `` = `'onClick'`. A combinação de iteração sobre union + key remapping + template literal é o padrão padrão para gerar objetos de event handlers type-safe."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que o tipo `` `item-${number}` `` é menos preciso que `` `item-${'1' | '2' | '3'}` ``?",
+      "options": [
+        "Não há diferença — ambos aceitam os mesmos valores",
+        "`` `item-${number}` `` aceita qualquer string que começa com 'item-' seguida de qualquer representação de número — é um tipo amplo. `` `item-${'1' | '2' | '3'}` `` é uma union finita e precisa: apenas `'item-1'`, `'item-2'`, `'item-3'`",
+        "`` `item-${number}` `` não é válido em TypeScript",
+        "`` `item-${'1' | '2' | '3'}` `` não é mais preciso — TypeScript trata ambos como `string`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Template literals com primitivos largos (`number`, `string`, `boolean`) produzem tipos que aceitam qualquer instância desse primitivo. `` `item-${number}` `` aceita `'item-1'`, `'item-42'`, `'item--5'`, `'item-3.14'`, `'item-NaN'` — qualquer representação de number. Para tipos precisos e finitos, use unions de literais: `` `item-${'1' | '2' | '3'}` `` aceita exatamente 3 strings. Em prática, use unions literais sempre que o conjunto for conhecido."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `` type ExtractEvent<T> = T extends `on${infer E}` ? E : never `` produz para `'onClick' | 'onFocus' | 'submit'`?",
+      "options": [
+        "`'click' | 'focus' | 'submit'` — extrai tudo após 'on'",
+        "`'Click' | 'Focus'` — extrai apenas as strings que começam com 'on'; 'submit' não começa com 'on' → never",
+        "`'onClick' | 'onFocus'` — retorna as strings que começam com 'on' sem transformação",
+        "`never` — conditional types com template literals não suportam `infer`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O conditional type distribui sobre a union: para `'onClick'`: `` 'onClick' extends `on${infer E}` `` → verdadeiro, `E = 'Click'`. Para `'onFocus'`: `E = 'Focus'`. Para `'submit'`: `` 'submit' extends `on${infer E}` `` → falso → `never`. Resultado: `'Click' | 'Focus' | never` = `'Click' | 'Focus'`. Nota: `E` captura `'Click'` (com capital C) porque `` `on${E}` `` = `'onClick'` implica `E = 'Click'`. Para lowercase, use `Uncapitalize<E>`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual é o risco de criar um tipo com muitas unions em um template literal, como `` `${A}-${B}-${C}` `` onde cada union tem 10 membros?",
+      "options": [
+        "Não há risco — TypeScript otimiza automaticamente",
+        "Crescimento exponencial: 10 × 10 × 10 = 1000 membros na union resultante. TypeScript limita unions a 100.000 membros e pode ser significativamente mais lento para checar tipos com unions grandes",
+        "TypeScript restringe template literals a no máximo 2 unions",
+        "O risco é apenas de runtime — compile time não é afetado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Template literal types fazem produto cartesiano: `N × M × P` combinações. Com unions de 10 membros cada, 3 posições = 1000. Com 5 posições de 5 membros = 3125. TypeScript tem limite e emite erro `'Expression produces a union type that is too complex to represent'`. Além disso, unions grandes tornam o type checker mais lento. Solução: use `string` quando a precisão não justifica o custo, ou quebre em sub-tipos menores."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Template literal types existem apenas em compile time. Qual é a implicação prática disso?",
+      "options": [
+        "Não é possível usar template literal types em código de produção",
+        "Toda a verificação de padrões de string acontece somente na fase de compilação — em runtime, são apenas strings JavaScript normais. Você ainda precisa de validação em runtime (regex, parsing) para dados externos; os tipos não protegem contra strings inválidas vindas de APIs ou usuários",
+        "Template literal types são convertidos para regex em runtime pelo TypeScript",
+        "Em runtime, TypeScript mantém os tipos como metadata nos objetos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Como todo o TypeScript, template literal types são apagados na compilação. `function move(direction: Direction)` onde `type Direction = 'north' | 'south'` — em runtime, é apenas `function move(direction)`. Se uma API retornar `'norte'` (pt-BR), o JavaScript não saberá que está errado — o TypeScript só teria verificado em compile time se o valor fosse literal no código. Para dados externos (APIs, formulários, JSON), você precisa validar em runtime com guards, schemas (Zod/Yup), ou parsing explícito."
+    }
+  ]
+}

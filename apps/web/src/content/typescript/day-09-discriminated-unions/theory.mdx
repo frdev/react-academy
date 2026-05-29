@@ -1,1 +1,210 @@
-# Conteúdo em breve
+# Discriminated Unions
+
+Discriminated unions (também chamadas de tagged unions) são um padrão onde cada variante de uma union tem um campo literal comum — o discriminante — que o TypeScript usa para identificar qual variante está sendo manipulada. É o padrão fundamental para modelar estados, eventos e resultados em TypeScript.
+
+## O Problema: Union sem Discriminante
+
+```typescript
+// Sem discriminante — TypeScript não consegue distinguir variantes
+interface Circle {
+  radius: number
+}
+
+interface Rectangle {
+  width: number
+  height: number
+}
+
+type Shape = Circle | Rectangle
+
+function area(shape: Shape): number {
+  // Como saber qual é qual?
+  if ('radius' in shape) {
+    return Math.PI * shape.radius ** 2  // ✓ mas frágil
+  }
+  return shape.width * shape.height
+}
+```
+
+## A Solução: Campo Discriminante
+
+```typescript
+interface Circle {
+  kind: 'circle'     // discriminante literal
+  radius: number
+}
+
+interface Rectangle {
+  kind: 'rectangle'  // discriminante literal
+  width: number
+  height: number
+}
+
+interface Triangle {
+  kind: 'triangle'   // discriminante literal
+  base: number
+  height: number
+}
+
+type Shape = Circle | Rectangle | Triangle
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2     // shape: Circle
+    case 'rectangle':
+      return shape.width * shape.height      // shape: Rectangle
+    case 'triangle':
+      return (shape.base * shape.height) / 2 // shape: Triangle
+  }
+}
+```
+
+O campo `kind` com valor literal é o discriminante. Quando você checa `shape.kind === 'circle'`, o TypeScript refina `shape` para `Circle` — com todos os campos de `Circle` disponíveis.
+
+## Exhaustive Check com `never`
+
+TypeScript pode verificar em compile time que você tratou todas as variantes:
+
+```typescript
+function assertNever(value: never): never {
+  throw new Error(`Unhandled case: ${JSON.stringify(value)}`)
+}
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2
+    case 'rectangle':
+      return shape.width * shape.height
+    case 'triangle':
+      return (shape.base * shape.height) / 2
+    default:
+      // Se você esquecer uma variante, TypeScript emite erro aqui:
+      // "Argument of type 'NewShape' is not assignable to parameter of type 'never'"
+      return assertNever(shape)
+  }
+}
+
+// Agora adicione uma nova variante:
+interface Pentagon {
+  kind: 'pentagon'
+  side: number
+}
+
+type Shape = Circle | Rectangle | Triangle | Pentagon
+
+// O switch acima passa a emitir erro no default — você DEVE tratar Pentagon
+// Esse é o poder do exhaustive check
+```
+
+## Modelando Resultados (Result Type)
+
+Discriminated unions são perfeitas para representar resultado de operações que podem falhar:
+
+```typescript
+type Result<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; error: E }
+
+async function fetchUser(id: string): Promise<Result<User>> {
+  try {
+    const response = await fetch(`/api/users/${id}`)
+    if (!response.ok) {
+      return { success: false, error: new Error(`HTTP ${response.status}`) }
+    }
+    const data = await response.json()
+    return { success: true, data }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err : new Error(String(err)) }
+  }
+}
+
+// Quem chama é forçado a tratar os dois casos:
+const result = await fetchUser('u-1')
+if (result.success) {
+  console.log(result.data.name)  // ✓ — data disponível
+} else {
+  console.error(result.error.message)  // ✓ — error disponível
+}
+// result.data fora do if → ERRO — TypeScript não sabe se success é true
+```
+
+## Modelando Estados de UI
+
+```typescript
+type LoadingState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; message: string }
+
+function renderUserProfile(state: LoadingState<User>): string {
+  switch (state.status) {
+    case 'idle':
+      return '<button>Load Profile</button>'
+    case 'loading':
+      return '<Spinner />'
+    case 'success':
+      return `<Profile user="${state.data.name}" />`  // data disponível
+    case 'error':
+      return `<Error message="${state.message}" />`   // message disponível
+  }
+}
+```
+
+## Modelando Eventos e Ações
+
+O padrão é comum em Redux, event systems e state machines:
+
+```typescript
+type UserAction =
+  | { type: 'USER_LOGIN'; payload: { id: string; email: string } }
+  | { type: 'USER_LOGOUT' }
+  | { type: 'USER_UPDATE_NAME'; payload: { name: string } }
+  | { type: 'USER_UPDATE_EMAIL'; payload: { email: string }; requiresVerification: boolean }
+
+function userReducer(state: UserState, action: UserAction): UserState {
+  switch (action.type) {
+    case 'USER_LOGIN':
+      return { ...state, id: action.payload.id, email: action.payload.email, loggedIn: true }
+    case 'USER_LOGOUT':
+      return { ...state, loggedIn: false }
+    case 'USER_UPDATE_NAME':
+      return { ...state, name: action.payload.name }
+    case 'USER_UPDATE_EMAIL':
+      const newState = { ...state, email: action.payload.email }
+      if (action.requiresVerification) {
+        return { ...newState, emailVerified: false }
+      }
+      return newState
+  }
+}
+```
+
+## Discriminantes com Múltiplos Campos
+
+O discriminante pode ser mais de um campo — TypeScript usa a intersecção deles:
+
+```typescript
+type ApiResponse =
+  | { method: 'GET'; status: 200; body: string }
+  | { method: 'POST'; status: 200; body: string; created: boolean }
+  | { method: 'GET' | 'POST'; status: 404; error: string }
+  | { method: 'GET' | 'POST'; status: 500; error: string; retryAfter?: number }
+
+function handleResponse(response: ApiResponse): void {
+  if (response.status === 200 && response.method === 'POST') {
+    // response: { method: 'POST'; status: 200; body: string; created: boolean }
+    if (response.created) {
+      console.log('Resource created:', response.body)
+    }
+  } else if (response.status === 500) {
+    // response: { method: 'GET' | 'POST'; status: 500; error: string; retryAfter?: number }
+    const wait = response.retryAfter ?? 5000
+    setTimeout(() => retry(response), wait)
+  }
+}
+```
+
+> **Resumo:** Discriminated unions adicionam um campo literal compartilhado (discriminante) que permite ao TypeScript saber exatamente qual variante está sendo usada em cada branch. Padrões-chave: `kind`/`type`/`status` como discriminante, exhaustive check com `assertNever`, Result type para operações falíveis, e LoadingState para estado de UI. É o padrão central para modelar estados complexos com type safety total.

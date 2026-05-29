@@ -1,1 +1,212 @@
-# Conteúdo em breve
+# Mapped Types
+
+Mapped types iteram sobre as chaves de um tipo e criam um novo tipo com base nessa iteração. São a base de quase todos os utility types da biblioteca padrão do TypeScript — `Partial`, `Required`, `Readonly`, `Pick` e `Record` são todos implementados como mapped types.
+
+## Sintaxe Fundamental
+
+```typescript
+// { [K in keyof T]: ... } — a sintaxe de mapped type
+type MyPartial<T> = {
+  [K in keyof T]?: T[K]
+  //  ^^^^^^^^^^^  ^^^^
+  //  iteração     tipo de cada propriedade
+}
+
+// keyof T = union de todas as chaves de T
+// T[K] = tipo da propriedade K em T (indexed access — veremos mais no Day 13)
+// ? = torna opcional
+
+interface User {
+  id: string
+  name: string
+  email: string
+}
+
+type PartialUser = MyPartial<User>
+// { id?: string; name?: string; email?: string }
+```
+
+## Modificadores de Opcionalidade e Readonly
+
+Você pode adicionar (`+`) ou remover (`-`) os modificadores `?` e `readonly`:
+
+```typescript
+// Adicionar readonly — mesmo que Readonly<T>
+type MyReadonly<T> = {
+  readonly [K in keyof T]: T[K]
+  // +readonly também funciona (+ é implícito)
+}
+
+// Remover readonly — oposto de Readonly<T>
+type Mutable<T> = {
+  -readonly [K in keyof T]: T[K]
+}
+
+// Remover opcionalidade — mesmo que Required<T>
+type MyRequired<T> = {
+  [K in keyof T]-?: T[K]
+}
+
+// Tornar tudo obrigatório E readonly
+type ImmutableRequired<T> = {
+  readonly [K in keyof T]-?: T[K]
+}
+
+// Exemplo prático
+interface FormConfig {
+  readonly host: string
+  readonly port?: number
+}
+
+type MutableForm = Mutable<FormConfig>
+// { host: string; port?: number } — readonly removido
+
+type FullForm = MyRequired<FormConfig>
+// { readonly host: string; readonly port: number } — ? removido
+```
+
+## Transformando Tipos de Valores
+
+A parte após os `:` define o tipo de cada propriedade — pode ser qualquer expressão de tipo:
+
+```typescript
+// Embrulhar todos os valores em Promise
+type Async<T> = {
+  [K in keyof T]: Promise<T[K]>
+}
+
+interface UserService {
+  getUser(id: string): User
+  listUsers(): User[]
+  deleteUser(id: string): void
+}
+
+type AsyncUserService = Async<UserService>
+// { getUser(id: string): Promise<User>; listUsers(): Promise<User[]>; ... }
+
+// Tornar todos os valores nullable
+type Nullable<T> = {
+  [K in keyof T]: T[K] | null
+}
+
+// Embrulhar valores em um Record para tracking
+type Tracked<T> = {
+  [K in keyof T]: { value: T[K]; lastUpdated: Date }
+}
+```
+
+## Key Remapping com `as`
+
+A cláusula `as` permite renomear as chaves durante o mapeamento:
+
+```typescript
+// Adicionar prefixo às chaves
+type Getters<T> = {
+  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K]
+}
+
+interface UserFields {
+  name: string
+  email: string
+  age: number
+}
+
+type UserGetters = Getters<UserFields>
+// {
+//   getName: () => string
+//   getEmail: () => string
+//   getAge: () => number
+// }
+
+// Filtrar chaves com never
+type OnlyStrings<T> = {
+  [K in keyof T as T[K] extends string ? K : never]: T[K]
+}
+
+interface Mixed {
+  name: string      // mantida
+  age: number       // removida (number extends string → false → never)
+  email: string     // mantida
+  active: boolean   // removida
+}
+
+type StringsOnly = OnlyStrings<Mixed>
+// { name: string; email: string }
+```
+
+## Mapped Types sem `keyof`
+
+Você pode mapear sobre qualquer union de strings, não apenas `keyof T`:
+
+```typescript
+type EventHandlers<Events extends string> = {
+  [E in Events as `on${Capitalize<E>}`]: (event: E) => void
+}
+
+type UIEvents = EventHandlers<'click' | 'focus' | 'blur'>
+// {
+//   onClick: (event: 'click') => void
+//   onFocus: (event: 'focus') => void
+//   onBlur: (event: 'blur') => void
+// }
+
+// Record<K, V> é um mapped type simples
+type MyRecord<K extends PropertyKey, V> = {
+  [P in K]: V
+}
+
+type StatusMap = MyRecord<'active' | 'inactive' | 'pending', number>
+// { active: number; inactive: number; pending: number }
+```
+
+## Casos de Uso Práticos
+
+```typescript
+// Validação schema — mapear tipo para regras de validação
+type ValidationRules<T> = {
+  [K in keyof T]?: {
+    required?: boolean
+    minLength?: T[K] extends string ? number : never
+    min?: T[K] extends number ? number : never
+    max?: T[K] extends number ? number : never
+  }
+}
+
+interface LoginForm {
+  username: string
+  password: string
+  rememberMe: boolean
+}
+
+const rules: ValidationRules<LoginForm> = {
+  username: { required: true, minLength: 3 },
+  password: { required: true, minLength: 8 },
+  // rememberMe: minLength seria never — TypeScript não permite
+}
+
+// Feature flags type-safe
+type FeatureFlags<T extends Record<string, unknown>> = {
+  readonly [K in keyof T]: boolean
+}
+
+const flags: FeatureFlags<{ darkMode: unknown; betaFeatures: unknown }> = {
+  darkMode: true,
+  betaFeatures: false,
+}
+```
+
+## Como a Biblioteca Padrão usa Mapped Types
+
+```typescript
+// Implementações reais (simplificadas)
+type Partial<T> = { [K in keyof T]?: T[K] }
+type Required<T> = { [K in keyof T]-?: T[K] }
+type Readonly<T> = { readonly [K in keyof T]: T[K] }
+type Pick<T, K extends keyof T> = { [P in K]: T[P] }
+type Record<K extends keyof any, T> = { [P in K]: T }
+
+// Omit é implementado como Pick + Exclude (que veremos na Semana 3)
+type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>
+```
+
+> **Resumo:** Mapped types transformam cada propriedade de um tipo via `{ [K in keyof T]: expr }`. Modificadores `+/-readonly` e `+/-?` controlam imutabilidade e opcionalidade. A cláusula `as` permite renomear ou filtrar chaves — retornar `never` remove a chave. Você pode mapear sobre qualquer union de strings, não apenas `keyof T`. Toda a família `Partial/Required/Readonly/Pick/Record` é implementada com mapped types.

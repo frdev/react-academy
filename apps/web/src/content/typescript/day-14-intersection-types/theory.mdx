@@ -1,1 +1,230 @@
-# Conteúdo em breve
+# Intersection Types
+
+Intersection types combinam múltiplos tipos em um — o resultado tem todas as propriedades de todos os tipos combinados. Com `A & B`, um valor deve satisfazer `A` e `B` simultaneamente. É o mecanismo de composição de tipos do TypeScript.
+
+## Sintaxe Básica
+
+```typescript
+interface Serializable {
+  serialize(): string
+  deserialize(data: string): void
+}
+
+interface Loggable {
+  log(message: string): void
+  logLevel: 'debug' | 'info' | 'warn' | 'error'
+}
+
+// Intersection — deve ter todos os membros de ambos
+type SerializableAndLoggable = Serializable & Loggable
+
+class DataStore implements SerializableAndLoggable {
+  logLevel: 'debug' | 'info' | 'warn' | 'error' = 'info'
+
+  serialize(): string { return JSON.stringify(this) }
+  deserialize(data: string): void { Object.assign(this, JSON.parse(data)) }
+  log(message: string): void { console.log(`[${this.logLevel}] ${message}`) }
+}
+```
+
+## Intersecção de Objetos
+
+```typescript
+interface PersonBase {
+  id: string
+  name: string
+  email: string
+}
+
+interface EmployeeDetails {
+  department: string
+  salary: number
+  startDate: Date
+}
+
+// Employee tem todas as propriedades de PersonBase + EmployeeDetails
+type Employee = PersonBase & EmployeeDetails
+
+const employee: Employee = {
+  id: 'e-1',
+  name: 'Ana',
+  email: 'ana@company.com',
+  department: 'Engineering',
+  salary: 120000,
+  startDate: new Date('2022-01-15'),
+}
+
+// Equivalente com interfaces seria:
+interface EmployeeInterface extends PersonBase, EmployeeDetails {}
+// Para types, usamos &; para interfaces, usamos extends
+```
+
+## `&` vs `extends` — Quando Usar Cada Um
+
+```typescript
+// extends — para hierarquias com herança real
+interface Animal {
+  name: string
+}
+
+interface Dog extends Animal {
+  breed: string
+  bark(): void
+}
+
+// & — para composição ad-hoc, sem hierarquia
+type AdminUser = User & { permissions: string[]; lastLogin: Date }
+
+// & funciona com type aliases (não-interfaces)
+type Timestamped = { createdAt: Date; updatedAt: Date }
+type SoftDeletable = { deletedAt: Date | null }
+
+type Post = {
+  id: string
+  title: string
+  content: string
+} & Timestamped & SoftDeletable
+```
+
+## Conflitos em Intersecções
+
+Quando propriedades com o mesmo nome têm tipos incompatíveis, o resultado é `never`:
+
+```typescript
+type A = { x: string }
+type B = { x: number }
+
+type AB = A & B
+// AB = { x: string & number }
+// string & number = never (nenhum valor é string E number ao mesmo tempo)
+
+const bad: AB = { x: 'hello' }  // ERRO — x: never não pode ser atribuído
+const also: AB = { x: 42 }      // ERRO — idem
+
+// Conflito com literais também resulta em never
+type C = { status: 'active' }
+type D = { status: 'inactive' }
+type CD = C & D
+// { status: 'active' & 'inactive' } = { status: never }
+```
+
+Propriedades compatíveis são intersectadas corretamente:
+
+```typescript
+type E = { callback: (x: string) => void }
+type F = { callback: (x: string) => void }
+type EF = E & F
+// { callback: (x: string) => void } — tipos idênticos, sem conflito
+
+// Funções são intersectadas como overloads
+type G = { fn: (x: string) => string }
+type H = { fn: (x: number) => number }
+type GH = G & H
+// { fn: (x: string) => string } & { fn: (x: number) => number }
+// fn pode ser chamada com string ou number — funciona como overload
+```
+
+## Mixin Pattern com Intersection Types
+
+Intersection types permitem compor comportamento via mixins — sem herança múltipla:
+
+```typescript
+// Funções de mixin retornam tipos expandidos
+function withTimestamps<T extends object>(obj: T): T & { createdAt: Date; updatedAt: Date } {
+  return {
+    ...obj,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+}
+
+function withId<T extends object>(obj: T): T & { id: string } {
+  return {
+    ...obj,
+    id: Math.random().toString(36).slice(2),
+  }
+}
+
+function withSoftDelete<T extends object>(obj: T): T & { deletedAt: Date | null; delete(): void } {
+  return {
+    ...obj,
+    deletedAt: null,
+    delete() { this.deletedAt = new Date() },
+  }
+}
+
+// Composição: cada função preserva e adiciona tipos
+const basePost = { title: 'Hello', content: 'World' }
+const postWithId = withId(basePost)
+// { title: string; content: string } & { id: string }
+
+const post = withSoftDelete(withTimestamps(withId(basePost)))
+// { title: string; content: string } & { id: string } & { createdAt: Date; updatedAt: Date } & { deletedAt: Date | null; delete(): void }
+
+post.id           // ✓
+post.createdAt    // ✓
+post.delete()     // ✓
+```
+
+## Intersection com Generics
+
+```typescript
+// Adicionar propriedades base a qualquer tipo
+type WithMetadata<T> = T & {
+  metadata: {
+    createdBy: string
+    version: number
+    tags: string[]
+  }
+}
+
+type UserWithMetadata = WithMetadata<User>
+// User & { metadata: { ... } }
+
+// Composição de constraints em generics
+function process<T extends Serializable & Loggable>(item: T): string {
+  item.log('Processing...')
+  return item.serialize()
+}
+
+// Builder pattern com intersection
+class QueryBuilder<T = {}> {
+  where<K extends string, V>(
+    key: K,
+    value: V
+  ): QueryBuilder<T & Record<K, V>> {
+    return this as unknown as QueryBuilder<T & Record<K, V>>
+  }
+
+  build(): T {
+    return {} as T
+  }
+}
+
+const query = new QueryBuilder()
+  .where('name', 'Ana')
+  .where('age', 30)
+  .build()
+// query: { name: string } & { age: number }
+// = { name: string; age: number }
+```
+
+## Intersection com Union
+
+A combinação de `&` e `|` segue álgebra de tipos:
+
+```typescript
+// Distributividade: A & (B | C) = (A & B) | (A & C)
+type Base = { id: string }
+type Extra = { admin: true } | { role: 'user' }
+
+type Result = Base & Extra
+// = (Base & { admin: true }) | (Base & { role: 'user' })
+// = { id: string; admin: true } | { id: string; role: 'user' }
+
+// Isso é poderoso para modelar variantes com campos comuns
+type LoggedUser = { id: string } & ({ role: 'admin'; permissions: string[] } | { role: 'user' })
+// = { id: string; role: 'admin'; permissions: string[] } | { id: string; role: 'user' }
+```
+
+> **Resumo:** `A & B` cria um tipo que deve satisfazer `A` e `B` — resultado tem todos os membros de ambos. Propriedades com mesmo nome e tipos incompatíveis resultam em `never`. Use `&` para composição ad-hoc; use `extends` para hierarquias formais. Mixins com funções que retornam `T & Additions` preservam tipos existentes enquanto adicionam novos. `A & (B | C)` distribui para `(A & B) | (A & C)` — útil para variantes com base comum.

@@ -1,1 +1,182 @@
-# Conteúdo em breve
+# Template Literal Types
+
+Template literal types usam a sintaxe de template string do JavaScript (\`${}\`) no nível de tipos. Permitem criar novos tipos de string a partir de combinações de outros tipos, com distribuição automática sobre unions — gerando o produto cartesiano de todas as combinações possíveis.
+
+## Sintaxe Básica
+
+```typescript
+type Greeting = `Hello, ${string}`
+// Aceita qualquer string que começa com "Hello, "
+
+const a: Greeting = 'Hello, World'   // ✓
+const b: Greeting = 'Hello, Ana'     // ✓
+const c: Greeting = 'Hi, World'      // ERRO
+
+// Com literais específicos
+type Direction = 'north' | 'south' | 'east' | 'west'
+type DirectionCommand = `move-${Direction}`
+// 'move-north' | 'move-south' | 'move-east' | 'move-west'
+
+// Combinações simples
+type Size = 'sm' | 'md' | 'lg'
+type Color = 'red' | 'blue' | 'green'
+type ColoredSize = `${Color}-${Size}`
+// 'red-sm' | 'red-md' | 'red-lg' | 'blue-sm' | ... (9 combinações)
+```
+
+## Distribuição sobre Unions
+
+Quando você usa uma union em um template literal type, TypeScript gera automaticamente uma entrada para cada combinação:
+
+```typescript
+type Axis = 'x' | 'y' | 'z'
+type Modifier = 'translate' | 'rotate' | 'scale'
+
+type Transform = `${Modifier}${Capitalize<Axis>}`
+// 'translateX' | 'translateY' | 'translateZ'
+// 'rotateX' | 'rotateY' | 'rotateZ'
+// 'scaleX' | 'scaleY' | 'scaleZ'
+
+// CSS properties type-safe
+type CSSProperty = 'margin' | 'padding' | 'border'
+type CSSDirection = 'Top' | 'Right' | 'Bottom' | 'Left'
+type DirectionalCSS = `${CSSProperty}${CSSDirection}`
+// 'marginTop' | 'marginRight' | ... | 'borderLeft' (12 combinações)
+```
+
+## Intrinsic String Manipulation Types
+
+TypeScript inclui 4 tipos para manipular a capitalização de strings:
+
+```typescript
+type Upper = Uppercase<'hello'>       // 'HELLO'
+type Lower = Lowercase<'WORLD'>       // 'world'
+type Cap = Capitalize<'hello'>        // 'Hello'
+type Uncap = Uncapitalize<'Hello'>    // 'hello'
+
+// Funcionam com unions — distribuem automaticamente
+type Events = 'click' | 'focus' | 'blur' | 'change'
+
+type EventHandlers = {
+  [E in Events as `on${Capitalize<E>}`]: (event: Event) => void
+}
+// {
+//   onClick: (event: Event) => void
+//   onFocus: (event: Event) => void
+//   onBlur: (event: Event) => void
+//   onChange: (event: Event) => void
+// }
+```
+
+## Casos de Uso: Event Systems
+
+```typescript
+type DOMEvents = 'click' | 'mouseover' | 'mouseout' | 'keydown' | 'keyup' | 'submit'
+
+// Gerar métodos addEventListener type-safe
+type ElementMethods = {
+  [E in DOMEvents as `on${Capitalize<E>}`]: (handler: (e: Event) => void) => void
+}
+
+// Mais preciso — tipos de evento específicos
+type EventMap = {
+  click: MouseEvent
+  mouseover: MouseEvent
+  mouseout: MouseEvent
+  keydown: KeyboardEvent
+  keyup: KeyboardEvent
+  submit: SubmitEvent
+}
+
+type TypedHandlers = {
+  [E in keyof EventMap as `on${Capitalize<E>}`]: (handler: (e: EventMap[E]) => void) => void
+}
+// onMouseover recebe (e: MouseEvent), onKeydown recebe (e: KeyboardEvent), etc.
+```
+
+## Casos de Uso: API Routes
+
+```typescript
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+type Resource = 'users' | 'posts' | 'comments'
+
+// Gerar rotas para cada recurso e método
+type ApiRoute = `/${Resource}`
+// '/users' | '/posts' | '/comments'
+
+type ApiRouteWithId = `/${Resource}/:id`
+// '/users/:id' | '/posts/:id' | '/comments/:id'
+
+// Registrar handlers com tipo correto por rota
+type RouteHandlers = {
+  [R in ApiRoute]: {
+    [M in HttpMethod]?: (req: Request, res: Response) => void
+  }
+}
+```
+
+## Casos de Uso: CSS-in-TS e Utilitários
+
+```typescript
+// Gerar classes de utilidade tipo Tailwind
+type SpacingScale = '1' | '2' | '4' | '8' | '16'
+type SpacingProperty = 'p' | 'm' | 'px' | 'py' | 'mx' | 'my'
+type UtilityClass = `${SpacingProperty}-${SpacingScale}`
+// 'p-1' | 'p-2' | ... | 'my-16' (30 combinações)
+
+// Chaves de tradução
+type Namespace = 'auth' | 'dashboard' | 'settings'
+type AuthKey = 'login' | 'logout' | 'register' | 'forgotPassword'
+type TranslationKey = `${Namespace}.${string}`
+// 'auth.something' | 'dashboard.something' | 'settings.something'
+
+// Tipagem de paths de objeto aninhado (parcial — recursivo vem na Semana 3)
+type FlatKeys<T extends object> = {
+  [K in keyof T]: K extends string
+    ? T[K] extends object
+      ? `${K}.${string}` | K
+      : K
+    : never
+}[keyof T]
+```
+
+## Template Literals com `infer` (Preview)
+
+Na Semana 3 veremos `infer` — mas vale mostrar o poder combinado:
+
+```typescript
+// Extrair partes de uma string com template literals + infer
+type ExtractRoute<T extends string> =
+  T extends `/${infer Resource}/:id` ? Resource : never
+
+type R1 = ExtractRoute<'/users/:id'>     // 'users'
+type R2 = ExtractRoute<'/posts/:id'>     // 'posts'
+type R3 = ExtractRoute<'/users'>         // never
+
+// Extrair prefixo de evento
+type ExtractEvent<T extends string> =
+  T extends `on${infer E}` ? Uncapitalize<E> : never
+
+type E1 = ExtractEvent<'onClick'>    // 'click'
+type E2 = ExtractEvent<'onFocus'>    // 'focus'
+type E3 = ExtractEvent<'submit'>     // never
+```
+
+## Limitações
+
+```typescript
+// Template literal types não executam em runtime
+// São puramente compile-time
+
+// Não funciona com números arbitrários de forma complexa
+type N = number
+type Bad = `item-${N}`  // 'item-${number}' — TypeScript aceita mas não é preciso
+
+// Union crescimento exponencial — cuidado
+type A = 'a' | 'b' | 'c' | 'd' | 'e'
+type B = 'a' | 'b' | 'c' | 'd' | 'e'
+type C = 'a' | 'b' | 'c' | 'd' | 'e'
+type D = `${A}-${B}-${C}`  // 125 combinações — pode ser lento
+```
+
+> **Resumo:** Template literal types criam novos string types via sintaxe de template. Distribuem automaticamente sobre unions — gerando o produto cartesiano. `Uppercase/Lowercase/Capitalize/Uncapitalize` manipulam capitalização. Combinados com mapped types (`as \`on${Capitalize<E>}\``), geram objetos com chaves derivadas de unions. Combinados com `infer` (Semana 3), permitem parsing de strings no nível de tipos.
