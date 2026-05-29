@@ -1,1 +1,97 @@
-{"lessonId": "day-02", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é declaration merging e por que é exclusivo de interfaces?",
+      "options": [
+        "Declaration merging é quando dois arquivos exportam o mesmo nome — TypeScript os combina automaticamente",
+        "Interfaces declaradas múltiplas vezes são automaticamente mescladas em um único tipo; type aliases não permitem isso pois precisam ter nomes únicos",
+        "Declaration merging é a fusão de interface com type alias quando têm a mesma estrutura",
+        "É um recurso deprecated do TypeScript, substituído por module augmentation"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Você pode declarar `interface Window { title: string }` em um arquivo e `interface Window { scrollY: number }` em outro — TypeScript mescla em `{ title: string; scrollY: number }`. Type aliases lançam erro 'Duplicate identifier'. Esse comportamento é a base para augmentar tipos de bibliotecas: `declare module 'express' { interface Request { user?: User } }` adiciona `req.user` a todas as requests do Express."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que usar `extends` em interface é preferível a `&` (intersection) ao criar hierarquias?",
+      "options": [
+        "`extends` é mais performático que `&` em runtime",
+        "Com `extends`, TypeScript emite erro claro quando há conflito de propriedades; com `&`, propriedades conflitantes resultam silenciosamente em `never`",
+        "`&` não pode ser usado com interfaces, apenas com type aliases",
+        "Não há diferença — `extends` e `&` são semanticamente idênticos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`interface B extends A { x: number }` quando A tem `x: string` — TypeScript emite 'Interface B incorrectly extends A. Types of property x are incompatible'. Com types: `type B = A & { x: number }` — sem erro, mas `B.x` se torna `string & number = never`. O silêncio do `&` pode mascarar erros de design. Para hierarquias de objetos onde compatibilidade importa, `extends` é mais seguro."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual dessas construções é IMPOSSÍVEL com `interface` mas possível com `type`?",
+      "options": [
+        "Definir métodos opcionais",
+        "Usar generics",
+        "Criar union types: `type Status = 'active' | 'inactive'`",
+        "Implementar em classes com `implements`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Interfaces só podem representar shapes de objetos (e assinaturas de funções/construtores). Você não pode escrever `interface Status = 'active' | 'inactive'` — é um erro de sintaxe. Type aliases podem representar qualquer tipo: unions, tuples, primitivos, tipos computados. Generics e métodos opcionais funcionam em ambos; `implements` funciona tanto com interfaces quanto com type aliases de objeto."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Um type alias de objeto pode ser usado com `implements` em uma classe?",
+      "options": [
+        "Não — `implements` só funciona com `interface`",
+        "Sim — TypeScript permite `implements` com qualquer tipo de objeto, seja interface ou type alias",
+        "Sim, mas apenas se o type alias não usar generics",
+        "Apenas em TypeScript 5.0 ou superior"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`type Printable = { print(): void }; class Report implements Printable { print() {} }` é válido. TypeScript usa structural typing — não importa se o contrato é uma interface ou um type alias de objeto, desde que seja um object type. O que não funciona é `implements` com unions, primitivos ou tipos não-objeto."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Dado o código: `type A = { x: string }; type B = A & { x: number }` — qual é o tipo de `B.x`?",
+      "options": [
+        "`string | number` — intersection preserva ambos os tipos",
+        "`string` — o tipo original de A tem precedência",
+        "`never` — `string & number` é impossível, então a propriedade vira `never`",
+        "`any` — quando há conflito, TypeScript recorre a `any`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Intersection `&` em TypeScript exige que o valor satisfaça AMBOS os tipos simultaneamente. Para a propriedade `x`: deve ser `string` (de A) E `number` (de B). Não existe valor que seja string e number ao mesmo tempo — portanto o tipo é `never`. Isso é diferente de union `|` (seria `string | number`). Este comportamento silencioso é um argumento para preferir `extends` em interfaces quando há herança de shape."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como você adicionaria uma propriedade `user` ao tipo `Request` do Express sem modificar os arquivos do Express?",
+      "options": [
+        "Criar um novo type `MyRequest = Request & { user?: User }` e usar em toda a codebase",
+        "Modificar `node_modules/@types/express/index.d.ts` diretamente",
+        "Usar declaration merging: `declare module 'express' { interface Request { user?: User } }` em um arquivo `.d.ts`",
+        "Não é possível — tipos de bibliotecas de terceiros são imutáveis"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Module augmentation com declaration merging é a forma oficial: crie um arquivo `express.d.ts` com `declare module 'express' { interface Request { user?: User } }`. TypeScript mescla com a definição original do Express. Agora `req.user` está tipado em todo o projeto sem modificar node_modules (que seria sobrescrito no próximo install). Type aliases não permitem esse pattern."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Quando é melhor usar `type` em vez de `interface` para definir um shape de objeto?",
+      "options": [
+        "Sempre que o objeto tiver mais de 5 propriedades",
+        "Quando você precisar compor vários tipos usando intersection `&` de forma funcional, ou o tipo for calculado/derivado (mapped types, conditional types)",
+        "Nunca — interfaces são sempre melhores para objetos",
+        "Apenas quando o objeto precisar ser usado como valor (não apenas como tipo)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Mesmo para objetos, `type` brilha quando o shape é *derivado* de outros tipos. Ex: `type UserDTO = Pick<User, 'id' | 'name' | 'email'>` — Pick é um mapped type que só funciona com `type`. `type OptionalUser = Partial<User>` — mesmo caso. Para objetos simples com propriedades conhecidas e sem computação, interface e type são equivalentes. A escolha importa quando você precisa de composição funcional vs herança estrutural."
+    }
+  ]
+}

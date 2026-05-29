@@ -1,1 +1,218 @@
-# Conteúdo em breve
+# Functions em TypeScript
+
+Functions são o coração de qualquer programa. TypeScript adiciona um sistema de tipos rico para funções: overloads, call signatures, construct signatures e tipagem precisa de `this`. Entender essas ferramentas permite modelar APIs complexas com precisão.
+
+## Parâmetros Opcionais e Rest
+
+```typescript
+// Parâmetro opcional — deve ser o último
+function greet(name: string, greeting?: string): string {
+  return `${greeting ?? 'Hello'}, ${name}!`
+}
+
+greet('Ana')           // ✓ "Hello, Ana!"
+greet('Ana', 'Oi')    // ✓ "Oi, Ana!"
+
+// Default parameter — implicitamente opcional
+function createUser(name: string, role: string = 'viewer') {
+  return { name, role }
+}
+
+// Rest parameters — array do tipo declarado
+function sum(...numbers: number[]): number {
+  return numbers.reduce((a, b) => a + b, 0)
+}
+
+sum(1, 2, 3, 4)  // ✓
+
+// Typed tuple rest (TS 4.0+)
+function first<T>(...args: [T, ...unknown[]]): T {
+  return args[0]
+}
+```
+
+## Function Overloads
+
+Overloads permitem que uma função aceite assinaturas diferentes, cada uma com tipos específicos:
+
+```typescript
+// Assinaturas de overload (sem implementação)
+function format(value: string): string
+function format(value: number, decimals: number): string
+function format(value: Date): string
+
+// Implementação — deve ser compatível com todas as assinaturas
+function format(
+  value: string | number | Date,
+  decimals?: number
+): string {
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number') return value.toFixed(decimals ?? 2)
+  return value.toISOString()
+}
+
+format('  hello  ')      // ✓ retorna string
+format(3.14159, 2)       // ✓ retorna string
+format(new Date())       // ✓ retorna string
+format(3.14, 'two')      // ERRO — não casa com nenhum overload
+```
+
+A assinatura de implementação é invisível para os callers — eles só veem as assinaturas de overload. Isso permite restringir chamadas a combinações válidas de parâmetros.
+
+```typescript
+// Overload para correlacionar input/output
+function parse(input: string): number
+function parse(input: number): string
+function parse(input: string | number): string | number {
+  if (typeof input === 'string') return parseInt(input)
+  return input.toString()
+}
+
+const result = parse('42')   // type: number (não string | number)
+const str = parse(42)        // type: string
+```
+
+## Call Signatures
+
+Call signatures descrevem funções como objetos — permitindo adicionar propriedades a funções:
+
+```typescript
+// Função simples como type
+type Transformer<T, U> = (value: T) => U
+
+// Call signature — mais explícito, permite propriedades adicionais
+interface Validator {
+  (value: unknown): boolean
+  errorMessage: string
+  priority: number
+}
+
+const isEmail: Validator = (value) => {
+  return typeof value === 'string' && value.includes('@')
+}
+isEmail.errorMessage = 'Invalid email'
+isEmail.priority = 1
+
+// Call signature em type alias
+type EventHandler = {
+  (event: Event): void
+  once: boolean
+}
+```
+
+Call signatures são úteis para modelar funções que servem como objetos com estado — como os `action creators` do Redux que também têm propriedades `.type`.
+
+## Construct Signatures
+
+Construct signatures descrevem funções que podem ser chamadas com `new`:
+
+```typescript
+interface Constructor<T> {
+  new (arg: string): T
+}
+
+function createInstance<T>(Ctor: Constructor<T>, arg: string): T {
+  return new Ctor(arg)
+}
+
+class MyService {
+  constructor(public name: string) {}
+}
+
+createInstance(MyService, 'payment')  // ✓ MyService é um Constructor<MyService>
+
+// Combinando call + construct signatures
+interface DateConstructor {
+  new (value: string): Date    // new Date('2024-01-01')
+  (): string                   // Date() como função retorna string
+}
+```
+
+## Tipagem de `this`
+
+TypeScript pode verificar o uso de `this` em funções quando você declara o tipo explicitamente:
+
+```typescript
+interface User {
+  name: string
+  greet(this: User): string
+}
+
+const user: User = {
+  name: 'Ana',
+  greet() {
+    return `Hello, ${this.name}`  // ✓ this é User
+  }
+}
+
+const greet = user.greet
+greet()  // ERRO — this seria undefined em modo strict
+
+// Parâmetro this especial (não conta como parâmetro real)
+function formatDate(this: Date): string {
+  return this.toISOString().split('T')[0]
+}
+
+// Aplicando como método
+Date.prototype.format = formatDate
+
+// Arrow functions nunca têm this próprio — capturam do closure
+class Timer {
+  count = 0
+
+  start() {
+    setInterval(() => {
+      this.count++  // ✓ this é a instância de Timer (capturado)
+    }, 1000)
+  }
+}
+```
+
+## Parâmetros de Função e Compatibilidade
+
+TypeScript usa contravariância em parâmetros (com `strictFunctionTypes`):
+
+```typescript
+type Handler = (event: MouseEvent) => void
+type GeneralHandler = (event: Event) => void
+
+// MouseEvent extends Event
+const handler: Handler = (e) => console.log(e.clientX)
+const general: GeneralHandler = (e) => console.log(e.type)
+
+// GeneralHandler é subtipo de Handler — aceita mais eventos
+let h: Handler = general  // ✓ — generalHandler pode lidar com MouseEvent
+let g: GeneralHandler = handler  // ERRO — handler espera MouseEvent, Event não tem clientX
+```
+
+## Generic Functions
+
+```typescript
+// Inferência automática do type parameter
+function identity<T>(value: T): T {
+  return value
+}
+
+const str = identity('hello')   // T inferido como string
+const num = identity(42)        // T inferido como number
+
+// Múltiplos type parameters com constraint
+function merge<T extends object, U extends object>(a: T, b: U): T & U {
+  return { ...a, ...b }
+}
+
+const result = merge({ name: 'Ana' }, { age: 30 })
+// type: { name: string } & { age: number }
+
+// Constraint baseada em outro parâmetro
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key]
+}
+
+const user = { name: 'Ana', age: 30 }
+const name = getProperty(user, 'name')  // type: string
+const age = getProperty(user, 'age')    // type: number
+getProperty(user, 'role')               // ERRO — 'role' não é keyof user
+```
+
+> **Resumo:** Parâmetros opcionais e rest cobrem a maioria dos casos. Use overloads quando a função tem comportamentos distintos por tipo de input — as assinaturas explicitam os contratos. Call signatures permitem funções com propriedades, construct signatures modelam classes como valores. O parâmetro `this` tipado previne erros de contexto perdido.

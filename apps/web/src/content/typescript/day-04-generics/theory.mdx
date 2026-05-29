@@ -1,1 +1,211 @@
-# Conteúdo em breve
+# Generics Fundamentais
+
+Generics são o mecanismo de abstração do sistema de tipos do TypeScript. Permitem escrever código que funciona com múltiplos tipos mantendo segurança de tipos completa — sem recorrer a `any`. São a base de toda a biblioteca de utilitários do TypeScript e de APIs type-safe.
+
+## O Problema que Generics Resolvem
+
+```typescript
+// Sem generics — perde informação de tipo
+function first(arr: any[]): any {
+  return arr[0]
+}
+
+const n = first([1, 2, 3])   // type: any — perdemos que é number
+const s = first(['a', 'b'])  // type: any — perdemos que é string
+
+// Com generics — preserva informação de tipo
+function first<T>(arr: T[]): T {
+  return arr[0]
+}
+
+const n = first([1, 2, 3])   // type: number ✓
+const s = first(['a', 'b'])  // type: string ✓
+```
+
+O type parameter `T` é como uma variável para tipos — o TypeScript infere seu valor na chamada.
+
+## Inferência de Type Parameters
+
+TypeScript infere type parameters automaticamente na maioria dos casos:
+
+```typescript
+function identity<T>(value: T): T {
+  return value
+}
+
+// TypeScript infere T
+identity(42)          // T = number
+identity('hello')     // T = string
+identity({ x: 1 })   // T = { x: number }
+
+// Você pode ser explícito quando necessário
+identity<string>('hello')
+identity<number | string>(42)  // T = number | string (mais amplo)
+```
+
+A inferência falha quando TypeScript não tem informação suficiente — nesses casos, você deve ser explícito.
+
+## Constraints com `extends`
+
+Constraints limitam quais tipos podem ser passados como type parameter:
+
+```typescript
+// Sem constraint — T pode ser qualquer coisa
+function getLength<T>(value: T): number {
+  return value.length  // ERRO — T não tem garantia de ter .length
+}
+
+// Com constraint
+function getLength<T extends { length: number }>(value: T): number {
+  return value.length  // ✓ — T tem garantia de ter .length
+}
+
+getLength([1, 2, 3])     // ✓ — array tem .length
+getLength('hello')       // ✓ — string tem .length
+getLength({ length: 5 }) // ✓ — objeto com .length
+getLength(42)            // ERRO — number não tem .length
+```
+
+Constraints com interfaces ou classes:
+
+```typescript
+interface Identifiable {
+  id: string
+}
+
+function findById<T extends Identifiable>(
+  items: T[],
+  id: string
+): T | undefined {
+  return items.find(item => item.id === id)
+}
+
+const users = [{ id: '1', name: 'Ana' }, { id: '2', name: 'Bob' }]
+const user = findById(users, '1')  // type: { id: string, name: string } | undefined
+```
+
+## Default Type Parameters
+
+Type parameters podem ter valores default — tornando-os opcionais:
+
+```typescript
+interface ApiResponse<T = unknown> {
+  data: T
+  status: number
+  error?: string
+}
+
+// Com tipo explícito
+const userResponse: ApiResponse<User> = {
+  data: { id: '1', name: 'Ana' },
+  status: 200
+}
+
+// Com default (unknown)
+const rawResponse: ApiResponse = {
+  data: { anything: true },
+  status: 200
+}
+
+// Default pode referenciar parâmetros anteriores
+interface Pair<T, U = T> {
+  first: T
+  second: U
+}
+
+const sameType: Pair<number> = { first: 1, second: 2 }         // Pair<number, number>
+const diffType: Pair<string, number> = { first: 'a', second: 1 }
+```
+
+## Generic Functions vs Generic Types
+
+A posição do type parameter muda o significado:
+
+```typescript
+// Generic function — T é resolvido em cada chamada
+function map<T, U>(arr: T[], fn: (item: T) => U): U[] {
+  return arr.map(fn)
+}
+
+map([1, 2, 3], n => n.toString())  // T=number, U=string, cada chamada independente
+
+// Generic type — T é fixado quando o tipo é instanciado
+type Stack<T> = {
+  push(item: T): void
+  pop(): T | undefined
+  peek(): T | undefined
+}
+
+const numberStack: Stack<number> = {
+  push(n) { /* ... */ },
+  pop() { return undefined },
+  peek() { return undefined }
+}
+
+// Stack de strings — T é string para toda a vida do objeto
+const stringStack: Stack<string> = { /* ... */ }
+```
+
+## Múltiplos Type Parameters
+
+```typescript
+// Função que retorna tupla preservando tipos individuais
+function zip<T, U>(a: T[], b: U[]): Array<[T, U]> {
+  return a.map((item, i) => [item, b[i]] as [T, U])
+}
+
+const pairs = zip([1, 2], ['a', 'b'])  // [number, string][]
+
+// Constraint de um parâmetro dependendo de outro
+function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+  const result = {} as Pick<T, K>
+  keys.forEach(k => (result[k] = obj[k]))
+  return result
+}
+
+const user = { name: 'Ana', age: 30, role: 'admin' }
+const partial = pick(user, ['name', 'age'])  // { name: string, age: number }
+pick(user, ['invalid'])  // ERRO — 'invalid' não é keyof typeof user
+```
+
+## Generics em Interfaces e Classes
+
+```typescript
+// Interface genérica
+interface Repository<T extends { id: string }> {
+  findById(id: string): Promise<T | null>
+  findAll(): Promise<T[]>
+  save(entity: T): Promise<T>
+  delete(id: string): Promise<void>
+}
+
+// Classe genérica
+class EventEmitter<Events extends Record<string, unknown[]>> {
+  private handlers = new Map<keyof Events, Function[]>()
+
+  on<K extends keyof Events>(
+    event: K,
+    handler: (...args: Events[K]) => void
+  ): void {
+    const existing = this.handlers.get(event) ?? []
+    this.handlers.set(event, [...existing, handler])
+  }
+
+  emit<K extends keyof Events>(event: K, ...args: Events[K]): void {
+    this.handlers.get(event)?.forEach(h => h(...args))
+  }
+}
+
+type AppEvents = {
+  login: [userId: string]
+  error: [message: string, code: number]
+}
+
+const emitter = new EventEmitter<AppEvents>()
+emitter.on('login', (userId) => console.log(userId))  // userId: string ✓
+emitter.emit('login', 'user-123')                      // ✓
+emitter.emit('error', 'Not found', 404)                // ✓
+emitter.emit('login', 42)                              // ERRO — espera string
+```
+
+> **Resumo:** Generics resolvem o problema de código reutilizável sem perda de tipos. `T extends Constraint` restringe o que pode ser passado. Default type parameters tornam parâmetros opcionais. Em generic functions, T é inferido a cada chamada; em generic types, T é fixado na instanciação. Múltiplos type parameters com constraints entre si permitem correlacionar tipos de entrada e saída com precisão.

@@ -1,1 +1,181 @@
-# Conteúdo em breve
+# Sistema de Tipos
+
+TypeScript não é "JavaScript com tipos colados por cima". É uma linguagem com um sistema de tipos sofisticado baseado em **structural typing** — onde a forma de um objeto importa, não o nome do tipo. Entender esse fundamento muda como você usa o TypeScript.
+
+## Structural Typing vs Nominal Typing
+
+Na maioria das linguagens (Java, C#, Swift), dois tipos são compatíveis apenas se forem explicitamente declarados como tal. TypeScript usa structural typing: dois tipos são compatíveis se tiverem a mesma estrutura.
+
+```typescript
+interface Point2D {
+  x: number
+  y: number
+}
+
+interface Vector2D {
+  x: number
+  y: number
+}
+
+function magnitude(v: Vector2D): number {
+  return Math.sqrt(v.x ** 2 + v.y ** 2)
+}
+
+const p: Point2D = { x: 3, y: 4 }
+magnitude(p)  // ✓ funciona — mesma estrutura, não importa o nome
+```
+
+Isso significa que o TypeScript verifica compatibilidade por forma, não por identidade de tipo. Um objeto com mais propriedades ainda é compatível com um tipo que exige menos:
+
+```typescript
+interface Named {
+  name: string
+}
+
+function greet(obj: Named) {
+  return `Hello, ${obj.name}`
+}
+
+const user = { name: 'Ana', age: 30, role: 'admin' }
+greet(user)  // ✓ — user tem name (e mais), estrutura satisfeita
+```
+
+## Annotation vs Inference
+
+TypeScript infere tipos automaticamente. Anotar explicitamente é necessário apenas quando a inferência não é suficiente ou quando você quer documentar uma intenção.
+
+```typescript
+// Inferência — TypeScript deduz automaticamente
+const count = 0           // type: 0 (literal type!)
+let message = 'hello'     // type: string (widened)
+const arr = [1, 2, 3]     // type: number[]
+
+// Annotation — você declara explicitamente
+let id: number
+const names: string[] = []
+function parse(input: string): number {
+  return parseInt(input)
+}
+
+// Quando annotation é útil: forçar um tipo mais amplo
+const status: string = 'active'  // string, não literal 'active'
+```
+
+**Regra prática:** anote quando retornar de funções complexas, declarar variáveis sem inicializar, ou quando a inferência produzir um tipo mais específico do que você quer.
+
+## Widening
+
+TypeScript "amplia" tipos literais ao atribuí-los a variáveis mutáveis:
+
+```typescript
+const x = 'hello'  // type: "hello" (literal — const não muda)
+let y = 'hello'    // type: string  (widened — let pode mudar)
+
+const obj = { name: 'Ana' }  // type: { name: string } — widened!
+// obj.name poderia ser reatribuído para qualquer string
+
+const frozen = { name: 'Ana' } as const  // type: { readonly name: "Ana" }
+// agora name é o literal "Ana"
+```
+
+Entender widening explica por que `const x = 42` tem tipo `42` mas `let x = 42` tem tipo `number`.
+
+## any, unknown, never, void
+
+Estes quatro tipos especiais têm semânticas distintas:
+
+```typescript
+// any — desabilita o type checker (evite)
+let danger: any = 42
+danger.toUpperCase()  // sem erro — TypeScript não verifica
+danger = 'oops'       // aceita qualquer coisa
+
+// unknown — tipo seguro para valores desconhecidos
+let safe: unknown = 42
+safe.toUpperCase()    // ERRO — precisa narrowing primeiro
+if (typeof safe === 'string') {
+  safe.toUpperCase()  // ✓ agora TypeScript sabe que é string
+}
+
+// never — tipo de valores que nunca existem
+function fail(msg: string): never {
+  throw new Error(msg)  // nunca retorna — tipo é never
+}
+
+function exhaustive(x: never): never {
+  throw new Error(`Unexpected: ${x}`)
+}
+
+// void — função que não retorna valor meaningful
+function log(msg: string): void {
+  console.log(msg)
+  // undefined implícito — diferente de never (que não retorna)
+}
+```
+
+A diferença entre `unknown` e `any`:
+- `any` aceita tudo E pode ser usado como qualquer tipo sem verificação
+- `unknown` aceita tudo MAS requer narrowing antes de usar
+
+```typescript
+function processAny(val: any) {
+  val.foo()        // sem erro — perigoso
+  val * 2          // sem erro
+}
+
+function processUnknown(val: unknown) {
+  val.foo()        // ERRO — não sabe o tipo
+  if (typeof val === 'number') {
+    val * 2        // ✓ — narrowed para number
+  }
+}
+```
+
+## never como Tipo de Fundo
+
+`never` é o tipo vazio — não existe valor do tipo `never`. Aparece em:
+
+```typescript
+// União com never é eliminada
+type Result = string | never  // string
+
+// Intersecção com never é never
+type Impossible = string & number  // never
+
+// Funções que nunca terminam
+async function poll(): never {
+  while (true) {
+    await fetch('/api/health')
+  }
+}
+
+// Narrowing exaustivo
+type Shape = 'circle' | 'square'
+
+function area(shape: Shape): number {
+  if (shape === 'circle') return Math.PI
+  if (shape === 'square') return 1
+  const _exhaustive: never = shape  // erro se novo case não tratado
+  return _exhaustive
+}
+```
+
+## void vs undefined
+
+```typescript
+// void: função não retorna valor intencionalmente
+function sideEffect(): void {
+  console.log('done')
+}
+
+// undefined: valor explicitamente undefined
+function explicit(): undefined {
+  return undefined  // obrigatório
+}
+
+// Importante: callbacks tipados como void podem retornar qualquer coisa
+type Callback = () => void
+const cb: Callback = () => 42  // ✓ — void em callbacks é permissivo
+```
+
+> **Resumo:** TypeScript usa structural typing — a forma importa, não o nome. A inferência funciona para a maioria dos casos; anote quando necessário. `any` desativa verificação, `unknown` é seguro mas requer narrowing, `never` representa impossibilidade e é útil para exhaustive checks, `void` sinaliza ausência intencional de retorno.

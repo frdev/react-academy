@@ -1,1 +1,200 @@
-# Conteúdo em breve
+# Modules & Declaration Files
+
+TypeScript usa o sistema de módulos ES Modules como base e adiciona recursos específicos para gerenciar tipos: `import type`, arquivos `.d.ts`, `declare`, e namespaces. Entender esse sistema é essencial para trabalhar com bibliotecas externas e configurar projetos maiores.
+
+## `import type` — Imports Apenas de Tipo
+
+```typescript
+// Import normal — pode importar valor ou tipo
+import { User } from './user'
+import type { User } from './user'  // import apenas de tipo
+
+// Por que importar apenas tipo?
+// 1. Clareza — sinaliza que é usado apenas em anotações de tipo
+// 2. Performance — alguns bundlers eliminam imports de tipo em build
+// 3. Evita dependência circular — type imports não executam módulos
+```
+
+Em projetos com `isolatedModules: true` (Vite, esbuild), TypeScript exige `import type` para tipos — pois esses bundlers não fazem análise cross-file e precisam saber se podem apagar o import.
+
+```typescript
+// isolatedModules — obrigatório separar
+import { someFunction } from './utils'    // valor — mantido no bundle
+import type { Config } from './utils'     // tipo — removido no bundle
+
+// Re-export de tipos
+export type { User, UserRole } from './user'
+export { createUser } from './user'  // valor
+```
+
+## Declaration Files — `.d.ts`
+
+Arquivos `.d.ts` contêm apenas declarações de tipos — sem código JavaScript executável. Descrevem a forma de valores que existem em JavaScript mas não têm tipos nativos.
+
+```typescript
+// math.d.ts — descrevendo uma biblioteca JavaScript sem tipos
+declare function add(a: number, b: number): number
+declare function multiply(a: number, b: number): number
+
+declare const PI: number
+declare const E: number
+
+declare interface MathConfig {
+  precision: number
+  roundingMode: 'up' | 'down' | 'nearest'
+}
+```
+
+O TypeScript usa `.d.ts` automaticamente quando você importa uma biblioteca:
+- `@types/lodash` → `node_modules/@types/lodash/index.d.ts`
+- Bibliotecas modernas incluem seus próprios tipos
+
+## `declare` — Declarações Ambientes
+
+`declare` informa o TypeScript que algo existe em runtime sem precisar de implementação:
+
+```typescript
+// Declarando variáveis globais (injetadas pelo bundler, HTML, etc.)
+declare const __DEV__: boolean
+declare const __VERSION__: string
+declare const API_URL: string
+
+// Após essa declaração, você pode usar em qualquer arquivo
+if (__DEV__) {
+  console.log(`Version: ${__VERSION__}`)
+}
+
+// Declarando funções globais
+declare function require(module: string): unknown
+declare function fetch(url: string, init?: RequestInit): Promise<Response>
+
+// Declarando classes globais
+declare class EventEmitter {
+  on(event: string, listener: Function): this
+  emit(event: string, ...args: unknown[]): boolean
+}
+```
+
+## `declare global` — Extendendo o Escopo Global
+
+```typescript
+// Em um arquivo de módulo (tem import/export)
+// Para declarar no escopo global, use declare global
+
+export {}  // torna o arquivo um módulo
+
+declare global {
+  interface Window {
+    analytics: {
+      track(event: string, data?: Record<string, unknown>): void
+    }
+    __APP_CONFIG__: {
+      apiUrl: string
+      featureFlags: string[]
+    }
+  }
+
+  // Variável global disponível em todo o código
+  var currentUser: { id: string; role: string } | null
+}
+
+// Agora disponível sem import:
+window.analytics.track('page_view')
+window.__APP_CONFIG__.apiUrl
+```
+
+## `declare module` — Augmentação de Módulos
+
+Permite adicionar tipos a módulos existentes:
+
+```typescript
+// Adicionando propriedades ao Express Request
+import 'express'
+
+declare module 'express' {
+  interface Request {
+    user?: {
+      id: string
+      role: 'admin' | 'user' | 'guest'
+    }
+    requestId: string
+  }
+}
+
+// Em qualquer route handler:
+app.get('/profile', (req, res) => {
+  req.user?.id      // ✓ — TypeScript conhece req.user
+  req.requestId     // ✓ — TypeScript conhece req.requestId
+})
+```
+
+Declarando tipos para módulos sem types:
+
+```typescript
+// Para uma biblioteca sem @types — ex: 'legacy-lib'
+declare module 'legacy-lib' {
+  export function doSomething(input: string): Promise<void>
+  export interface Config {
+    timeout: number
+    retries: number
+  }
+  export default class LegacyClient {
+    constructor(config: Config)
+    connect(): Promise<void>
+  }
+}
+
+// Declaração simples quando não quer tipar tudo
+declare module '*.svg' {
+  const url: string
+  export default url
+}
+
+declare module '*.png' {
+  const url: string
+  export default url
+}
+```
+
+## Namespaces
+
+Namespaces organizam declarações em um namespace hierárquico — comuns em `.d.ts` de bibliotecas antigas:
+
+```typescript
+// Namespaces em declaration files
+declare namespace MyLib {
+  function create(name: string): MyLib.Instance
+  interface Instance {
+    name: string
+    run(): void
+    destroy(): void
+  }
+  namespace Utils {
+    function format(value: unknown): string
+  }
+}
+
+// Uso
+const instance = MyLib.create('test')
+MyLib.Utils.format(42)
+```
+
+Em código novo, prefira ES Modules a namespaces. Namespaces ainda aparecem em declarações de bibliotecas legadas (jQuery, D3 antigo) e na lib DOM do TypeScript.
+
+## Triple-Slash Directives
+
+Comentários especiais que controlam referências no compilador:
+
+```typescript
+/// <reference types="node" />         // inclui tipos do Node.js
+/// <reference types="jest" />         // inclui tipos do Jest (globals: describe, it, etc.)
+/// <reference path="./types.d.ts" />  // inclui arquivo de tipos local
+/// <reference lib="dom" />            // inclui lib DOM
+
+// Na prática, prefer configurar no tsconfig.json:
+// { "compilerOptions": { "types": ["node", "jest"] } }
+```
+
+Triple-slash directives são mais comuns em código legado ou em `.d.ts` de bibliotecas. Em projetos modernos, a configuração via `tsconfig.json` é preferível.
+
+> **Resumo:** `import type` importa apenas tipos — apagados no bundle e sem executar módulos. Arquivos `.d.ts` descrevem tipos de código JavaScript sem tipos. `declare` registra variáveis/funções globais para o type checker. `declare module` com declaration merging é como você adiciona tipos a bibliotecas de terceiros. Namespaces organizam declarações em hierarquias — comuns em tipos de bibliotecas legadas.

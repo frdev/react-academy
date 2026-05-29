@@ -1,1 +1,209 @@
-# Conteúdo em breve
+# Literal Types & as const
+
+Literal types são um dos recursos mais poderosos do TypeScript para modelar domínios precisos. Em vez de `string`, você descreve o conjunto exato de valores possíveis: `'active' | 'inactive' | 'pending'`. Combinado com `as const`, permite criar tipos derivados de dados JavaScript puros.
+
+## Literal Types
+
+TypeScript permite usar valores específicos como tipos:
+
+```typescript
+// String literals
+type Direction = 'north' | 'south' | 'east' | 'west'
+type Status = 'active' | 'inactive' | 'pending'
+
+// Number literals
+type DiceRoll = 1 | 2 | 3 | 4 | 5 | 6
+type HttpOk = 200 | 201 | 204
+
+// Boolean literal
+type True = true
+
+// Funções que retornam literais específicos
+function getDirection(key: string): Direction {
+  const map: Record<string, Direction> = {
+    ArrowUp: 'north', ArrowDown: 'south',
+    ArrowLeft: 'west', ArrowRight: 'east'
+  }
+  return map[key] ?? 'north'
+}
+```
+
+Literais tornam funções muito mais precisas:
+
+```typescript
+function setAlignment(align: 'left' | 'center' | 'right'): void {
+  // ...
+}
+
+setAlignment('left')     // ✓
+setAlignment('justify')  // ERRO — 'justify' não é permitido
+
+// Sobrecarga com literal types
+function createElement(tag: 'a'): HTMLAnchorElement
+function createElement(tag: 'canvas'): HTMLCanvasElement
+function createElement(tag: 'table'): HTMLTableElement
+function createElement(tag: string): HTMLElement {
+  return document.createElement(tag)
+}
+
+const link = createElement('a')      // type: HTMLAnchorElement
+const canvas = createElement('canvas') // type: HTMLCanvasElement
+```
+
+## Widening e Literal Types
+
+Como vimos no Dia 1, `const` preserva literais e `let` faz widening. Isso tem consequências práticas:
+
+```typescript
+const direction = 'north'  // type: "north" (literal)
+let direction2 = 'north'   // type: string (widened)
+
+function move(d: Direction) { /* ... */ }
+
+move(direction)   // ✓ — "north" é subtipo de Direction
+move(direction2)  // ERRO — string não é atribuível a Direction
+```
+
+Para fixar o tipo de uma variável `let`:
+
+```typescript
+let status: Status = 'active'  // type: Status (não string)
+status = 'invalid'             // ERRO — 'invalid' não é Status
+```
+
+## `as const` — Const Assertion
+
+`as const` instrui o TypeScript a inferir o tipo mais específico possível e tornar tudo `readonly`:
+
+```typescript
+// Sem as const
+const config = {
+  host: 'localhost',
+  port: 3000,
+  env: 'development'
+}
+// type: { host: string; port: number; env: string }
+
+// Com as const
+const config = {
+  host: 'localhost',
+  port: 3000,
+  env: 'development'
+} as const
+// type: { readonly host: "localhost"; readonly port: 3000; readonly env: "development" }
+```
+
+Arrays com `as const` tornam-se tuples readonly:
+
+```typescript
+const colors = ['red', 'green', 'blue'] as const
+// type: readonly ["red", "green", "blue"]
+
+// Útil para derivar union types de arrays
+type Color = typeof colors[number]  // "red" | "green" | "blue"
+
+// Enum-like patterns sem enums
+const DIRECTIONS = ['north', 'south', 'east', 'west'] as const
+type Direction = typeof DIRECTIONS[number]
+
+function isValidDirection(d: string): d is Direction {
+  return (DIRECTIONS as readonly string[]).includes(d)
+}
+```
+
+## Derivando Tipos de Dados com typeof
+
+`as const` + `typeof` permite criar tipos derivados de estruturas de dados, mantendo uma única fonte de verdade:
+
+```typescript
+const ROUTES = {
+  home: '/',
+  about: '/about',
+  users: '/users',
+  userDetail: '/users/:id',
+} as const
+
+type Route = typeof ROUTES[keyof typeof ROUTES]
+// "/" | "/about" | "/users" | "/users/:id"
+
+type RouteName = keyof typeof ROUTES
+// "home" | "about" | "users" | "userDetail"
+
+// Agora qualquer mudança no objeto atualiza os tipos automaticamente
+function navigate(route: Route) {
+  window.location.href = route
+}
+
+navigate(ROUTES.home)       // ✓
+navigate('/contact')        // ERRO — não existe em ROUTES
+```
+
+## Const Enums vs Union de Literais
+
+TypeScript tem enums nativos, mas union de literais costuma ser preferível:
+
+```typescript
+// Enum — cria código JavaScript real (objeto)
+enum Direction {
+  North = 'north',
+  South = 'south',
+  East = 'east',
+  West = 'west',
+}
+
+Direction.North         // "north" em runtime
+typeof Direction        // "object"
+Object.keys(Direction)  // ["North", "South", ...]
+
+// Const enum — apagado em tempo de compilação (inline dos valores)
+const enum Direction {
+  North = 'north',
+  South = 'south',
+}
+
+Direction.North  // compilado para "north" diretamente — sem objeto em runtime
+
+// Union de literais — sem runtime overhead, mais idiomático
+type Direction = 'north' | 'south' | 'east' | 'west'
+```
+
+Por que preferir union de literais:
+- Sem overhead de runtime (sem objeto gerado)
+- Funcionam com type narrowing nativamente
+- Compatíveis com JSON, APIs externas
+- Mais simples de iterar e manipular
+
+```typescript
+// Narrowing com literal union — natural
+function describe(direction: Direction): string {
+  if (direction === 'north') return 'Heading north'
+  if (direction === 'south') return 'Heading south'
+  // TypeScript sabe que direction é 'east' | 'west' aqui
+  return `Heading ${direction}`
+}
+
+// Narrowing com enum — funciona mas menos elegante
+function describeEnum(direction: Direction): string {
+  if (direction === Direction.North) return 'Heading north'
+  // ...
+}
+```
+
+## Template Literal Types com Literais
+
+Template literal types combinam literais para criar novos literais:
+
+```typescript
+type EventName = 'click' | 'focus' | 'blur'
+type HandlerName = `on${Capitalize<EventName>}`
+// "onClick" | "onFocus" | "onBlur"
+
+type CSSProperty = 'margin' | 'padding'
+type CSSDirection = 'top' | 'right' | 'bottom' | 'left'
+type CSSLonghand = `${CSSProperty}-${CSSDirection}`
+// "margin-top" | "margin-right" | "padding-top" | ...
+
+// 8 combinações geradas automaticamente
+```
+
+> **Resumo:** Literal types modelam conjuntos finitos de valores com precisão total — erros de typo se tornam erros de compilação. `as const` torna objetos e arrays em tipos precisos readonly, eliminando widening. `typeof data[keyof typeof data]` deriva unions de objetos existentes, criando uma fonte única de verdade. União de literais é preferível a enums na maioria dos casos por ser mais simples e sem overhead de runtime.

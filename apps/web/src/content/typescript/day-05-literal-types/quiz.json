@@ -1,1 +1,97 @@
-{"lessonId": "day-05", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `let direction = 'north'` não pode ser passado para `function move(d: Direction)` sem anotação explícita?",
+      "options": [
+        "Porque `let` cria variáveis imutáveis que não podem ser passadas para funções",
+        "Por causa do widening — `let direction` tem tipo `string` (ampliado), não o literal `'north'`; `string` não é atribuível a `Direction = 'north' | 'south' | 'east' | 'west'`",
+        "Porque você precisa usar `const` para passar para funções tipadas",
+        "Isso é um bug do TypeScript — deveria funcionar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`let direction = 'north'` — TypeScript infere `string` porque o valor pode ser reassignado para qualquer string. `Direction` aceita apenas 4 valores específicos. Uma `string` arbitrária não satisfaz isso. Soluções: `const direction = 'north'` (literal preservado), `let direction: Direction = 'north'` (anotação explícita), ou `direction as Direction` (type assertion — evite quando possível)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que `as const` faz em `const config = { host: 'localhost', port: 3000 } as const`?",
+      "options": [
+        "Torna o objeto imutável em runtime — equivalente a `Object.freeze()`",
+        "Instrui TypeScript a inferir os tipos mais específicos possíveis e marcar todas as propriedades como `readonly` — `host` fica `'localhost'` em vez de `string`",
+        "Converte o objeto em uma constante que pode ser exportada como enum",
+        "Apenas previne reassignment da variável — equivalente a `const` normal"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem `as const`: `{ host: string; port: number }`. Com `as const`: `{ readonly host: 'localhost'; readonly port: 3000 }`. É apenas uma instrução para o type checker — sem efeito em runtime (diferente de `Object.freeze()`). O objeto continua mutável em JS puro, mas TypeScript emitirá erro se você tentar reatribuir. Útil para criar lookup objects type-safe onde os valores são literais precisos."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como você derivaria o tipo `'red' | 'green' | 'blue'` do array `const colors = ['red', 'green', 'blue'] as const`?",
+      "options": [
+        "`type Color = typeof colors`",
+        "`type Color = typeof colors[number]`",
+        "`type Color = keyof typeof colors`",
+        "`type Color = Extract<typeof colors, string>`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`typeof colors` é `readonly ['red', 'green', 'blue']` — um tuple type. Para obter a union dos elementos, usamos indexed access com `number`: `typeof colors[number]` = `'red' | 'green' | 'blue'`. É como dizer 'qualquer elemento que pode ser acessado por um index numérico'. `keyof typeof colors` daria `0 | 1 | 2 | 'length' | 'map' | ...` — as chaves do array, não os valores."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a principal vantagem de union de literais sobre enums para representar estados?",
+      "options": [
+        "Union de literais é mais performático em runtime",
+        "Union de literais não gera código JavaScript — sem overhead de objeto, compatível com JSON/APIs externas, e funciona naturalmente com type narrowing e comparações diretas",
+        "Enums não suportam string values — apenas números",
+        "Union de literais pode ser usada como valor em runtime enquanto enums não podem"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Enum `Direction` compila para um objeto JavaScript: `{ North: 'north', South: 'south', ... }`. Union `type Direction = 'north' | 'south'` some completamente — zero bytes de JavaScript. Além disso: uma API que retorna `'active'` funciona direto com `type Status = 'active' | 'inactive'`; com enum, você precisa converter `Status[apiValue]` ou similar. Narrowing também é mais natural: `if (status === 'active')` vs `if (status === Status.Active)`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Dado `const ROUTES = { home: '/', about: '/about' } as const`, como você cria o tipo dos valores?",
+      "options": [
+        "`type Route = typeof ROUTES`",
+        "`type Route = typeof ROUTES[keyof typeof ROUTES]`",
+        "`type Route = keyof typeof ROUTES`",
+        "`type Route = Values<typeof ROUTES>`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Passo a passo: `typeof ROUTES` = `{ readonly home: '/'; readonly about: '/about' }`. `keyof typeof ROUTES` = `'home' | 'about'` (as chaves). `typeof ROUTES[keyof typeof ROUTES]` = indexed access com todas as chaves = `'/' | '/about'` (os valores). Esta é a forma padrão de extrair a union de valores de um objeto const. `keyof typeof ROUTES` daria as chaves (nomes), não os valores (paths)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que o tipo `type HandlerName = \\`on${Capitalize<EventName>}\\`` produz quando `EventName = 'click' | 'focus'`?",
+      "options": [
+        "`string` — template literals sempre resultam em string",
+        "`'onClick' | 'onFocus'` — TypeScript distribui o template literal sobre cada membro da union",
+        "`'onclick' | 'onfocus'` — Capitalize não funciona em template literals",
+        "Um erro de compilação — template literal types não suportam union types"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Template literal types distribuem sobre unions automaticamente. `\\`on${Capitalize<'click' | 'focus'>}\\`` = `\\`on${'Click' | 'Focus'}\\`` = `'onClick' | 'onFocus'`. TypeScript cria uma entrada para cada combinação possível. Com duas unions: `\\`${A | B}-${C | D}\\`` gera 4 entradas. Isso é extremamente poderoso para gerar tipos de events, CSS properties, API routes e qualquer string com estrutura previsível."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `const enum` e `enum` regular em TypeScript?",
+      "options": [
+        "`const enum` permite apenas valores string; `enum` regular aceita números e strings",
+        "`const enum` é inline pelo compilador (valores substituídos diretamente), sem objeto em runtime; `enum` regular gera um objeto JavaScript",
+        "`const enum` pode ser exportado de módulos; `enum` regular não pode",
+        "Não há diferença em TypeScript moderno — `const enum` é deprecated"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`enum Direction { North = 'north' }` → JavaScript: `var Direction = { North: 'north', north: 'North' }`. `const enum Direction { North = 'north' }` → `Direction.North` é substituído por `'north'` inline, sem objeto. O problema: `const enum` falha em projetos que usam `isolatedModules` (Babel, esbuild, Vite) pois requer análise cross-file. Por isso muitos projetos proíbem `const enum` e preferem union de literais, que tem zero overhead e funciona em qualquer setup."
+    }
+  ]
+}

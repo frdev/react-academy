@@ -1,1 +1,97 @@
-{"lessonId": "day-04", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `function first<T>(arr: T[]): T` é melhor que `function first(arr: any[]): any`?",
+      "options": [
+        "A versão genérica é mais performática em runtime",
+        "A versão genérica preserva a informação de tipo — se você passa `number[]`, o retorno é `number`, não `any`; erros de tipo são detectados na chamada",
+        "A versão com `any` não compila em TypeScript moderno",
+        "A versão genérica permite passar arrays de qualquer tamanho"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `any[]`, o tipo do retorno é `any` — o type checker desiste de rastrear. `first([1,2,3])` retorna `any`, então `first([1,2,3]).toUpperCase()` não gera erro (bug em runtime). Com `T`, `first([1,2,3])` retorna `number` — `.toUpperCase()` gera erro em compile time. O generic captura a relação entre o tipo do input e o tipo do output sem desabilitar verificação."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que `T extends { length: number }` faz como constraint?",
+      "options": [
+        "Restringe T a ser apenas `string` ou `Array`",
+        "Restringe T a ser uma subclasse da interface `{ length: number }` — apenas classes que herdam dela",
+        "Restringe T a qualquer tipo que estruturalmente tenha a propriedade `length: number` — string, arrays, ArrayBuffer, etc.",
+        "Restringe T a ser um tipo com exatamente uma propriedade chamada `length`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "TypeScript usa structural typing mesmo em constraints. `T extends { length: number }` significa 'T deve ter pelo menos a propriedade length do tipo number'. Satisfazem: strings, arrays, TypedArrays, qualquer objeto com `length`. Não satisfazem: numbers, booleans, objetos sem `length`. A constraint não restringe a exatamente esses tipos — qualquer tipo com `length` funciona, incluindo tipos customizados."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre uma generic function e um generic type?",
+      "options": [
+        "Generic functions aceitam qualquer tipo; generic types precisam de constraint",
+        "Em generic functions, o type parameter é resolvido/inferido a cada chamada; em generic types, é fixado quando o tipo é instanciado e se aplica a todos os métodos do objeto",
+        "Generic types são mais lentos que generic functions porque TypeScript precisa criar novas instâncias de tipo",
+        "Não há diferença — são apenas sintaxes diferentes para o mesmo conceito"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`function map<T, U>(arr: T[], fn: T => U): U[]` — cada chamada resolve T e U independentemente. `type Stack<T> = { push(item: T): void; pop(): T }` — quando você cria `Stack<number>`, T é fixado como number para toda a vida do Stack. Misturar: `const numberStack: Stack<number>` proíbe `.push('string')` porque T já foi resolvido. Generic functions são mais flexíveis; generic types garantem coerência interna."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quando você deve ser explícito no type parameter em vez de deixar a inferência trabalhar?",
+      "options": [
+        "Sempre — inferência automática é menos segura",
+        "Quando o TypeScript não tem contexto suficiente para inferir, quando você quer um tipo mais amplo que o inferido, ou quando a inferência produziria o tipo errado para o contexto",
+        "Apenas quando o type parameter tem constraint",
+        "Apenas quando a função retorna `void`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Casos onde inferência falha ou não é ideal: (1) `identity<number | string>(42)` — você quer `number | string`, mas inferência daria `number`; (2) `useState<User | null>(null)` — React não consegue inferir o tipo completo sem hint; (3) `fetch<ApiResponse<User>>(url)` — tipo de retorno não pode ser inferido do input. Deixe a inferência trabalhar quando o resultado for óbvio e preciso."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "No tipo `Pair<T, U = T>`, o que acontece quando você escreve `Pair<string>`?",
+      "options": [
+        "Erro — U é obrigatório e não pode ser omitido",
+        "`Pair<string, string>` — U usa o default T, que já foi resolvido como `string`",
+        "`Pair<string, unknown>` — o default é sempre `unknown` quando não especificado",
+        "`Pair<string, T>` — T permanece como type parameter não resolvido"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Default type parameters funcionam como default parameters de funções. `Pair<string>` resolve T=string, e como U não foi especificado, U usa o default `T` — que neste ponto já é `string`. Resultado: `Pair<string, string>`. Defaults podem referenciar type parameters anteriores: `interface Defaults<A, B = A, C = B>` permite omitir parâmetros em cascata."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que `function pick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>` requer `K extends keyof T`?",
+      "options": [
+        "Porque `keyof T` é necessário para acessar propriedades de T em JavaScript",
+        "Para garantir em compile time que todas as chaves no array `keys` existem em `obj` — TypeScript rejeita chaves inválidas antes de executar",
+        "Para que TypeScript possa calcular o tipo de retorno `Pick<T, K>` corretamente",
+        "Tanto B quanto C estão corretos"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Ambas as razões são corretas. (1) Segurança: `pick(user, ['invalid'])` gera erro se 'invalid' não é uma chave de `user` — detectado em compile time. (2) Precisão do retorno: o tipo `Pick<T, K>` precisa saber exatamente quais chaves foram selecionadas — se K fosse apenas `string`, o retorno seria `Pick<T, string>` e perderia a informação de quais propriedades específicas foram escolhidas. As duas razões se complementam."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "No `EventEmitter<Events>` com constraint `Events extends Record<string, unknown[]>`, por que os event handlers ficam tipados automaticamente?",
+      "options": [
+        "Porque EventEmitter usa reflection para descobrir os tipos em runtime",
+        "Porque `K extends keyof Events` e `Events[K]` capturam o tipo dos argumentos de cada evento — quando você passa o nome do evento, TypeScript sabe o tipo dos args",
+        "Porque TypeScript infere os tipos dos handlers a partir de como `emit` é chamado",
+        "Porque `unknown[]` aceita qualquer array de argumentos automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O design inteligente: `Events = { login: [userId: string]; error: [message: string, code: number] }`. Quando `on<K extends keyof Events>('login', handler)`, K=`'login'`, e `Events[K]` = `[string]` — o handler deve ser `(userId: string) => void`. TypeScript correlaciona o nome do evento (K) com os tipos de argumentos (Events[K]) em compile time. Isso é o que faz event emitters type-safe sem nenhuma verificação em runtime."
+    }
+  ]
+}

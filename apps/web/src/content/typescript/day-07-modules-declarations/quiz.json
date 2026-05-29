@@ -1,1 +1,97 @@
-{"lessonId": "day-07", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `import type` é obrigatório com `isolatedModules: true`?",
+      "options": [
+        "Porque `isolatedModules` proíbe qualquer import de bibliotecas externas",
+        "Porque com `isolatedModules`, cada arquivo é transformado independentemente sem análise cross-file — o bundler precisa saber se pode apagar o import sem executar o módulo",
+        "Porque `import type` é mais performático e `isolatedModules` otimiza o bundle",
+        "Porque TypeScript 5.0 tornou `import type` obrigatório em todos os projetos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Ferramentas como Babel, esbuild e SWC transformam cada arquivo isoladamente sem ler outros arquivos. Se você escreve `import { User } from './user'`, elas não sabem se `User` é um valor (deve ser incluído no bundle) ou apenas um tipo (pode ser apagado). Com `import type { User }`, elas sabem com certeza que é tipo e podem apagar. Sem `isolatedModules`, o compilador TypeScript tradicional faz análise completa e consegue distinguir — mas é mais lento."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que é um arquivo `.d.ts` e quando você precisaria criar um?",
+      "options": [
+        "Um arquivo de configuração do TypeScript — alternativa ao `tsconfig.json`",
+        "Um arquivo com apenas declarações de tipos (sem código executável) — usado para descrever tipos de código JavaScript sem types nativos, como bibliotecas legacy ou globals injetados pelo bundler",
+        "Um arquivo que TypeScript gera automaticamente e nunca deve ser editado manualmente",
+        "Um arquivo para declarar variáveis de ambiente do projeto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Você cria `.d.ts` quando: (1) usando uma biblioteca JS sem `@types/` no npm, (2) declarando globals injetados pelo bundler (`declare const __VERSION__: string`), (3) declarando tipos para assets (`declare module '*.svg' { const url: string; export default url }`). O TypeScript compila `.ts` em `.js` + `.d.ts` quando `declaration: true` — outras libs que usam sua biblioteca usam esses `.d.ts` gerados."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como você adicionaria a propriedade `user` ao tipo `Request` do Express para todo o projeto?",
+      "options": [
+        "Modificar `node_modules/@types/express/index.d.ts`",
+        "Criar um arquivo `.d.ts` com `declare module 'express' { interface Request { user?: User } }` — declaration merging adiciona ao tipo existente sem modificar node_modules",
+        "Criar um type alias `type MyRequest = Request & { user?: User }` e usar em todos os arquivos",
+        "Usar `interface Request extends express.Request { user?: User }` em cada arquivo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Module augmentation com declaration merging: crie `src/types/express.d.ts` com `import 'express'; declare module 'express' { interface Request { user?: User } }`. TypeScript mescla automaticamente com os tipos originais do Express. Modificar node_modules seria sobrescrito em cada `npm install`. O type alias global funcionaria mas exigiria mudar todos os arquivos. A augmentation funciona globalmente sem modificar código existente."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que você precisa de `export {}` em um arquivo para usar `declare global`?",
+      "options": [
+        "Para exportar as declarações globais para outros arquivos",
+        "Para tornar o arquivo um 'módulo' — sem import/export, o arquivo é um 'script' e suas declarações já são globais automaticamente; `export {}` muda para contexto de módulo onde `declare global` é necessário para declarar no escopo global",
+        "É uma convenção de estilo — não tem efeito técnico",
+        "Para evitar conflitos com outras declarações globais"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TypeScript distingue 'scripts' (sem import/export) e 'módulos' (com import/export). Em scripts, declarações são automaticamente globais. Em módulos, cada declaração é local. `declare global { ... }` em um módulo diz: 'apesar de estar em um módulo, essas declarações devem ir para o escopo global'. `export {}` força o arquivo a ser tratado como módulo — sem ele, `declare global` geraria erro. É o padrão correto para arquivos de augmentation."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `declare module '*.svg' { const url: string; export default url }` faz?",
+      "options": [
+        "Importa todos os SVGs do projeto automaticamente",
+        "Declara o tipo de qualquer import de arquivo `.svg` — sem isso, TypeScript reclamaria que não sabe o tipo de `import logo from './logo.svg'`",
+        "Transforma SVGs em strings durante o build",
+        "Declara que SVGs são apenas permitidos como `default export`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando você faz `import logo from './logo.svg'`, TypeScript não sabe que tipo é um arquivo SVG. Sem declaração, erro: 'Cannot find module ./logo.svg'. Com `declare module '*.svg'`, TypeScript entende que qualquer import com extensão `.svg` tem o tipo declarado (`string` no caso de URL). Vite/webpack transformam esses imports em URLs de string. Você pode ter tipos mais ricos: `declare module '*.svg' { import React from 'react'; const SVG: React.FC<React.SVGProps<SVGSVGElement>>; export default SVG }`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Em projetos modernos, quando você ainda usaria namespaces?",
+      "options": [
+        "Sempre — namespaces são a forma recomendada de organizar código TypeScript",
+        "Raramente — principalmente ao ler/criar tipos de bibliotecas legadas, ou em `.d.ts` onde namespaces hierárquicos descrevem APIs complexas de forma mais clara que múltiplos exports",
+        "Namespaces são deprecated e não devem ser usados",
+        "Apenas em projetos que não usam ES Modules"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Namespaces (antes chamados de 'internal modules') foram criados antes dos ES Modules se tornarem padrão. Em código novo, prefira ES Modules: `export function create()` em vez de `namespace MyLib { export function create() }`. Namespaces ainda aparecem nos tipos de bibliotecas como jQuery (`$.ajax`, `$.fn`), no próprio TypeScript lib (`lib.dom.d.ts` usa `declare namespace`), e em projetos legados. Se você escreve `.d.ts` para uma API com namespace hierárquico, pode fazer sentido."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a forma preferida de incluir tipos globais (como tipos do Node.js) em um projeto moderno?",
+      "options": [
+        "Adicionar `/// <reference types='node' />` no topo de cada arquivo que precisa",
+        "Configurar `\"types\": [\"node\"]` no `compilerOptions` do `tsconfig.json` — aplica globalmente sem precisar de directive em cada arquivo",
+        "Importar explicitamente: `import type {} from 'node'`",
+        "Criar um arquivo `global.d.ts` com `/// <reference types='node' />`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`tsconfig.json`: `{ \"compilerOptions\": { \"types\": [\"node\", \"jest\"] } }` — inclui os globals de Node.js e Jest em todo o projeto. Triple-slash directives funcionam mas são verbosas e precisam ser repetidas. A opção `types` no tsconfig é a configuração central: por padrão (sem `types`), TypeScript inclui todos os `@types/*` instalados. Com `types: ['node']`, inclui apenas os especificados — útil para evitar conflitos entre tipos do browser e do Node."
+    }
+  ]
+}

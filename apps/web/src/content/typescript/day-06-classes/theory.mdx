@@ -1,1 +1,249 @@
-# Conteúdo em breve
+# Classes em TypeScript
+
+TypeScript adiciona um sistema de visibilidade, modificadores e contratos robustos ao sistema de classes do JavaScript. Classes em TypeScript são simultaneamente um tipo e um valor — você as usa para instanciar objetos e como tipo para anotações.
+
+## Modificadores de Acesso
+
+```typescript
+class BankAccount {
+  public owner: string         // acessível de qualquer lugar (default)
+  private balance: number      // acessível apenas dentro da classe
+  protected accountType: string // acessível na classe e subclasses
+
+  constructor(owner: string, initialBalance: number) {
+    this.owner = owner
+    this.balance = initialBalance
+    this.accountType = 'checking'
+  }
+
+  public deposit(amount: number): void {
+    this.balance += amount
+  }
+
+  private validate(amount: number): boolean {
+    return amount > 0 && amount <= this.balance
+  }
+
+  public withdraw(amount: number): boolean {
+    if (!this.validate(amount)) return false
+    this.balance -= amount
+    return true
+  }
+}
+
+const acc = new BankAccount('Ana', 1000)
+acc.owner            // ✓ — public
+acc.balance          // ERRO — private
+acc.deposit(100)     // ✓ — public method
+```
+
+**Diferença de `#private` do JavaScript:**
+
+```typescript
+class Config {
+  #secret = 'abc'     // JS private — realmente privado em runtime
+  private key = 'xyz' // TS private — apagado em JS, acessível via any
+
+  getSecret() { return this.#secret }
+}
+
+const c = new Config()
+;(c as any).key     // ✓ em JS — TS private é apenas compile-time
+;(c as any).#secret // ERRO — JS private é real
+```
+
+## `readonly`
+
+```typescript
+class Point {
+  readonly x: number
+  readonly y: number
+
+  constructor(x: number, y: number) {
+    this.x = x  // ✓ — pode atribuir no constructor
+    this.y = y
+  }
+
+  translate(dx: number, dy: number): Point {
+    return new Point(this.x + dx, this.y + dy)  // cria novo ponto
+  }
+}
+
+const p = new Point(3, 4)
+p.x = 10  // ERRO — readonly não pode ser reatribuído após construção
+```
+
+`readonly` é verificado apenas em compile time — no JavaScript gerado, é uma propriedade normal.
+
+## Parameter Properties
+
+Uma sintaxe concisa do TypeScript que declara e inicializa propriedades no constructor:
+
+```typescript
+// Sem parameter properties — verboso
+class User {
+  public name: string
+  private email: string
+  readonly id: string
+
+  constructor(name: string, email: string, id: string) {
+    this.name = name
+    this.email = email
+    this.id = id
+  }
+}
+
+// Com parameter properties — conciso
+class User {
+  constructor(
+    public name: string,
+    private email: string,
+    readonly id: string
+  ) {}
+}
+
+// Equivalente — TypeScript gera o mesmo código
+const user = new User('Ana', 'ana@email.com', 'u-1')
+user.name  // ✓ "Ana"
+user.email // ERRO — private
+user.id    // ✓ "u-1"
+```
+
+## Abstract Classes
+
+Classes abstratas definem um contrato parcial — implementam partes comuns e deixam outras para subclasses:
+
+```typescript
+abstract class Shape {
+  abstract area(): number        // subclasses devem implementar
+  abstract perimeter(): number   // subclasses devem implementar
+
+  // Método concreto — compartilhado por todas as subclasses
+  describe(): string {
+    return `Shape with area ${this.area().toFixed(2)} and perimeter ${this.perimeter().toFixed(2)}`
+  }
+
+  isLargerThan(other: Shape): boolean {
+    return this.area() > other.area()
+  }
+}
+
+class Circle extends Shape {
+  constructor(private radius: number) {
+    super()
+  }
+
+  area(): number {
+    return Math.PI * this.radius ** 2
+  }
+
+  perimeter(): number {
+    return 2 * Math.PI * this.radius
+  }
+}
+
+class Rectangle extends Shape {
+  constructor(private width: number, private height: number) {
+    super()
+  }
+
+  area(): number { return this.width * this.height }
+  perimeter(): number { return 2 * (this.width + this.height) }
+}
+
+const c = new Circle(5)
+const r = new Rectangle(3, 4)
+c.describe()           // ✓
+new Shape()            // ERRO — não pode instanciar classe abstrata
+c.isLargerThan(r)      // ✓ — método compartilhado funciona
+```
+
+## `implements` — Contratos sem Herança
+
+`implements` verifica que uma classe satisfaz um contrato (interface ou type alias) sem herdar implementação:
+
+```typescript
+interface Serializable {
+  serialize(): string
+}
+
+interface Loggable {
+  log(message: string): void
+}
+
+// Implementando múltiplas interfaces
+class UserService implements Serializable, Loggable {
+  private users: User[] = []
+
+  serialize(): string {
+    return JSON.stringify(this.users)
+  }
+
+  log(message: string): void {
+    console.log(`[UserService] ${message}`)
+  }
+}
+
+// implements não herda — você deve implementar tudo
+class IncompleteService implements Serializable {
+  // ERRO — 'serialize' não está implementado
+}
+```
+
+`implements` vs `extends`:
+- `extends`: herda implementação e interface
+- `implements`: apenas verifica interface, sem herdar código
+
+## Getters e Setters Tipados
+
+```typescript
+class Temperature {
+  private _celsius: number
+
+  constructor(celsius: number) {
+    this._celsius = celsius
+  }
+
+  get fahrenheit(): number {
+    return this._celsius * 9/5 + 32
+  }
+
+  get celsius(): number {
+    return this._celsius
+  }
+
+  set celsius(value: number) {
+    if (value < -273.15) throw new Error('Below absolute zero')
+    this._celsius = value
+  }
+}
+
+const temp = new Temperature(100)
+temp.fahrenheit  // 212
+temp.celsius = -300  // Error em runtime
+```
+
+## Classes como Tipos
+
+Em TypeScript, o nome da classe serve como tipo para instâncias:
+
+```typescript
+class Logger {
+  log(msg: string) { console.log(msg) }
+}
+
+function createPipeline(logger: Logger): void {
+  logger.log('Pipeline started')
+}
+
+createPipeline(new Logger())  // ✓
+
+// Structural typing se aplica às classes também
+const fakeLogger = {
+  log(msg: string) { /* noop */ }
+}
+
+createPipeline(fakeLogger)  // ✓ — estrutura compatível com Logger
+```
+
+> **Resumo:** `public/private/protected` controlam visibilidade em compile time; `#private` do JS é real em runtime. `readonly` previne reatribuição após construção. Parameter properties eliminam boilerplate do constructor. Classes `abstract` definem contratos parciais para hierarquias. `implements` verifica conformidade com interfaces sem herança. Structural typing aplica-se a classes: qualquer objeto com a mesma forma é compatível.

@@ -1,1 +1,97 @@
-{"lessonId": "day-01", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é structural typing e como difere de nominal typing?",
+      "options": [
+        "Structural typing verifica o nome do tipo; nominal typing verifica a estrutura",
+        "Structural typing verifica a forma/estrutura do objeto; dois tipos são compatíveis se tiverem as mesmas propriedades, independente do nome",
+        "Structural typing é exclusivo do TypeScript; nominal typing é usado apenas em linguagens funcionais",
+        "Structural typing só se aplica a interfaces, não a type aliases"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em structural typing, `interface Point { x: number; y: number }` e `interface Vector { x: number; y: number }` são intercambiáveis porque têm a mesma forma. Em nominal typing (Java, C#), seriam tipos incompatíveis mesmo com estrutura idêntica porque têm nomes diferentes. TypeScript usa structural typing por design, o que permite grande flexibilidade."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `const x = 'hello'` tem tipo `\"hello\"` mas `let y = 'hello'` tem tipo `string`?",
+      "options": [
+        "Porque `const` força o tipo mais específico e `let` é tratado como `any`",
+        "Por causa do widening — `let` pode ser reatribuído para qualquer string, então TypeScript amplia o tipo; `const` nunca muda, então preserva o literal",
+        "Isso é um bug do TypeScript que foi corrigido na versão 5.0",
+        "Porque `const` sempre cria tipos imutáveis enquanto `let` cria tipos mutáveis"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Widening é o processo pelo qual TypeScript amplia tipos literais em variáveis mutáveis. `const x = 'hello'` — x nunca será reatribuído, então o tipo literal `\"hello\"` faz sentido. `let y = 'hello'` — y poderia receber `'world'`, `'foo'`, qualquer string, então TypeScript infere `string`. Você pode usar `as const` para prevenir widening: `let y = 'hello' as const` → tipo `\"hello\"`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a diferença crucial entre `any` e `unknown`?",
+      "options": [
+        "`any` é para valores primitivos; `unknown` é para objetos e arrays",
+        "`unknown` é deprecated em TypeScript 5+; use `any` em seu lugar",
+        "`any` desabilita toda verificação de tipo — você pode chamar qualquer método sem erro; `unknown` aceita qualquer valor mas exige narrowing antes de usar",
+        "`any` e `unknown` são equivalentes, apenas com nomes diferentes para compatibilidade"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Com `any`: `val.nonExistent()` compila sem erro — TypeScript simplesmente para de verificar. Com `unknown`: você precisa provar o tipo antes de usar: `if (typeof val === 'string') { val.toUpperCase() }`. `unknown` é o `any` seguro — útil para dados vindos de APIs externas, JSON.parse(), etc., onde você não sabe o tipo mas quer forçar verificação antes do uso."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que acontece quando você usa `never` em um exhaustive check?",
+      "options": [
+        "TypeScript lança uma exceção em runtime se o caso nunca esperado ocorrer",
+        "Se todos os casos de uma union foram tratados, atribuir o valor a `never` não gera erro; se um caso novo for adicionado e não tratado, TypeScript emite erro em compile time",
+        "`never` em exhaustive check é apenas uma convenção — não tem efeito no type checker",
+        "O código dentro do bloco `never` nunca é executado — é otimizado pelo compilador"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O pattern: `const _: never = value` funciona porque se todos os casos foram tratados, o TypeScript infere que `value` tem tipo `never` naquele ponto — e a atribuição é válida. Se você adicionar um novo case à union sem tratar no switch/if, TypeScript sabe que `value` pode ser o novo tipo — que não é `never` — e emite erro: 'Type X is not assignable to type never'. É um erro em compile time, não runtime."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Quando você deve preferir anotar explicitamente um tipo em vez de deixar a inferência trabalhar?",
+      "options": [
+        "Sempre — TypeScript é mais seguro quando todos os tipos são explícitos",
+        "Nunca — a inferência do TypeScript é sempre suficiente",
+        "Em retornos de funções públicas/complexas, variáveis declaradas sem inicialização, e quando a inferência produz um tipo mais específico do que você quer (ex: inferir `string` em vez de literal)",
+        "Apenas em arquivos `.d.ts` — código fonte nunca precisa de anotações"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A regra prática: deixe a inferência trabalhar para variáveis locais simples e retornos óbvios. Anote quando: (1) declarar variável sem valor inicial `let x: number`, (2) retorno de função complexa para documentar contrato, (3) quando inferência daria literal mas você quer o tipo base `const s: string = 'active'`, (4) parâmetros de função — TypeScript sempre exige anotação aqui. Over-anotação cria ruído sem benefício."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que callbacks tipados como `() => void` podem retornar qualquer valor sem erro?",
+      "options": [
+        "É um bug conhecido do TypeScript que não foi corrigido por questões de compatibilidade",
+        "Porque `void` em posição de retorno de callback significa 'o caller vai ignorar o retorno' — não que a função literalmente não pode retornar nada",
+        "Porque callbacks nunca são verificados pelo type checker",
+        "Porque `void` é equivalente a `any` em contextos de callback"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A semântica de `void` em callbacks é intencional: `type Callback = () => void` significa 'quando eu chamar isso, vou ignorar o que retornar'. Por isso `[1,2,3].forEach(n => { return n * 2 })` é válido — forEach ignora o retorno. Isso é diferente de uma função declarada como `(): void` que realmente não deve retornar nada meaningful. É uma distinção sutil mas importante na tipagem de higher-order functions."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que `type Impossible = string & number` produz e por quê?",
+      "options": [
+        "Um tipo que aceita tanto strings quanto numbers — equivalente a `string | number`",
+        "Um erro de compilação — intersection de tipos incompatíveis não é permitida",
+        "O tipo `never` — porque não existe valor que seja simultaneamente uma string e um number",
+        "O tipo `any` — quando dois tipos são incompatíveis, TypeScript recorre a `any`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Intersection `&` significa 'deve satisfazer ambos os tipos'. `string & number` exigiria um valor que é simultaneamente uma string e um number — impossível. TypeScript colapsa isso para `never` (o tipo vazio). Isso é útil para entender por que certas intersections em generics produzem `never` inesperadamente. Ex: `Extract<string, number>` é implementado com conditional types e produz `never` quando não há overlap."
+    }
+  ]
+}

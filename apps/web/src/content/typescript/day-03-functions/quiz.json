@@ -1,1 +1,97 @@
-{"lessonId": "day-03", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o propósito principal de function overloads em TypeScript?",
+      "options": [
+        "Melhorar a performance permitindo que o compilador escolha a implementação mais eficiente",
+        "Permitir que uma função aceite combinações específicas de tipos de parâmetros, com o type checker verificando cada combinação separadamente",
+        "Criar múltiplas implementações da mesma função que são escolhidas em runtime",
+        "Substituir union types nos parâmetros — overloads são sempre preferíveis a `string | number`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Overloads são apenas em compile time — existe uma única implementação. O valor está na precisão dos tipos: `function parse(input: string): number; function parse(input: number): string` garante que quando você passa string, TypeScript sabe que o retorno é number (não `string | number`). Sem overloads, `function parse(input: string | number): string | number` seria menos informativo — o caller não saberia o tipo exato do retorno."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "A assinatura de implementação de um overload é visível para os callers?",
+      "options": [
+        "Sim — ela define o tipo final que os callers veem",
+        "Não — a assinatura de implementação é invisível; callers só veem as assinaturas de overload declaradas antes",
+        "Sim, mas apenas quando os tipos são compatíveis com as outras assinaturas",
+        "Depende — se o arquivo estiver em modo `strict`, a implementação fica visível"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A assinatura de implementação (a última, com corpo) é interna. Os callers só enxergam as assinaturas de overload. Por isso a implementação pode ter tipos mais amplos (`string | number | Date`) enquanto os callers são restritos às combinações válidas. Se você tentar chamar com um caso não coberto por nenhum overload, TypeScript emite erro mesmo que a implementação tecnicamente aceitasse."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que são call signatures e quando você usaria uma em vez de simplesmente `type Fn = (x: T) => U`?",
+      "options": [
+        "Call signatures são uma sintaxe alternativa idêntica a `type Fn = (x: T) => U` — sem diferença prática",
+        "Call signatures permitem descrever funções que também têm propriedades — útil para modelar objetos que são callable e têm estado/metadata",
+        "Call signatures só funcionam com `interface`, não com `type`",
+        "Call signatures são usadas apenas para funções assíncronas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando uma função precisa ter propriedades além de ser chamável: `interface Validator { (value: unknown): boolean; errorMessage: string }`. Funções são objetos em JavaScript — action creators do Redux, por exemplo, são funções com propriedade `.type`. A call signature captura esse pattern. `type Fn = (x: T) => U` descreve apenas a chamada, não propriedades adicionais."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como o parâmetro `this` especial funciona em TypeScript?",
+      "options": [
+        "É um parâmetro normal que recebe o contexto de chamada como argumento explícito",
+        "É declarado como primeiro parâmetro para tipar o `this` dentro da função — não conta como parâmetro real e é removido pelo compilador",
+        "Só funciona com `function` declarations, não com `function` expressions",
+        "É equivalente a usar `.bind(this)` — apenas uma sintaxe alternativa"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`function greet(this: User): string` — o `this: User` não aparece na assinatura JavaScript final. Ele serve para TypeScript verificar se `this` é usado corretamente: se você chamar `greet()` sem contexto correto, recebe erro. É comum em APIs que esperam ser chamadas com contexto específico (ex: métodos de classe usados como callbacks). Diferente de arrow functions, que capturam `this` do closure e não têm `this` próprio."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `let g: GeneralHandler = specificHandler` pode gerar erro com `strictFunctionTypes`?",
+      "options": [
+        "Porque handlers de eventos sempre devem ter o mesmo tipo",
+        "Por contravariância em parâmetros: um handler mais específico (que espera MouseEvent) não pode ser usado onde um mais geral (que aceita qualquer Event) é esperado, pois poderia receber um Event sem as propriedades de MouseEvent",
+        "Porque GeneralHandler é uma subclasse de Handler no sistema de tipos",
+        "Não gera erro — TypeScript permite qualquer atribuição entre tipos de função"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Contravariância: parâmetros de função são contravariantes — para `f: A → void` ser subtipo de `g: B → void`, B deve ser subtipo de A (sentido invertido). `GeneralHandler = (e: Event) => void` pode ser atribuído a `Handler = (e: MouseEvent) => void` porque MouseEvent extends Event. O inverso falha: se esperamos `(e: Event) => void` mas temos `(e: MouseEvent) => void`, esse handler pode chamar `e.clientX` que não existe em `Event` base."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `function f(x?: string)` e `function f(x: string = 'default')`?",
+      "options": [
+        "Nenhuma — ambos aceitam chamada sem o argumento e têm tipo `string | undefined` internamente",
+        "Com `x?: string`, o tipo dentro da função é `string | undefined`; com default `x: string = 'default'`, o tipo é `string` (o default garante que nunca é undefined)",
+        "Default parameters não são suportados em TypeScript — use parâmetros opcionais com `??`",
+        "Parâmetros opcionais só podem ser `string | undefined`; defaults podem ser qualquer tipo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`function f(x?: string)` — dentro da função, `x` é `string | undefined`. Você precisa de `x ?? 'default'` ou `x || 'default'` para usar. `function f(x: string = 'default')` — dentro da função, `x` é simplesmente `string` porque TypeScript sabe que o default garante um valor. Essa diferença é sutil mas importante: com default, não há necessidade de narrowing dentro da implementação."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Em `function getProperty<T, K extends keyof T>(obj: T, key: K): T[K]`, o que `K extends keyof T` garante?",
+      "options": [
+        "Que K deve ser uma subclasse de T",
+        "Que K deve ser uma das chaves válidas de T — impedindo acesso a propriedades inexistentes em compile time",
+        "Que K e T devem ter o mesmo tipo base",
+        "Que K deve ser um array de chaves de T"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`keyof T` produz uma union de todas as chaves de T. `K extends keyof T` restringe K a ser uma dessas chaves. Isso permite que o retorno `T[K]` seja inferido precisamente: `getProperty(user, 'name')` retorna `string` (tipo de `user.name`), não `string | number | Date`. Sem a constraint, TypeScript não saberia que `key` é uma chave válida de `obj` e recusaria `obj[key]`."
+    }
+  ]
+}

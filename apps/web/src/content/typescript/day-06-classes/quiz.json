@@ -1,1 +1,97 @@
-{"lessonId": "day-06", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença real entre `private` do TypeScript e `#private` do JavaScript em classes?",
+      "options": [
+        "São equivalentes — `private` é apenas a sintaxe TypeScript para `#`",
+        "`private` TypeScript é verificado apenas em compile time e pode ser acessado via `(obj as any).prop` em runtime; `#private` JavaScript é real — inacessível fora da classe em runtime",
+        "`#private` só funciona em Node.js; `private` TypeScript funciona em todos os ambientes",
+        "`private` TypeScript é mais performático porque não cria WeakMap interno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O compilador TypeScript apaga modificadores de acesso — o JavaScript gerado não os conhece. `class C { private x = 1 }` → JS: `class C { x = 1 }`. Você pode fazer `(new C() as any).x` e funciona. `class C { #x = 1 }` — o `#` faz parte da especificação JavaScript (ES2022). Em runtime, tentar acessar `c.#x` de fora lança `SyntaxError`. Para privacidade real em runtime, use `#`. Para contratos em compile time, `private` é suficiente."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que são parameter properties e qual problema resolvem?",
+      "options": [
+        "Propriedades que só existem durante a execução do constructor",
+        "Uma sintaxe que combina declaração e inicialização de propriedades no constructor — evita repetir o nome da propriedade três vezes (declaração, parâmetro, atribuição)",
+        "Parâmetros tipados para o constructor que não criam propriedades na instância",
+        "Uma forma de criar propriedades calculadas baseadas nos parâmetros do constructor"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem: `class User { public name: string; constructor(name: string) { this.name = name } }` — 'name' aparece 3 vezes. Com: `class User { constructor(public name: string) {} }` — uma declaração. O TypeScript expande para o código equivalente. Funciona com todos os modificadores: `public`, `private`, `protected`, `readonly`. É puramente syntactic sugar — mesmo JavaScript é gerado."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando você deve usar uma classe `abstract` em vez de uma interface?",
+      "options": [
+        "Quando a classe tiver mais de 5 métodos",
+        "Quando você quer definir comportamento compartilhado (implementação concreta) junto com um contrato (métodos que subclasses devem implementar) — interface não pode ter implementação",
+        "Quando precisar de multiple inheritance",
+        "Abstract classes são deprecated — use interfaces sempre"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Interface define contrato puro. Abstract class define contrato + implementação parcial compartilhada. Ex: `abstract class Shape { abstract area(): number; describe() { return `Area: ${this.area()}` } }` — `describe` é implementado uma vez e herdado por Circle, Rectangle, etc. Sem abstract class, você teria que implementar `describe` em cada subclasse ou usar composition. Use abstract quando há código comum na hierarquia."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `extends` e `implements` em TypeScript?",
+      "options": [
+        "`extends` é para classes; `implements` é para interfaces — funcionalmente equivalentes",
+        "`extends` herda implementação e interface da classe pai; `implements` verifica que a classe satisfaz o contrato mas não herda nenhum código",
+        "`extends` funciona apenas com classes; `implements` funciona com interfaces e type aliases",
+        "A diferença é apenas de sintaxe — ambos geram o mesmo código JavaScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`class B extends A`: B herda todos os métodos e propriedades de A e pode sobrescrever. `class B implements I`: TypeScript verifica que B tem todos os membros definidos em I, mas B deve implementá-los do zero — não herda nada. Você pode usar ambos: `class B extends A implements I, J` — herda de A e garante contratos I e J. `implements` é útil para verificar que uma classe satisfaz um protocolo sem acoplamento de herança."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "`readonly` em propriedades de classe é verificado em compile time ou runtime?",
+      "options": [
+        "Runtime — TypeScript adiciona verificações automáticas via Object.defineProperty",
+        "Compile time apenas — `readonly` é apagado pelo compilador; o JavaScript gerado não tem restrição de escrita",
+        "Ambos — TypeScript verifica em compile time e gera código de verificação em runtime",
+        "Depende do target do compilador (`es5`, `es6`, etc.)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`readonly` é puramente TypeScript — zero impacto em runtime. `class Point { readonly x: number }` compila para `class Point { }` com `this.x = value` no constructor e nada mais. Em JavaScript puro, você pode sobrescrever `p.x = 10` sem erro. A proteção é apenas no type checker. Para imutabilidade real em runtime, você precisaria de `Object.freeze()` ou `Object.defineProperty` com `writable: false`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Uma classe pode ser usada como tipo para anotar parâmetros de funções. O structural typing se aplica?",
+      "options": [
+        "Não — classes usam nominal typing; apenas instâncias da mesma classe são aceitas",
+        "Sim — TypeScript aceita qualquer objeto com a mesma estrutura, mesmo que não seja uma instância da classe",
+        "Apenas quando a classe implementa uma interface",
+        "Apenas para classes sem métodos privados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TypeScript usa structural typing mesmo para classes. `function f(logger: Logger)` aceita qualquer objeto com os mesmos métodos públicos de Logger — não precisa ser `new Logger()`. Isso permite duck typing: `const fakeLogger = { log(msg: string) {} }; f(fakeLogger)` funciona. A exceção parcial: classes com `private` ou `protected` criam 'brand' informal — dois objetos com privados incompatíveis não são considerados compatíveis mesmo com mesma estrutura pública."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que você não pode instanciar uma classe `abstract`?",
+      "options": [
+        "Porque abstract classes não têm constructor",
+        "Porque abstract classes podem ter métodos sem implementação — instanciar resultaria em um objeto incompleto que poderia lançar erros ao chamar métodos abstratos",
+        "Porque abstract é apenas uma convenção — TypeScript não verifica em runtime",
+        "Porque abstract classes compilam para interfaces em JavaScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`abstract class Shape { abstract area(): number }` — se você pudesse criar `new Shape()`, o objeto teria `area` como `undefined`. Chamar `shape.area()` resultaria em `TypeError: shape.area is not a function` em runtime. TypeScript previne isso em compile time: `new Shape()` é erro. O padrão correto é sempre instanciar as subclasses concretas que implementaram todos os métodos abstratos. Abstract classes são contratos para hierarquias de classes."
+    }
+  ]
+}

@@ -1,1 +1,210 @@
-# Conteúdo em breve
+# Interfaces & Type Aliases
+
+`interface` e `type` são as duas formas de nomear tipos em TypeScript. Na superfície parecem equivalentes — e para muitos casos são — mas têm diferenças cruciais de comportamento que determinam qual usar.
+
+## Sintaxe Comparada
+
+```typescript
+// Interface
+interface User {
+  id: number
+  name: string
+  email?: string  // opcional
+}
+
+// Type alias
+type User = {
+  id: number
+  name: string
+  email?: string
+}
+
+// Ambos aceitam métodos
+interface Logger {
+  log(message: string): void
+  warn(message: string): void
+}
+
+type Logger = {
+  log(message: string): void
+  warn(message: string): void
+}
+```
+
+Para objetos simples, são intercambiáveis. As diferenças aparecem nos casos avançados.
+
+## Declaration Merging — Apenas Interfaces
+
+Interfaces podem ser declaradas múltiplas vezes e o TypeScript as mescla:
+
+```typescript
+interface Window {
+  title: string
+}
+
+interface Window {
+  scrollY: number
+}
+
+// Window agora tem: title + scrollY
+const w: Window = { title: 'My App', scrollY: 0 }
+
+// Type aliases NÃO permitem isso
+type Config = { debug: boolean }
+type Config = { verbose: boolean }  // ERRO: Duplicate identifier 'Config'
+```
+
+Declaration merging é a base da **module augmentation** — como você adiciona tipos a bibliotecas de terceiros sem modificar seus arquivos.
+
+```typescript
+// Adicionando propriedade ao Express Request
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { id: string; role: string }
+    }
+  }
+}
+
+// Agora req.user está tipado em todo o projeto
+app.use((req, res) => {
+  req.user?.role  // ✓ TypeScript conhece esse campo
+})
+```
+
+## Extends — Herança de Tipos
+
+Ambos suportam extensão, com sintaxes diferentes:
+
+```typescript
+// Interface — extends natural, múltipla herança
+interface Animal {
+  name: string
+}
+
+interface Pet extends Animal {
+  owner: string
+}
+
+interface ServiceDog extends Pet {
+  badge: string
+  tasks: string[]
+}
+
+// Interface extendendo type alias — funciona
+type HasId = { id: number }
+
+interface Product extends HasId {
+  name: string
+  price: number
+}
+
+// Type alias — usa intersection
+type Animal = { name: string }
+type Pet = Animal & { owner: string }
+type ServiceDog = Pet & { badge: string; tasks: string[] }
+```
+
+A diferença sutil: `extends` em interfaces verifica compatibilidade e emite erros mais claros. Intersection com `&` é mais permissiva — propriedades conflitantes resultam em `never` sem aviso claro.
+
+```typescript
+interface A { x: string }
+interface B extends A { x: number }  // ERRO claro: 'number' não é 'string'
+
+type A = { x: string }
+type B = A & { x: number }  // B.x vira `never` silenciosamente
+```
+
+## Type Aliases: O Que Interfaces Não Podem Fazer
+
+Type aliases podem representar qualquer tipo, não apenas objetos:
+
+```typescript
+// Union types — apenas type
+type Status = 'active' | 'inactive' | 'pending'
+type ID = string | number
+type Nullable<T> = T | null
+
+// Tuple types
+type Pair<T, U> = [T, U]
+type RGB = [number, number, number]
+
+// Primitive renaming
+type UserId = string
+type Timestamp = number
+
+// Conditional types (veremos mais adiante)
+type NonNullable<T> = T extends null | undefined ? never : T
+
+// Mapped types
+type Readonly<T> = { readonly [K in keyof T]: T[K] }
+
+// Template literal types
+type EventName = `on${Capitalize<string>}`
+```
+
+Interfaces não podem representar unions, tuples, ou tipos computados — nesses casos, `type` é a única opção.
+
+## Implementação em Classes
+
+Apenas interfaces (e types de objeto) podem ser usados com `implements`:
+
+```typescript
+interface Serializable {
+  serialize(): string
+  deserialize(data: string): this
+}
+
+class Config implements Serializable {
+  constructor(private data: Record<string, unknown>) {}
+
+  serialize() {
+    return JSON.stringify(this.data)
+  }
+
+  deserialize(data: string) {
+    this.data = JSON.parse(data)
+    return this
+  }
+}
+
+// Type alias de objeto também funciona com implements
+type Printable = {
+  print(): void
+}
+
+class Report implements Printable {
+  print() { console.log('printing...') }
+}
+```
+
+## Quando Usar Cada Um
+
+**Use `interface` quando:**
+- Definir contratos de objetos ou classes
+- Precisar de declaration merging (augmentação de libs)
+- Modelar shapes de objetos em APIs públicas
+- A hierarquia de herança for relevante para o design
+
+**Use `type` quando:**
+- Criar union types ou tuple types
+- Usar conditional types, mapped types, template literals
+- Fazer aliases de tipos primitivos (`type ID = string`)
+- Compor tipos com intersection `&` de forma funcional
+
+```typescript
+// Padrão comum: type para dados, interface para contratos
+type ApiResponse<T> = {
+  data: T
+  status: number
+  error?: string
+}
+
+interface Repository<T> {
+  findById(id: string): Promise<T | null>
+  save(entity: T): Promise<T>
+  delete(id: string): Promise<void>
+}
+```
+
+> **Resumo:** `interface` e `type` cobrem a maioria dos casos — prefira `interface` para contratos de objetos e classes (declaration merging e `extends` são mais expressivos), e `type` para unions, tuples, tipos computados e aliases. A escolha mais importante: seja consistente no projeto.
