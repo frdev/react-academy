@@ -5,3 +5,6 @@ packages:
 overrides:
   "@rollup/pluginutils": 5.3.0
   electron-to-chromium: 1.5.363
+
+onlyBuiltDependencies:
+  - es5-ext
