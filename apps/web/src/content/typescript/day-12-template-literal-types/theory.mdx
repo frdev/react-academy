@@ -179,4 +179,4 @@ type C = 'a' | 'b' | 'c' | 'd' | 'e'
 type D = `${A}-${B}-${C}`  // 125 combinações — pode ser lento
 ```
 
-> **Resumo:** Template literal types criam novos string types via sintaxe de template. Distribuem automaticamente sobre unions — gerando o produto cartesiano. `Uppercase/Lowercase/Capitalize/Uncapitalize` manipulam capitalização. Combinados com mapped types (`as \`on${Capitalize<E>}\``), geram objetos com chaves derivadas de unions. Combinados com `infer` (Semana 3), permitem parsing de strings no nível de tipos.
+> **Resumo:** Template literal types criam novos string types via sintaxe de template. Distribuem automaticamente sobre unions — gerando o produto cartesiano. `Uppercase/Lowercase/Capitalize/Uncapitalize` manipulam capitalização. Combinados com mapped types (``as `on${Capitalize<E>}` ``), geram objetos com chaves derivadas de unions. Combinados com `infer` (Semana 3), permitem parsing de strings no nível de tipos.

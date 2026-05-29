@@ -15,7 +15,7 @@ type StripPrefix<S extends string, P extends string> =
 type Clean = StripPrefix<'onSubmit', 'on'>; // 'Submit'
 ```
 
-## Split<S, D> — Dividir String por Delimitador
+## `Split<S, D>` — Dividir String por Delimitador
 
 ```typescript
 type Split<S extends string, D extends string> =
@@ -35,7 +35,7 @@ type Single = Split<'hello', '.'>;
 
 A recursão constrói o tuple progressivamente: `[Head, ...Split<Tail, D>]`.
 
-## Join<T, D> — Inverso de Split
+## `Join<T, D>` — Inverso de Split
 
 ```typescript
 type Join<T extends string[], D extends string> =
