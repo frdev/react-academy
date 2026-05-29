@@ -1,1 +1,97 @@
-{"lessonId": "day-24", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-24",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `type UserId = number; type OrderId = number;` NÃO impede que `UserId` e `OrderId` sejam usados de forma intercambiável em TypeScript?",
+      "options": [
+        "TypeScript usa subtipagem estrutural: type aliases são apenas apelidos — `UserId` e `OrderId` são ambos resolvidos para `number`, que têm estrutura idêntica. Sem uma propriedade discriminante, os tipos são indistinguíveis para o compilador",
+        "TypeScript trata aliases de tipos primitivos como nominais — é necessário usar `interface` para criar distinção",
+        "É necessário usar `class` para criar tipos nominais em TypeScript",
+        "Branded types só funcionam com `interface`, não com `type`"
+      ],
+      "correctAnswer": 0,
+      "explanation": "TypeScript resolve type aliases ao seu tipo subjacente antes de verificar compatibilidade. `type UserId = number` é literalmente igual a `number` — não cria um tipo novo, apenas um nome. Tanto `UserId` quanto `OrderId` resolvem para `number`, que têm exatamente a mesma estrutura. TypeScript usa subtipagem estrutural (não nominal), então dois tipos com a mesma estrutura são sempre compatíveis, independentemente dos seus nomes. Para criar distinção, é necessário adicionar uma propriedade discriminante via intersecção: `T & { readonly __brand: B }`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Dado `type Brand<T, B extends string> = T & { readonly __brand: B }` e `type UserId = Brand<number, 'UserId'>`, o que acontece com `__brand` em runtime?",
+      "options": [
+        "`__brand` é uma propriedade real criada em todos os objetos do tipo `UserId` com o valor `'UserId'`",
+        "`__brand` é criada apenas quando o valor é criado via smart constructor, não quando se usa `as UserId`",
+        "A propriedade `__brand` não existe em runtime — ela é puramente um artefato do sistema de tipos do TypeScript, apagada na compilação. Um valor `UserId` em runtime é um `number` puro",
+        "TypeScript adiciona `__brand` como propriedade não-enumerável em runtime para verificações em tempo de execução"
+      ],
+      "correctAnswer": 2,
+      "explanation": "TypeScript é um sistema de tipos puramente estático — nenhuma informação de tipo existe em runtime. `Brand<number, 'UserId'>` é `number & { readonly __brand: 'UserId' }`, mas o `& { __brand: 'UserId' }` é uma restrição de tipo, não uma instrução de criar propriedade. Quando compilado para JavaScript, o resultado é um `number` puro. Isso é exatamente a vantagem: zero overhead em runtime. `console.log((42 as UserId).__brand)` retorna `undefined` — prova que a propriedade não existe. O compilador TypeScript usa a declaração de tipo para verificar assignability em tempo de compilação, mas não emite código para criar a propriedade."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que o padrão de smart constructors é importante ao usar branded types? Qual problema ele resolve?",
+      "options": [
+        "Smart constructors são obrigatórios — branded types não funcionam sem eles",
+        "Smart constructors são necessários apenas para tipos branded baseados em `string`, não em `number`",
+        "Smart constructors permitem que branded types funcionem em runtime, adicionando a propriedade `__brand`",
+        "Smart constructors centralizam o único ponto onde o cast inseguro (`as BrandedType`) ocorre, e combinam esse cast com validação. Sem esse padrão, desenvolvedores espalhariam `as UserId` pelo código, anulando as garantias de segurança"
+      ],
+      "correctAnswer": 3,
+      "explanation": "O cast `as UserId` é uma afirmação ao compilador: 'confie em mim, este valor é UserId'. Se usado livremente, qualquer `number` pode ser 'promovido' a `UserId` em qualquer lugar, eliminando as garantias. O padrão de smart constructor (`function toUserId(n: number): UserId { /* validação */; return n as UserId; }`) concentra o `as` em um único lugar — o único ponto de 'entrada' para o tipo branded. Fora desse constructor, o código só manipula `UserId` já validado. Assim, ao receber um `UserId`, você sabe que passou pela validação. É análogo ao encapsulamento em OOP: `private` num construtor garante invariantes no objeto criado."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre branded types (com `Brand<T, B>`) e phantom types?",
+      "options": [
+        "São termos sinônimos para a mesma técnica — não há diferença",
+        "Branded types usam intersecção com uma propriedade literal para distinguir tipos do mesmo primitivo. Phantom types usam um parâmetro de tipo genérico como 'fantasma' para codificar estado ou fase no tipo — o parâmetro não corresponde a nenhum campo em runtime. Phantom types modelam transições de estado; branded types modelam identidade de domínio",
+        "Branded types funcionam com primitivos; phantom types só funcionam com objetos",
+        "Phantom types requerem `declare const` com `unique symbol`; branded types não"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Branded types tipicamente criam distinção entre valores do mesmo primitivo: `UserId` vs `OrderId` (ambos `number`). Phantom types generalizam o conceito para codificar estado ou fases de um processo no tipo — por exemplo, `Email<Unverified>` vs `Email<Verified>`, onde o parâmetro `Unverified`/`Verified` não existe nos dados, apenas no tipo. Um `Email<Verified>` em runtime é idêntico a um `Email<Unverified>` (ambos são strings), mas o compilador distingue os dois e impede que um email não verificado seja passado para uma função que exige verificado. Phantom types são poderosos para modelar máquinas de estados, fluxos de dados (limpo/sanitizado) e hierarquias de permissão."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Considere: `type Brand<T, B extends string> = T & { readonly __brand: B }; type Trimmed = Brand<string, 'Trimmed'>; type NonEmpty = Brand<string, 'NonEmpty'>; type NormalizedTag = Trimmed & NonEmpty;`. Um valor do tipo `NormalizedTag` é atribuível a `Trimmed`?",
+      "options": [
+        "Sim — `NormalizedTag` é `Trimmed & NonEmpty`, que é subtipo de ambos `Trimmed` e `NonEmpty`. Pela subtipagem estrutural, um tipo com mais restrições é atribuível a um tipo com menos restrições",
+        "Não — `NormalizedTag` é um tipo diferente de `Trimmed`, portanto incompatível",
+        "Só se houver uma declaração explícita de compatibilidade entre os tipos",
+        "Depende se `NormalizedTag` foi criado via smart constructor ou via cast direto"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`NormalizedTag = Trimmed & NonEmpty` significa que o tipo satisfaz simultaneamente `Trimmed` E `NonEmpty`. Em subtipagem estrutural, `A & B` é subtipo de `A` e também subtipo de `B` — tem mais propriedades do que qualquer um dos dois individualmente. Então `NormalizedTag` (que tem `__brand: 'Trimmed'` E `__brand: 'NonEmpty'`) é atribuível a `Trimmed` (que precisa apenas de `__brand: 'Trimmed'`). Isso permite criar hierarquias de brands compostos: uma função que aceita `Trimmed` aceita `NormalizedTag` também, mas uma função que aceita `NormalizedTag` rejeita um `Trimmed` simples (que não tem o brand `NonEmpty`)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que usar `declare const __brand: unique symbol` em vez de uma string `'__brand'` como nome da propriedade do brand?",
+      "options": [
+        "Não há diferença prática — ambas as abordagens são igualmente seguras",
+        "`unique symbol` é necessário para que a propriedade de brand funcione em arrays e primitivos",
+        "`unique symbol` garante que a propriedade discriminante seja globalmente única e não pode colidir com propriedades reais do objeto ou de outros módulos. Dois módulos diferentes não podem criar acidentalmente o mesmo `unique symbol`, tornando o brand impossível de forjar sem acesso ao símbolo",
+        "A abordagem com `unique symbol` cria a propriedade em runtime, enquanto a string não"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`unique symbol` é um tipo literal de símbolo que só pode ser criado com `declare const s: unique symbol` ou `const s = Symbol()`. Dois `unique symbol` nunca são o mesmo, mesmo que tenham o mesmo nome. Com `__brand: string`, existe o risco teórico de um objeto real ter a propriedade `__brand` com o valor correto, 'forjando' o tipo. Com `unique symbol`, isso é impossível sem acesso ao símbolo em questão, que é privado ao módulo que o declara. Além disso, `unique symbol` como chave não aparece em iterações normais (`Object.keys`, `for...in`), mantendo o brand verdadeiramente invisível em runtime. A abordagem com string é suficiente para a maioria dos casos práticos, mas `unique symbol` é mais robusta."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Uma API REST retorna `{ userId: number }` via JSON. Como você deve lidar com esse `userId` em uma aplicação que usa `type UserId = Brand<number, 'UserId'>`?",
+      "options": [
+        "Declarar o tipo de retorno da API diretamente como `{ userId: UserId }` — TypeScript inferirá automaticamente que o número é um `UserId` válido",
+        "Branded types são incompatíveis com JSON — é preciso usar classes para serialização/desserialização",
+        "Usar `JSON.parse(json) as { userId: UserId }` é suficiente — o type assertion garante segurança",
+        "Parse o JSON normalmente (`userId: number`), depois passe pelo smart constructor na borda da aplicação: `const safeId = toUserId(parsed.userId)`. A partir daí, use `safeId` como `UserId` no domínio. Nunca declare tipos de API como branded — mantenha a conversão na borda"
+      ],
+      "correctAnswer": 3,
+      "explanation": "A 'borda' da aplicação (onde dados externos entram) é exatamente o ponto certo para converter primitivos em branded types. Declarar `{ userId: UserId }` no tipo da resposta da API é perigoso: você está afirmando ao TypeScript que qualquer número retornado pela API é um `UserId` válido, sem verificação. Um `JSON.parse(json) as { userId: UserId }` é ainda pior — é um cast cego. O padrão correto é: (1) tipar a resposta da API com primitivos (`{ userId: number }`), (2) no adapter/repository que processa a resposta, chamar o smart constructor (`toUserId(parsed.userId)`), que faz validação real, (3) retornar `UserId` para o domínio. Isso garante que somente valores que passaram pela validação chegam ao domínio como `UserId`."
+    }
+  ]
+}

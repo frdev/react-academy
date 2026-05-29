@@ -1,1 +1,459 @@
-# Conteúdo em breve
+# Assertion Functions & Guards Avançados
+
+Type guards e assertion functions são os mecanismos pelos quais o TypeScript estreita tipos em tempo de compilação com base em verificações feitas em tempo de execução. Neste dia exploramos a diferença precisa entre predicados de tipo (`value is T`) e assertion functions (`asserts value is T`), como garantir que o narrowing se propague por todos os branches, como compor guards complexos, e como usar `never` para verificar exhaustividade em tempo de compilação.
+
+## `asserts x is T` — Assertion Functions
+
+Uma **assertion function** é uma função que, quando retorna normalmente (sem lançar exceção), garante ao TypeScript que o argumento satisfaz uma determinada condição de tipo. A assinatura usa a palavra-chave `asserts`.
+
+```typescript
+function assertIsString(value: unknown): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new TypeError(`Expected string, got ${typeof value}`);
+  }
+}
+
+let input: unknown = getUserInput();
+
+assertIsString(input);
+// ✓ — após a chamada, TypeScript sabe que input é string
+console.log(input.toUpperCase());
+```
+
+A diferença crucial em relação a um type guard normal: a asserção **não retorna um booleano**. Ela retorna `void` e ou lança ou garante. O TypeScript usa o retorno normal como prova de que a condição é verdadeira.
+
+```typescript
+// ✗ ERRADO — assertion function não pode retornar boolean
+function assertIsStringErrado(value: unknown): asserts value is string {
+  return typeof value === 'string'; // Erro: A return statement cannot be used without a value
+}
+
+// ✓ CORRETO — lança ou retorna void
+function assertIsString(value: unknown): asserts value is string {
+  if (typeof value !== 'string') throw new Error('Not a string');
+}
+```
+
+### Forma sem predicado — `asserts condition`
+
+Você também pode fazer asserção sobre uma **condição booleana arbitrária**, sem vincular a um parâmetro específico:
+
+```typescript
+function assert(condition: boolean, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+function processAge(age: number | null) {
+  assert(age !== null, 'age must not be null');
+  // ✓ — TypeScript sabe que age é number aqui
+  console.log(age.toFixed(0));
+}
+```
+
+Isso é especialmente útil para validações de invariantes em classes e funções de inicialização.
+
+## Narrowing em Todos os Branches
+
+O TypeScript aplica CFA (Control Flow Analysis) a cada branch de execução de forma independente. É fundamental garantir que o guard atinja **todos os caminhos possíveis** — caso contrário, a variável permanece com o tipo original no ponto de uso.
+
+```typescript
+type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+
+function handleResult(result: Result<number>) {
+  if (result.ok) {
+    // ✓ — result: { ok: true; data: number }
+    console.log(result.data.toFixed(2));
+  } else {
+    // ✓ — result: { ok: false; error: string }
+    console.error(result.error.toUpperCase());
+  }
+  // Após o bloco: TypeScript volta ao tipo original Result<number>
+}
+```
+
+### O problema do narrowing "perdido"
+
+O TypeScript não propaga narrowing através de chamadas de função comuns — apenas através de assertion functions e predicados de tipo:
+
+```typescript
+function isString(v: unknown): v is string {
+  return typeof v === 'string';
+}
+
+let value: string | number = getValue();
+
+if (isString(value)) {
+  // value: string aqui
+}
+// value: string | number — voltou ao original após o bloco
+
+// ✓ — usar assertion function para narrowing "persistente"
+function assertString(v: unknown): asserts v is string {
+  if (typeof v !== 'string') throw new Error('Expected string');
+}
+
+assertString(value);
+// value: string — persiste até o fim do scope
+```
+
+### Early returns e narrowing progressivo
+
+O padrão de **early return** é a forma mais legível de estreitar tipos progressivamente sem aninhamento excessivo:
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string | null;
+  role: 'admin' | 'viewer';
+}
+
+function sendAdminEmail(user: User | null | undefined): void {
+  // Branch 1: user pode ser null/undefined
+  if (!user) {
+    console.warn('No user provided');
+    return;
+  }
+  // ✓ — user: User (null e undefined eliminados)
+
+  if (user.role !== 'admin') {
+    console.warn('User is not an admin');
+    return;
+  }
+  // ✓ — user.role: 'admin'
+
+  if (!user.email) {
+    console.warn('Admin has no email');
+    return;
+  }
+  // ✓ — user.email: string (null eliminado)
+
+  sendEmail(user.email, 'Admin notification');
+}
+```
+
+Cada `return` elimina uma possibilidade, e o tipo resultante fica mais estreito a cada passo.
+
+## Composição de Type Guards
+
+Type guards podem ser **compostos** para criar verificações reutilizáveis e combináveis. A composição permite construir validadores complexos a partir de peças simples.
+
+### Composição com funções auxiliares
+
+```typescript
+// Guards primitivos
+function isString(v: unknown): v is string {
+  return typeof v === 'string';
+}
+
+function isNumber(v: unknown): v is number {
+  return typeof v === 'number';
+}
+
+function isNonNull<T>(v: T | null | undefined): v is T {
+  return v !== null && v !== undefined;
+}
+
+// Composição: guard para objeto específico
+interface ApiResponse {
+  status: number;
+  body: string;
+}
+
+function isApiResponse(v: unknown): v is ApiResponse {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'status' in v &&
+    'body' in v &&
+    isNumber((v as ApiResponse).status) &&
+    isString((v as ApiResponse).body)
+  );
+}
+
+const raw: unknown = await fetch('/api').then(r => r.json());
+
+if (isApiResponse(raw)) {
+  // ✓ — raw: ApiResponse
+  console.log(raw.status, raw.body);
+}
+```
+
+### Composição com generics
+
+Guards genéricos tornam a composição ainda mais poderosa:
+
+```typescript
+// Guard que verifica se é array de T
+function isArrayOf<T>(
+  arr: unknown,
+  guard: (item: unknown) => item is T
+): arr is T[] {
+  return Array.isArray(arr) && arr.every(guard);
+}
+
+// Guard para Record com valores tipados
+function isRecordOf<V>(
+  obj: unknown,
+  valueGuard: (v: unknown) => v is V
+): obj is Record<string, V> {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    !Array.isArray(obj) &&
+    Object.values(obj).every(valueGuard)
+  );
+}
+
+const payload: unknown = JSON.parse(data);
+
+if (isArrayOf(payload, isApiResponse)) {
+  // ✓ — payload: ApiResponse[]
+  payload.forEach(r => console.log(r.status));
+}
+```
+
+### Composição com OR e AND
+
+```typescript
+// Combina dois guards com OR — resultado é union
+function isStringOrNumber(v: unknown): v is string | number {
+  return isString(v) || isNumber(v);
+}
+
+// Combinação AND — verifica múltiplas condições
+function isNonEmptyString(v: unknown): v is string {
+  return isString(v) && v.length > 0;
+}
+
+// Guard de exclusão (NOT)
+function isNotNull<T>(v: T | null): v is T {
+  return v !== null;
+}
+
+// Uso em arrays com filter tipado
+const values: (string | null)[] = ['a', null, 'b', null, 'c'];
+const strings: string[] = values.filter(isNotNull); // ✓ — tipo inferido como string[]
+```
+
+O padrão `array.filter(guard)` aproveita uma feature especial do TypeScript: quando o callback de `filter` é um type guard, o resultado do array tem o tipo narrowed.
+
+## Assertion Functions vs Type Guards — A Diferença Precisa
+
+Embora ambos sirvam para estreitar tipos, assertion functions e type guards têm semânticas fundamentalmente diferentes no sistema de tipos.
+
+| Aspecto | Type Guard (`x is T`) | Assertion Function (`asserts x is T`) |
+|---|---|---|
+| Retorno | `boolean` | `void` (nunca retorna em erro) |
+| Uso | Dentro de `if`/`while`/`?:` | Chamada direta, sem condicional |
+| Narrowing | Apenas no branch verdadeiro | A partir da linha de chamada em diante |
+| Exceção | Não lança — retorna `false` | Lança em caso de falha |
+| Semântica | "verifique e ramifique" | "garanta ou falhe" |
+
+```typescript
+// TYPE GUARD — use quando quer bifurcar o fluxo
+interface User { id: number; name: string; role: string }
+interface AdminUser extends User { role: 'admin'; adminLevel: number }
+
+function isAdmin(user: User): user is AdminUser {
+  return user.role === 'admin';
+}
+
+function greet(user: User) {
+  if (isAdmin(user)) {
+    // ✓ — user: AdminUser
+    console.log(`Welcome, Admin level ${user.adminLevel}`);
+  } else {
+    // ✓ — user: User (não AdminUser)
+    console.log(`Welcome, ${user.name}`);
+  }
+}
+
+// ASSERTION FUNCTION — use quando a condição é invariante obrigatória
+function assertAdmin(user: User): asserts user is AdminUser {
+  if (user.role !== 'admin') {
+    throw new Error(`User ${user.id} is not an admin`);
+  }
+}
+
+function deleteUser(actor: User, targetId: number) {
+  assertAdmin(actor); // lança se não for admin
+  // ✓ — actor: AdminUser daqui em diante
+  db.deleteUser(targetId, actor.adminLevel);
+}
+```
+
+### Quando usar cada um
+
+**Use type guard** quando:
+- O código deve funcionar para ambos os casos (admin e não-admin, string e número)
+- Você quer fazer bifurcação sem lançar exceção
+- O resultado falso tem comportamento válido no sistema
+
+**Use assertion function** quando:
+- A condição é um pré-requisito obrigatório — violação é bug ou erro fatal
+- Você quer narrowing que persiste no restante do escopo sem precisar de `if`
+- Está implementando validação de invariantes (em construtores, funções de setup, middleware)
+
+```typescript
+// Padrão em classes — assertion em método de invariante
+class OrderProcessor {
+  private order: Order | null = null;
+
+  load(id: string): void {
+    this.order = fetchOrder(id);
+  }
+
+  private assertOrderLoaded(): asserts this is this & { order: Order } {
+    if (!this.order) {
+      throw new Error('Order must be loaded before processing');
+    }
+  }
+
+  process(): void {
+    this.assertOrderLoaded();
+    // ✓ — this.order: Order
+    console.log(this.order.total);
+  }
+}
+```
+
+## Never Assertions — Exhaustiveness com `never`
+
+O tipo `never` representa um valor que **nunca pode existir**. Quando uma union é completamente coberta em um `switch`/`if-else`, o TypeScript infere que o restante é `never`. Usar isso intencionalmente para verificar exhaustividade é uma das técnicas mais poderosas de TypeScript avançado.
+
+### O padrão `assertNever`
+
+```typescript
+function assertNever(x: never): never {
+  throw new Error(`Unexpected value: ${JSON.stringify(x)}`);
+}
+```
+
+Esta função recebe `never` — o que significa que o TypeScript emitirá um erro de compilação se qualquer valor puder chegar a ela:
+
+```typescript
+type Shape =
+  | { kind: 'circle'; radius: number }
+  | { kind: 'square'; side: number }
+  | { kind: 'triangle'; base: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2;
+    case 'square':
+      return shape.side ** 2;
+    case 'triangle':
+      return (shape.base * shape.height) / 2;
+    default:
+      // ✓ — shape: never aqui, porque todos os casos foram cobertos
+      return assertNever(shape);
+  }
+}
+```
+
+Se um novo membro for adicionado à union sem atualizar o `switch`, o TypeScript emite erro em tempo de compilação:
+
+```typescript
+type Shape =
+  | { kind: 'circle'; radius: number }
+  | { kind: 'square'; side: number }
+  | { kind: 'triangle'; base: number; height: number }
+  | { kind: 'pentagon'; sides: number[] }; // ← novo membro adicionado
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':   return Math.PI * shape.radius ** 2;
+    case 'square':   return shape.side ** 2;
+    case 'triangle': return (shape.base * shape.height) / 2;
+    default:
+      // ✗ ERRO — shape: { kind: 'pentagon'; sides: number[] } não é never
+      return assertNever(shape);
+      // Argument of type '{ kind: "pentagon"; sides: number[]; }' is not assignable to 'never'
+  }
+}
+```
+
+### Exhaustiveness sem lançar exceção
+
+Em alguns contextos (rendering, redução de estado), você pode preferir retornar um valor ao invés de lançar. Atribua o valor restante a uma variável do tipo `never`:
+
+```typescript
+function renderShape(shape: Shape): string {
+  switch (shape.kind) {
+    case 'circle':   return `Circle r=${shape.radius}`;
+    case 'square':   return `Square s=${shape.side}`;
+    case 'triangle': return `Triangle b=${shape.base} h=${shape.height}`;
+    default: {
+      // TypeScript infere shape como never aqui se todos os cases estão cobertos
+      const _exhaustive: never = shape;
+      // ✓ — captura o valor para acionar erro de compilação se faltar um case
+      void _exhaustive;
+      return 'unknown';
+    }
+  }
+}
+```
+
+### Combinando assertion functions com `never`
+
+Assertion functions podem retornar `never` para indicar que **nunca retornam normalmente** — sempre lançam:
+
+```typescript
+// Retorno never = nunca retorna normalmente
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+// assertNever enriquecido com contexto
+function assertNeverReached(value: never, context?: string): never {
+  const msg = context
+    ? `[${context}] Unexpected value: ${JSON.stringify(value)}`
+    : `Unexpected value: ${JSON.stringify(value)}`;
+  throw new Error(msg);
+}
+
+// Uso em reducer de estado
+type Action =
+  | { type: 'INCREMENT'; amount: number }
+  | { type: 'DECREMENT'; amount: number }
+  | { type: 'RESET' };
+
+function reducer(state: number, action: Action): number {
+  switch (action.type) {
+    case 'INCREMENT': return state + action.amount;
+    case 'DECREMENT': return state - action.amount;
+    case 'RESET':     return 0;
+    default:          return assertNeverReached(action, 'reducer');
+    // ✓ — se cobrir todos, never chega aqui sem erro
+    // ✗ — se faltar um case, erro de compilação no assertNeverReached
+  }
+}
+```
+
+### Never em type guards compostos
+
+O `never` também aparece naturalmente quando você compõe guards que se excluem mutuamente:
+
+```typescript
+type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | Json[]
+  | { [key: string]: Json };
+
+function processJson(value: Json): string {
+  if (typeof value === 'string') return `str:${value}`;
+  if (typeof value === 'number') return `num:${value}`;
+  if (typeof value === 'boolean') return `bool:${value}`;
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return `arr[${value.length}]`;
+  // ✓ — value: { [key: string]: Json } — única possibilidade restante
+  return `obj{${Object.keys(value).join(',')}}`;
+}
+```
+
+**Assertion functions e type guards avançados são a cola entre o mundo dinâmico do JavaScript e o sistema de tipos estático do TypeScript. Type guards com `x is T` permitem bifurcar o fluxo de execução de forma segura; assertion functions com `asserts x is T` garantem invariantes e propagam narrowing para o restante do escopo sem bifurcação; a composição de guards constrói validadores reutilizáveis e combináveis; e o padrão `assertNever` com o tipo `never` torna o compilador seu aliado na detecção de casos esquecidos em unions extensas — transformando erros de runtime em erros de compilação.**

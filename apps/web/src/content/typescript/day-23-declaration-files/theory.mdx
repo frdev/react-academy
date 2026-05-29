@@ -1,1 +1,510 @@
-# Conteúdo em breve
+# Declaration Files
+
+Arquivos de declaração (`.d.ts`) são o contrato público do TypeScript: eles descrevem a forma de módulos JavaScript existentes, variáveis globais e APIs de terceiros — tudo sem emitir código executável. Dominar a escrita e a augmentação de arquivos `.d.ts` é essencial para trabalhar com bibliotecas sem tipagem, criar pacotes TypeScript, extender globals do navegador e integrar código legado de forma segura.
+
+## `.d.ts` Avançado — Além do Básico
+
+Um arquivo `.d.ts` contém apenas declarações de tipos e assinaturas — nunca implementações. O compilador o usa para verificação de tipos, mas o bundler nunca o inclui no bundle final.
+
+### Estrutura de um arquivo `.d.ts` completo
+
+```typescript
+// minha-lib.d.ts
+
+// Funções sobrecarregadas
+export function parse(input: string): string[];
+export function parse(input: string, options: ParseOptions): ParseResult;
+
+// Interfaces com index signatures
+export interface Cache<T> {
+  get(key: string): T | undefined;
+  set(key: string, value: T, ttl?: number): void;
+  delete(key: string): boolean;
+  [Symbol.iterator](): IterableIterator<[string, T]>;
+}
+
+// Classes com membros privados declarados
+export class EventEmitter<Events extends Record<string, unknown[]>> {
+  on<K extends keyof Events>(event: K, listener: (...args: Events[K]) => void): this;
+  off<K extends keyof Events>(event: K, listener: (...args: Events[K]) => void): this;
+  emit<K extends keyof Events>(event: K, ...args: Events[K]): boolean;
+  private listeners: Map<string, Function[]>; // declarado mas sem implementação
+}
+
+// Tipos auxiliares exportados
+export type ParseOptions = {
+  delimiter?: string;
+  trim?: boolean;
+  maxItems?: number;
+};
+
+export type ParseResult = {
+  items: string[];
+  errors: string[];
+  raw: string;
+};
+```
+
+### Declarações de módulo com exports default e named
+
+```typescript
+// utils.d.ts
+
+// Export padrão + named — padrão de libs como lodash
+declare function debounce<T extends (...args: unknown[]) => unknown>(
+  fn: T,
+  wait: number,
+  options?: { leading?: boolean; trailing?: boolean }
+): T & { cancel(): void; flush(): T };
+
+declare namespace debounce {
+  function memoize<T extends (...args: unknown[]) => unknown>(fn: T): T;
+  const VERSION: string;
+}
+
+export = debounce;       // ✓ — padrão CJS/UMD: export único
+// export default debounce; // ✗ — incompatível com export =
+```
+
+### Conditional types e template literals em `.d.ts`
+
+```typescript
+// types/api.d.ts
+
+// Inferência profunda via conditional types
+export type UnwrapPromise<T> = T extends Promise<infer U> ? UnwrapPromise<U> : T;
+
+export type ApiEndpoint<Path extends string> = {
+  path: Path;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+};
+
+// Template literal types para rotas
+export type RouteParams<Path extends string> =
+  Path extends `${string}:${infer Param}/${infer Rest}`
+    ? { [K in Param | keyof RouteParams<`/${Rest}`>]: string }
+    : Path extends `${string}:${infer Param}`
+      ? { [K in Param]: string }
+      : Record<string, never>;
+
+// Uso:
+type Params = RouteParams<'/users/:id/posts/:postId'>;
+// → { id: string; postId: string }
+```
+
+## `declare module` — Tipando Módulos Externos
+
+A sintaxe `declare module 'nome'` cria ou sobrescreve a tipagem de um módulo inteiro. É o mecanismo central para adicionar tipos a pacotes JavaScript sem DefinitelyTyped.
+
+### Tipando um pacote sem tipos
+
+```typescript
+// types/csv-parser.d.ts
+// (referenciado via typeRoots ou incluso em tsconfig.json > "include")
+
+declare module 'csv-parser' {
+  import { Transform } from 'stream';
+
+  interface CsvParserOptions {
+    separator?: string;
+    quote?: string;
+    escape?: string;
+    headers?: string[] | boolean;
+    skipLines?: number;
+    maxRowBytes?: number;
+    strict?: boolean;
+  }
+
+  interface Row {
+    [key: string]: string;
+  }
+
+  function csvParser(options?: CsvParserOptions): Transform & {
+    on(event: 'data', listener: (row: Row) => void): this;
+    on(event: 'headers', listener: (headers: string[]) => void): this;
+    on(event: 'end', listener: () => void): this;
+    on(event: 'error', listener: (err: Error) => void): this;
+    on(event: string, listener: (...args: unknown[]) => void): this;
+  };
+
+  export = csvParser;
+}
+```
+
+### Módulos com padrão wildcard
+
+```typescript
+// Tipar qualquer import de arquivo .svg
+declare module '*.svg' {
+  const content: string; // conteúdo raw do SVG como string
+  export default content;
+}
+
+// Tipar imports de .svg como componentes React
+declare module '*.svg?react' {
+  import { FC, SVGProps } from 'react';
+  const ReactComponent: FC<SVGProps<SVGSVGElement>>;
+  export default ReactComponent;
+}
+
+// .json com forma conhecida
+declare module '*/config.json' {
+  const config: {
+    apiUrl: string;
+    version: string;
+    features: Record<string, boolean>;
+  };
+  export default config;
+}
+```
+
+### `declare module` vs módulo real
+
+```typescript
+// ✗ ERRADO — arquivo .ts com implementação vazia cria módulo real
+// empty-module.ts
+export {};
+
+// ✓ CORRETO — arquivo .d.ts declara tipos sem implementação
+// types/my-lib.d.ts
+declare module 'my-lib' {
+  export function init(config: Config): void;
+  export interface Config {
+    baseUrl: string;
+    timeout?: number;
+  }
+}
+
+// Agora 'my-lib' tem tipos sem precisar de @types/my-lib
+import { init } from 'my-lib'; // ✓
+```
+
+## `declare global` — Aumentando o Escopo Global
+
+`declare global` permite adicionar declarações ao escopo global dentro de um módulo. É necessário quando o arquivo tem imports/exports (ou seja, já é um módulo) mas você quer extender globals.
+
+### Extendendo `Window` e `globalThis`
+
+```typescript
+// types/globals.d.ts
+
+// Se o arquivo não tiver imports/exports, a declaração é automaticamente global:
+interface Window {
+  __APP_VERSION__: string;
+  __FEATURE_FLAGS__: Record<string, boolean>;
+  gtag?: (...args: unknown[]) => void;
+}
+
+// Se o arquivo TEM imports/exports, use declare global:
+import type { User } from './models';
+
+declare global {
+  interface Window {
+    __currentUser__: User | null;
+    __analytics__: {
+      track(event: string, props?: Record<string, unknown>): void;
+    };
+  }
+
+  // Variável global injetada pelo bundler
+  const __DEV__: boolean;
+  const __VERSION__: string;
+
+  // Extender globalThis (Node.js e browsers modernos)
+  var requestIdleCallback: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions
+  ) => number;
+}
+
+// ✓ — agora funciona sem erro de tipo:
+window.__APP_VERSION__; // string
+window.__currentUser__; // User | null
+__DEV__;                // boolean
+```
+
+### Extendendo tipos built-in
+
+```typescript
+// types/array-extensions.d.ts
+export {}; // torna o arquivo um módulo
+
+declare global {
+  interface Array<T> {
+    // Adicionar método customizado ao prototype (use com cuidado!)
+    groupBy<K extends string>(
+      keyFn: (item: T) => K
+    ): Record<K, T[]>;
+  }
+
+  interface String {
+    toKebabCase(): string;
+  }
+}
+
+// Implementação separada (em .ts, não .d.ts):
+// Array.prototype.groupBy = function(keyFn) { ... }
+// String.prototype.toKebabCase = function() { ... }
+```
+
+### Namespace global para variáveis de ambiente
+
+```typescript
+// types/env.d.ts
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      NODE_ENV: 'development' | 'production' | 'test';
+      DATABASE_URL: string;
+      API_KEY: string;
+      PORT?: string;
+      // Variáveis opcionais marcadas com ?
+      REDIS_URL?: string;
+      SENTRY_DSN?: string;
+    }
+  }
+}
+
+export {};
+
+// Agora process.env tem autocompletion e verificação de tipo:
+const env = process.env.NODE_ENV; // 'development' | 'production' | 'test'
+const db = process.env.DATABASE_URL; // string (não string | undefined)
+```
+
+## Augmentação de Libs de Terceiros — Module Augmentation
+
+Module augmentation permite extender módulos existentes sem fork ou monkey-patch. O TypeScript mescla a declaração com a original em tempo de compilação.
+
+### Augmentando Express
+
+```typescript
+// types/express/index.d.ts
+
+import 'express';
+
+declare module 'express' {
+  interface Request {
+    user?: {
+      id: string;
+      email: string;
+      roles: string[];
+    };
+    requestId: string;
+    startTime: number;
+  }
+
+  interface Response {
+    sendSuccess<T>(data: T, statusCode?: number): void;
+    sendError(message: string, statusCode?: number): void;
+  }
+}
+
+// middleware.ts — agora sem type assertion:
+import { Request, Response, NextFunction } from 'express';
+
+export function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  req.user = { id: '123', email: 'a@b.com', roles: ['admin'] }; // ✓
+  req.requestId = crypto.randomUUID(); // ✓
+  next();
+}
+```
+
+### Augmentando Vue / React — adicionando propriedades a instâncias
+
+```typescript
+// types/vue-augment.d.ts
+import 'vue';
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $formatDate: (date: Date, locale?: string) => string;
+    $auth: {
+      isLoggedIn: boolean;
+      logout(): Promise<void>;
+    };
+    $config: {
+      apiUrl: string;
+      version: string;
+    };
+  }
+}
+
+// Em qualquer componente Vue:
+// this.$formatDate(new Date()) // ✓ com tipo correto
+// this.$auth.logout()          // ✓
+```
+
+### Augmentando bibliotecas de estado — Zustand, Redux
+
+```typescript
+// Augmentar o módulo zustand para adicionar middlewares tipados
+import 'zustand';
+
+declare module 'zustand' {
+  interface StoreMutators<S, A> {
+    'my-middleware': WithMyMiddleware<S>;
+  }
+}
+
+type WithMyMiddleware<S> = S & {
+  __timestamp: number;
+  __version: string;
+};
+```
+
+### Cuidados com augmentation
+
+```typescript
+// ✗ ERRADO — tentar redefinir algo existente (não funciona)
+declare module 'lodash' {
+  // Não é possível remover ou substituir exports existentes
+  // Só é possível ADICIONAR
+  function map(): never; // Isso cria conflito, não substitui
+}
+
+// ✓ CORRETO — apenas adicionando ao módulo
+declare module 'lodash' {
+  // Adicionar overload que não existe ainda
+  function chunk<T>(array: T[], size: number, fillValue?: T): T[][];
+}
+```
+
+## Ambient Declarations — Declarando sem Implementação
+
+Declarações `ambient` são aquelas que descrevem entidades cujas implementações existem em outro lugar — seja em JavaScript puro, em uma lib C nativa, ou injetada pelo ambiente de execução.
+
+### `declare var`, `declare let`, `declare const`
+
+```typescript
+// Variáveis injetadas pelo bundler (webpack DefinePlugin, Vite define, etc.)
+declare const __APP_NAME__: string;
+declare const __BUILD_TIME__: number;
+declare const __COMMIT_HASH__: string;
+
+// ✓ — usável sem erro, TypeScript acredita que existem em runtime
+console.log(`App: ${__APP_NAME__} @ ${__COMMIT_HASH__}`);
+
+// ✗ ERRO — sem declare, TypeScript não sabe o que são:
+// console.log(__APP_NAME__); // Cannot find name '__APP_NAME__'
+```
+
+### `declare function`
+
+```typescript
+// Funções globais de scripts externos (ex: Google Maps, Stripe.js)
+declare function grecaptcha(action: string): Promise<string>;
+
+declare function Stripe(publishableKey: string): StripeInstance;
+
+interface StripeInstance {
+  elements(): StripeElements;
+  confirmPayment(options: PaymentOptions): Promise<PaymentResult>;
+}
+
+// Agora usável sem import:
+const stripe = Stripe(process.env.STRIPE_PUBLIC_KEY!);
+```
+
+### `declare class`
+
+```typescript
+// Classe disponível em runtime mas sem módulo TypeScript
+declare class WebAssemblyModule {
+  constructor(buffer: ArrayBuffer);
+  call(funcName: string, ...args: number[]): number;
+  readonly memory: WebAssembly.Memory;
+}
+
+// ✓ — TypeScript aceita, mesmo sem implementação .ts
+const mod = new WebAssemblyModule(buffer);
+const result = mod.call('add', 1, 2);
+```
+
+### `declare namespace` — Agrupando declarações ambient
+
+```typescript
+// Namespace para biblioteca global (script tag, sem módulo)
+declare namespace MyGlobalLib {
+  interface Config {
+    debug: boolean;
+    endpoint: string;
+    retries: number;
+  }
+
+  function initialize(config: Config): void;
+  function destroy(): void;
+  function getVersion(): string;
+
+  namespace Utils {
+    function formatDate(date: Date): string;
+    function parseUrl(url: string): URL;
+  }
+}
+
+// Uso (variável global injetada por script):
+MyGlobalLib.initialize({ debug: true, endpoint: '/api', retries: 3 }); // ✓
+MyGlobalLib.Utils.formatDate(new Date()); // ✓
+```
+
+### `declare enum` — Enums ambient
+
+```typescript
+// Enum definido em arquivo JS externo ou em outro bundle
+declare const enum Direction {
+  Up = 'UP',
+  Down = 'DOWN',
+  Left = 'LEFT',
+  Right = 'RIGHT',
+}
+
+// ✓ — TypeScript substitui pelo valor literal em compile time (const enum)
+const dir = Direction.Up; // emite: const dir = 'UP'
+
+// declare enum (não const) — preserva referência ao runtime object
+declare enum Status {
+  Active,
+  Inactive,
+  Pending,
+}
+```
+
+### Tripleshot reference directives
+
+```typescript
+/// <reference types="vite/client" />
+/// <reference types="@types/node" />
+/// <reference lib="dom" />
+/// <reference path="./custom-types.d.ts" />
+
+// <reference types> — inclui @types/pacote ou tipos de pacote
+// <reference lib> — inclui lib built-in do TypeScript (dom, es2022, etc.)
+// <reference path> — inclui arquivo .d.ts relativo ao arquivo atual
+```
+
+### Configurando `tsconfig.json` para `.d.ts` customizados
+
+```jsonc
+// tsconfig.json
+{
+  "compilerOptions": {
+    // Diretórios onde TypeScript procura @types automático
+    "typeRoots": ["./node_modules/@types", "./types"],
+
+    // Pacotes @types específicos (desabilita automático quando definido)
+    "types": ["node", "jest", "vite/client"],
+
+    // Incluir arquivos .d.ts customizados diretamente
+    "paths": {
+      "*": ["./types/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "types/**/*.d.ts"  // ← garante que TypeScript lê seus .d.ts
+  ]
+}
+```
+
+**Declaration files são a cola entre o mundo JavaScript e o sistema de tipos do TypeScript: arquivos `.d.ts` avançados descrevem APIs complexas com precisão cirúrgica; `declare module` tipa qualquer pacote JavaScript sem tocar na implementação; `declare global` expande o escopo global de forma controlada; module augmentation estende bibliotecas de terceiros sem fork; e ambient declarations tornam variáveis injetadas em runtime cidadãs de primeira classe no sistema de tipos. Juntos, esses mecanismos permitem que TypeScript opere com confiança total mesmo em codebases mistas, legados e integradas com bibliotecas JavaScript puras.**

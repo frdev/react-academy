@@ -1,1 +1,97 @@
-{"lessonId": "day-28", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-28",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a forma correta de criar um `ts.Program` reutilizando as configurações de um `tsconfig.json` existente em vez de passar opções manualmente?",
+      "options": [
+        "Usar `ts.readConfigFile` para ler o arquivo, depois `ts.parseJsonConfigFileContent` para resolver `extends`, paths e `include`/`exclude`, e então passar `parsed.fileNames` e `parsed.options` para `ts.createProgram`",
+        "Usar `ts.createProgram({ rootNames: [], options: require('./tsconfig.json') })` diretamente — o TypeScript sabe interpretar o JSON",
+        "Usar `ts.loadTsConfig(configPath)` — função utilitária dedicada para isso",
+        "Não é possível reutilizar um `tsconfig.json` via Compiler API — as opções devem ser declaradas em código"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`ts.readConfigFile` lê o arquivo JSON e reporta erros de parsing. `ts.parseJsonConfigFileContent` é a etapa crítica seguinte: ela resolve `extends` (herança de tsconfigs), expande globs de `include`/`exclude`, resolve `paths` e devolve `{ fileNames, options, errors }`. Apenas com esses dois passos você obtém exatamente o mesmo estado que o `tsc` usaria. Passar `require('./tsconfig.json')` diretamente ignora toda a lógica de resolução de herança e globs — é um erro comum que leva a comportamentos diferentes do `tsc`. Não existe `ts.loadTsConfig`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `ts.forEachChild` e `ts.visitEachChild` na Compiler API?",
+      "options": [
+        "São equivalentes — ambas visitam os filhos de um nó; `visitEachChild` é apenas um alias mais moderno",
+        "`ts.forEachChild` visita todos os descendentes recursivamente; `ts.visitEachChild` visita apenas filhos diretos",
+        "`ts.forEachChild` é para leitura: chama um callback em cada filho, retornando o primeiro resultado não-undefined. `ts.visitEachChild` é para transformação: usa um `Visitor` dentro de um `TransformationContext` e retorna uma cópia do nó com os filhos substituídos pelos retornos do visitor",
+        "`ts.visitEachChild` só funciona dentro de `ts.transform`; fora dele lança uma exceção em runtime"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`ts.forEachChild(node, callback)` itera pelos filhos diretos e retorna o primeiro valor não-undefined retornado pelo callback (útil para buscas). Para recursão completa você chama `ts.forEachChild` dentro de si mesmo manualmente. `ts.visitEachChild(node, visitor, context)` é a API de transformação: ela chama o `visitor` para cada filho e reconstrói o nó pai com os nós retornados — se o visitor retornar o mesmo nó, o pai original é preservado (sem alocação). É o mecanismo correto para codemods porque mantém a identidade dos nós não alterados e respeita o sistema de transformação imutável do TypeScript."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Ao criar um diagnóstico customizado com a Compiler API, qual faixa de `code` é recomendada para evitar colisão com os códigos nativos do TypeScript?",
+      "options": [
+        "Qualquer número negativo, pois o TypeScript usa apenas números positivos",
+        "Códigos abaixo de 1000, que são reservados para ferramentas de terceiros pela especificação",
+        "Não importa o código — o campo `source` é suficiente para diferenciar diagnósticos customizados",
+        "Códigos acima de 9000, pois os códigos nativos do TypeScript ficam na faixa 1000–8999"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Os códigos de diagnóstico nativos do TypeScript estão na faixa de 1000 a aproximadamente 8999. Usar um código acima de 9000 garante que não haverá colisão com nenhum código nativo atual ou futuro próximo. O campo `source` (string opcional no `ts.Diagnostic`) é complementar: identifica a ferramenta que emitiu o diagnóstico (ex: `'eslint'`, `'minha-ferramenta'`), mas não substitui um código único — algumas integrações (editors, CI) filtram ou agrupam diagnósticos pelo código numérico. A combinação de `code > 9000` e `source` definido é a prática recomendada pela comunidade TypeScript."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Dentro de um transformer da Compiler API, por que se usa `context.factory.createIdentifier('x')` em vez de modificar diretamente a propriedade `text` de um `ts.Identifier` existente?",
+      "options": [
+        "É apenas uma convenção de estilo — modificar diretamente também funciona",
+        "Os nós da AST do TypeScript são imutáveis. O `factory` cria novos nós sem mutar os existentes, o que preserva o nó original para outras ferramentas e permite que o compilador reutilize partes inalteradas da árvore de forma segura",
+        "Modificar `text` diretamente funciona, mas não atualiza os offsets `pos`/`end` — o `factory` atualiza automaticamente",
+        "Nós `ts.Identifier` são `sealed` em JS — tentar setar `text` lança `TypeError: Cannot assign to read only property`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A AST do TypeScript é projetada como estrutura imutável (persistent data structure). Mutar um nó diretamente quebraria quaisquer outras referências a ele — outros transformers, o checker, ferramentas de análise. O sistema de transformação do TypeScript opera na premissa de que se um transformer retornar o mesmo nó de entrada (identidade de referência), aquele sub-nó não precisa ser re-processado — otimização crítica para grandes codebases. `context.factory` (ou `ts.factory`) cria nós sintéticos novos. Os campos `pos` e `end` dos nós sintéticos são `-1`, indicando que foram criados programaticamente e não mapeiam para uma posição no source original."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `checker.getTypeAtLocation(node)` e `checker.getDeclaredTypeOfSymbol(symbol)` na Compiler API?",
+      "options": [
+        "`getTypeAtLocation` retorna o tipo inferido/contextual de uma expressão naquele ponto específico do código (ex: após narrowing). `getDeclaredTypeOfSymbol` retorna o tipo na declaração do símbolo, sem considerar narrowing ou contexto de uso",
+        "São equivalentes — ambas retornam o tipo de um nó; a segunda é apenas uma API mais antiga",
+        "`getDeclaredTypeOfSymbol` inclui os tipos de todos os overloads de uma função; `getTypeAtLocation` retorna apenas o tipo da assinatura mais específica",
+        "`getTypeAtLocation` só funciona com expressões; `getDeclaredTypeOfSymbol` só funciona com declarações de tipo (interfaces, type aliases)"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`checker.getTypeAtLocation(node)` resolve o tipo de uma expressão *naquele ponto*, levando em conta o contexto: narrowing por type guards, tipo contextual esperado, tipo do fluxo de controle. Se você chamar em uma variável `x: string | null` após um `if (x !== null)`, obterá `string`. `checker.getDeclaredTypeOfSymbol(symbol)` retorna o tipo como declarado no ponto de declaração — para a mesma variável, retornaria `string | null`. Use `getTypeAtLocation` para saber o tipo de uma expressão em uso; use `getDeclaredTypeOfSymbol` para inspecionar o contrato público de um símbolo (interface, classe, variável declarada). A distinção é fundamental para ferramentas que precisam reportar o tipo 'real' vs o tipo 'contextual'."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que é necessário passar `true` para o parâmetro `setParentNodes` ao chamar `ts.createSourceFile` diretamente (sem `ts.createProgram`) ao escrever um codemod?",
+      "options": [
+        "Não é necessário — `setParentNodes` só afeta a performance e pode ser omitido com segurança",
+        "`setParentNodes` é necessário apenas para o type checker — sem ele, `checker.getTypeAtLocation` falha silenciosamente",
+        "Sem `setParentNodes: true`, cada nó não terá sua propriedade `parent` populada. Métodos como `node.getStart()`, `node.getText()` e `node.getWidth()` dependem de poder navegar para o `SourceFile` pai para calcular posições — sem `parent`, eles lançam exceções ou retornam valores incorretos",
+        "`setParentNodes` ativa o lazy parsing completo da AST — sem ele, a AST é parcial e muitos nós ficam como `undefined`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Quando você usa `ts.createProgram`, o compilador popula automaticamente os links `parent` de cada nó durante o processamento. Quando você usa `ts.createSourceFile` diretamente (parsing isolado, comum em codemods puramente sintáticos), os links `parent` só são populados se você passar `true` como quarto argumento. `node.getStart(sourceFile)` precisa do `sourceFile` explicitamente ou navegar pelo `parent` para encontrá-lo. `node.getText()` sem `sourceFile` usa `node.parent` recursivamente até chegar ao `SourceFile`. Ferramentas como `ts-morph` populam `parent` automaticamente para evitar esse problema. É um detalhe fácil de esquecer que causa erros crípticos em runtime."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a forma correta de serializar um nó AST transformado de volta para texto usando a Compiler API?",
+      "options": [
+        "Chamar `node.getText()` após a transformação — o método retorna o texto atualizado automaticamente",
+        "Chamar `program.emit()` após a transformação — o resultado é gravado automaticamente nos arquivos de saída",
+        "Usar `ts.transpileModule(sourceFile.text, options)` — ele re-parseia e re-emite o texto transformado",
+        "Usar `ts.createPrinter()` para obter um `Printer`, depois chamar `printer.printFile(transformedSourceFile)` para um arquivo completo ou `printer.printNode(ts.EmitHint.Unspecified, node, sourceFile)` para um nó individual"
+      ],
+      "correctAnswer": 3,
+      "explanation": "`node.getText()` retorna o texto do source *original* mapeado pelas posições `pos`/`end` do nó — nós sintéticos criados por `factory` têm `pos = -1` e `getText()` lança exceção. `ts.createPrinter()` é a API correta: ela serializa a AST para string percorrendo os nós e emitindo texto para cada `SyntaxKind`. `printer.printFile` é para `SourceFile` completo; `printer.printNode` aceita qualquer nó e requer o `SourceFile` de referência para resolver comentários e formatação. `ts.transpileModule` re-parseia do zero — útil para compilar TypeScript para JS, não para aplicar codemods. `program.emit()` grava em disco usando os `outDir`/`outFile` do tsconfig, não para obter texto em memória."
+    }
+  ]
+}

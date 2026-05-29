@@ -1,1 +1,97 @@
-{"lessonId": "day-30", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-30",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "No método `select<K extends keyof S>(...columns: K[]): QueryBuilder<S, K>`, qual é o papel do parâmetro de tipo `K` em relação ao tipo de retorno?",
+      "options": [
+        "`K` é inferido dos argumentos passados para `select` e propagado como `TSelected` no tipo de retorno, fazendo com que o TypeScript rastreie exatamente quais colunas foram escolhidas ao longo de toda a cadeia de métodos",
+        "`K` é apenas um constraint de validação — o retorno sempre tem tipo `QueryBuilder<S, keyof S>`",
+        "`K` é fixado em tempo de compilação como `keyof S` completo e não pode ser restrito por argumentos",
+        "`K` serve apenas para validar os argumentos — o tipo de retorno usa `string[]` internamente"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Este é o coração do builder pattern tipado: `K` é inferido pelo TypeScript a partir dos valores literais passados como argumentos. Se você escreve `.select('id', 'name')`, o TypeScript infere `K = 'id' | 'name'` e o retorno é `QueryBuilder<S, 'id' | 'name'>`. Esse tipo acumulado é carregado até o `.execute()`, que retorna `Promise<Array<SelectResult<S, 'id' | 'name'>>>`. É o mesmo mecanismo que `as const` usa para preservar literais — a inferência de tipo captura o valor mais específico possível quando existe um constraint suficientemente estreito."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O tipo `Operators<T>` é definido como uma série de condicionais que mapeiam `number`, `string`, `boolean` e `Date` para conjuntos diferentes de operadores. Por que esse tipo é dito \"distributivo\"?",
+      "options": [
+        "Não é distributivo — conditional types só distribuem quando `T` é `any`",
+        "Porque o tipo distribui os operadores entre os parâmetros da função de forma automática",
+        "Porque quando `T` é uma union como `string | number`, o TypeScript aplica o conditional type a cada membro separadamente e une os resultados: `Operators<string | number>` = `Operators<string> | Operators<number>` = `'=' | '!=' | 'LIKE' | 'IN' | '>' | '<' | '>=' | '<='`",
+        "Porque o TypeScript executa o conditional type em todos os tipos primitivos do sistema por padrão"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Conditional types distribuem sobre unions quando o tipo verificado é um parâmetro de tipo nu (sem wrappers). `T extends number ? ... : ...` com `T = string | number` se transforma em `(string extends number ? ... : ...) | (number extends number ? ... : ...)`. No contexto do query builder, isso é desejado quando uma coluna pode ter tipo ambíguo, mas mais importante: garante que para cada tipo concreto de coluna, o conjunto de operadores retornado seja exatamente o correto. Para desabilitar a distribuição, você envolveria T em brackets: `[T] extends [number] ? ... : ...`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "No tipo `PrefixedSchema<Prefix, S>`, a chave mapeada usa a construção `` [K in keyof S as `${Prefix}.${string & K}`] ``. O que o `& string` faz neste contexto?",
+      "options": [
+        "Converte o tipo da coluna para string, perdendo a informação do tipo original",
+        "É uma sintaxe obrigatória do TypeScript quando se usa `as` em mapped types — sem ela o compilador emite um erro diferente",
+        "Garante que o prefixo seja sempre uma string em runtime",
+        "`keyof S` pode incluir `symbol` e `number` além de `string`. Template literal types só aceitam `string`. A interseção `string & K` filtra apenas as chaves que são strings, descartando symbols e number keys, tornando o template literal válido"
+      ],
+      "correctAnswer": 3,
+      "explanation": "`keyof S` tem tipo `string | number | symbol` no caso mais geral. Template literal types como `` `${Prefix}.${K}` `` exigem que `K` seja `string | number | bigint | boolean | null | undefined` — não `symbol`. A interseção `string & K` é uma forma de dizer 'apenas a parte string de K'. Se `S` for um objeto com symbol keys, essas chaves serão silenciosamente removidas do schema prefixado — comportamento desejado para SQL, que não conhece symbols. Em schemas criados com `as const`, todas as chaves são strings, então `& string` é apenas uma proteção de tipos defensiva."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O tipo `InferResult<Q>` é definido como `Q extends QueryBuilder<infer S, infer K> ? Array<SelectResult<S, K>> : never`. O que acontece se `Q` for passado como um tipo concreto como `QueryBuilder<typeof usersSchema, 'id' | 'email'>`?",
+      "options": [
+        "O conditional type falha — `infer` só funciona com tipos genéricos abstratos, não com tipos concretos",
+        "O TypeScript faz pattern matching: extrai `S = typeof usersSchema` e `K = 'id' | 'email'` via `infer`, e retorna `Array<SelectResult<typeof usersSchema, 'id' | 'email'>>` que resolve para `Array<{ id: number; email: string }>`",
+        "O TypeScript retorna `never` porque o tipo concreto não tem parâmetros de tipo livres para inferir",
+        "`infer` neste contexto apenas verifica se `Q` é um `QueryBuilder` — não extrai os parâmetros"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`infer` dentro de conditional types funciona como destruturação de tipos: `Q extends QueryBuilder<infer S, infer K>` diz ao TypeScript 'se Q é compatível com a forma `QueryBuilder<?, ?>`, capture os argumentos de tipo nas variáveis S e K'. Com `Q = QueryBuilder<typeof usersSchema, 'id' | 'email'>`, o matching tem sucesso e `S` recebe `typeof usersSchema`, `K` recebe `'id' | 'email'`. Esse padrão é extremamente útil para criar utilitários como `ReturnType<F>` (que usa `infer R` em `F extends (...args: any[]) => infer R`) — permite introspectar tipos sem acesso ao código fonte."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "No tipo `FindByMethod<S>`, a construção `` [K in keyof S & string as `findBy${Capitalize<K>}`] `` faz remapeamento de chaves. Qual é o resultado para `K = 'name'`?",
+      "options": [
+        "A chave se torna `'findByName'` — `Capitalize<'name'>` produz `'Name'` e o template literal produz `'findByName'`",
+        "A chave permanece `'name'` — o `as` não altera o nome, apenas o tipo do valor",
+        "A chave se torna `'findby_name'` — Capitalize converte camelCase para snake_case",
+        "O TypeScript não suporta template literals em remapeamento de chaves — isso causaria erro de compilação"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`Capitalize<'name'>` é um tipo utilitário intrínseco do TypeScript que produz `'Name'` (primeira letra maiúscula). O template literal `` `findBy${Capitalize<K>}` `` então produz `'findByName'`. Esse padrão — usando `as` em mapped types para transformar as chaves — foi introduzido no TypeScript 4.1 e permite gerar nomes de métodos, getters/setters, propriedades prefixadas ou qualquer transformação de string a partir de um schema de tipos. É como `Object.fromEntries` para tipos: você itera sobre as chaves e as transforma durante o mapeamento."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O tipo `ResolveExtended<T>` usa `T extends `nullable:${infer Base extends ColumnType}`` para extrair o tipo base de uma coluna nullable. Por que o `extends ColumnType` dentro do `infer` é importante?",
+      "options": [
+        "Não é importante — `infer Base` sem constraint funciona igual, apenas com nome diferente",
+        "Serve apenas para documentação — o TypeScript ignora constraints em `infer` durante a compilação",
+        "O `extends ColumnType` em `infer Base extends ColumnType` é um constraint de infer: garante que `Base` seja apenas um dos valores válidos de `ColumnType`. Se a string for `'nullable:unknowntype'`, o constraint falha e o conditional type vai para o ramo else, prevenindo tipos inválidos",
+        "Força a distribuição do conditional type sobre todas as variantes de `ColumnType` automaticamente"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Constraints em `infer` (sintaxe `infer X extends Constraint`) foram adicionados no TypeScript 4.7. Eles fazem duas coisas: primeiro, funcionam como um filtro — se o valor inferido não satisfaz o constraint, o matching falha e o ramo `else` é executado. Segundo, tipam a variável `Base` como `ColumnType` dentro do ramo `then`, o que permite passar `Base` diretamente para `Resolve<Base>` sem cast. Sem o constraint, `Base` seria `string` (inferência mais geral), e você precisaria de outro conditional type ou cast para usar como argumento de `Resolve`. O constraint torna o código mais seguro e mais conciso ao mesmo tempo."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que o método `where()` retorna `this` em vez de `QueryBuilder<S, TSelected>` explicitamente, e qual a diferença prática entre as duas assinaturas?",
+      "options": [
+        "Não há diferença — `this` e `QueryBuilder<S, TSelected>` são sinônimos em TypeScript",
+        "A diferença é apenas de performance em runtime — `this` é compilado para código mais eficiente",
+        "`this` faz o método retornar o tipo mais amplo possível, enquanto `QueryBuilder<S, TSelected>` seria mais restritivo",
+        "Retornar `this` preserva o tipo concreto da subclasse quando `QueryBuilder` é estendido. Se uma subclasse `TypedQueryBuilder extends QueryBuilder` chamar `.where()`, o retorno é `TypedQueryBuilder`, não `QueryBuilder` — mantendo os métodos extras disponíveis. Com retorno explícito `QueryBuilder<S, TSelected>`, métodos da subclasse seriam perdidos após `.where()`"
+      ],
+      "correctAnswer": 3,
+      "explanation": "O tipo `this` em TypeScript é um tipo polimórfico que representa 'o tipo da instância atual'. Em métodos de fluent interface, retornar `this` é crucial para o padrão de subclasse: se `class MySafeQuery extends QueryBuilder` adiciona `.withSafeDefaults()`, uma chain `.where(...).where(...).withSafeDefaults()` funciona porque cada `.where()` retorna `MySafeQuery` (via `this`), não `QueryBuilder`. Se o retorno fosse `QueryBuilder<S, TSelected>`, o TypeScript 'esqueceria' que é `MySafeQuery` após o primeiro `.where()` e o método `.withSafeDefaults()` não estaria disponível. Esse é o mesmo motivo pelo qual métodos de Array como `.filter()` retornam `this['filter']` em alguns contextos de subclasse."
+    }
+  ]
+}

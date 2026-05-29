@@ -1,1 +1,97 @@
-{"lessonId": "day-22", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-22",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `\"strict\": true` e habilitar as flags individuais manualmente no tsconfig?",
+      "options": [
+        "`\"strict\": true` é um atalho que habilita um conjunto fixo de flags (strictNullChecks, noImplicitAny, strictFunctionTypes etc.). Habilitar manualmente permite incluir novas flags adicionadas em versões futuras do TypeScript antes que sejam incluídas no strict, ou desabilitar pontualmente flags específicas mantendo as demais",
+        "`\"strict\": true` é mais performático — o compilador ativa um modo otimizado quando todas as flags estão juntas",
+        "São idênticos — `\"strict\": true` é apenas açúcar sintático sem nenhuma diferença funcional",
+        "`\"strict\": true` habilita TODAS as flags de lint e verificação, inclusive as experimentais"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`\"strict\": true` expande para um conjunto de flags documentadas: `strictNullChecks`, `noImplicitAny`, `strictFunctionTypes`, `strictBindCallApply`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict` e `useUnknownInCatchVariables`. Flags como `noImplicitOverride`, `exactOptionalPropertyTypes` e `noUncheckedIndexedAccess` NÃO estão em `strict` — devem ser ativadas separadamente. Habilitar individualmente também permite um rollout gradual em projetos legados: ative `strictNullChecks` primeiro, corrija os erros, depois `noImplicitAny`, e assim por diante."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `exactOptionalPropertyTypes: true` emite erro em `const c: Config = { timeout: undefined }` quando `Config` declara `timeout?: number`?",
+      "options": [
+        "É um bug — `undefined` é o valor padrão de propriedades opcionais, logo deve ser aceito",
+        "`exactOptionalPropertyTypes` proíbe qualquer uso de `undefined` em objetos com propriedades opcionais",
+        "Com `exactOptionalPropertyTypes`, TypeScript distingue 'propriedade ausente' de 'propriedade com valor undefined'. `timeout?: number` significa que a propriedade pode estar ausente do objeto — não que pode ser `undefined` explicitamente. Para aceitar `undefined`, seria necessário `timeout?: number | undefined`",
+        "O erro ocorre porque `Config` não foi declarado com `interface` — com `type`, funcionaria normalmente"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Sem `exactOptionalPropertyTypes`, TypeScript trata `prop?: T` como `prop?: T | undefined` — ou seja, atribuir `undefined` explicitamente é idêntico a omitir a propriedade. Com a flag ativa, a distinção é preservada: `{}` (ausente) é diferente de `{ timeout: undefined }` (presente com undefined). Isso importa em situações como `Object.keys(obj)` ou spread: `{ ...defaults, ...overrides }` pode sobrescrever com `undefined` explícito. Para aceitar `undefined` como valor válido, declare `timeout?: number | undefined`. A flag também melhora a compatibilidade com `JSON.parse` e APIs que distinguem os dois casos."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Em um projeto com `\"module\": \"node16\"`, por que `import { foo } from './utils'` emite erro, mas `import { foo } from './utils.js'` não?",
+      "options": [
+        "É um bug do TypeScript — a extensão não deveria ser necessária em imports relativos",
+        "A extensão `.js` é necessária porque o TypeScript não consegue encontrar arquivos `.ts` diretamente",
+        "O erro ocorre apenas em arquivos `.mts` — em arquivos `.ts` normais a extensão é opcional mesmo com node16",
+        "Com `module: node16`, o TypeScript segue as regras do Node.js ESM, onde imports devem especificar a extensão completa. `'./utils.js'` resolve para o arquivo compilado `utils.js` (que veio de `utils.ts`). Omitir a extensão é inválido em ESM nativo — o Node não faz auto-resolução de extensão"
+      ],
+      "correctAnswer": 3,
+      "explanation": "O algoritmo de resolução ESM do Node.js (Node 16+) exige extensões explícitas em imports — não há o mecanismo de auto-resolução do CommonJS que tenta `.js`, `.json`, `/index.js`, etc. Com `moduleResolution: node16`, o TypeScript espelha esse comportamento: `'./utils'` → erro; `'./utils.js'` → TypeScript procura `utils.ts` ou `utils.tsx` (e emite `utils.js`). Isso pode parecer estranho, mas é correto: você escreve a extensão do arquivo emitido, não do arquivo fonte. Arquivos `.cts` (CJS) não têm essa restrição. Essa é uma das maiores diferenças entre `moduleResolution: node` (legado) e `node16`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Você configura `paths: { \"@/*\": [\"./src/*\"] }` no tsconfig, mas ao rodar a aplicação Node.js compilada com `tsc`, os imports com `@/` geram `MODULE_NOT_FOUND`. Por quê?",
+      "options": [
+        "O `paths` deve ser configurado em `paths` E em `moduleResolution` para funcionar no runtime",
+        "`paths` é uma diretiva somente para o verificador de tipos do TypeScript — o compilador NÃO reescreve os imports no JavaScript emitido. O alias `@/` permanece literalmente no `.js` gerado. Para o runtime Node.js resolver o alias, é necessário uma ferramenta complementar como `tsc-alias`, `tsconfig-paths`, ou configuração do bundler",
+        "O problema é que `baseUrl` não foi configurado junto com `paths` — eles são obrigatoriamente usados juntos",
+        "Node.js suporta path aliases nativamente desde a versão 18 — o erro indica que a versão do Node está desatualizada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`paths` serve exclusivamente para que o servidor de linguagem e o `tsc` entendam onde encontrar os módulos durante a verificação de tipos — é uma ferramenta de desenvolvimento, não de runtime. O JavaScript emitido contém os imports literais (`@/utils/foo`) que o Node.js não sabe resolver. Soluções: (1) `tsc-alias` — pós-processa o JS emitido e reescreve os imports; (2) `tsconfig-paths` — registra um hook de resolução no Node.js em runtime; (3) Bundlers como Vite/Webpack resolvem aliases durante o bundle. Em projetos Next.js, o framework já faz essa resolução automaticamente lendo o tsconfig."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que acontece quando você executa `tsc -b` (build mode) em um monorepo com project references, e apenas um dos pacotes foi modificado?",
+      "options": [
+        "`tsc -b` lê os arquivos `.tsbuildinfo` de cada projeto e recompila apenas os projetos cujos arquivos fonte foram modificados desde o último build, mais os projetos que dependem deles (transitivamente). Projetos sem mudanças são pulados completamente",
+        "`tsc -b` sempre recompila todos os projetos — project references só afetam a ordem de compilação",
+        "`tsc -b` recompila apenas o projeto modificado, mas não recalcula as dependências — os projetos que dependem dele podem ficar desatualizados",
+        "`tsc -b` é idêntico a `tsc` — a flag `-b` apenas muda a mensagem de saída"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Build mode (`tsc -b`) usa o arquivo `.tsbuildinfo` de cada projeto para determinar o que precisa ser recompilado. O processo: (1) verifica se os inputs (arquivos `.ts`) mudaram comparado ao estado salvo no `.tsbuildinfo`; (2) verifica se alguma dependência referenciada foi recompilada (os `.d.ts` dela mudaram); (3) só recompila se (1) ou (2) for verdadeiro. O resultado é uma compilação no mínimo necessário. Em monorepos grandes, isso reduz builds de minutos para segundos. `tsc -b --dry` mostra quais projetos seriam recompilados sem executar nada — útil para depurar."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental entre usar `\"incremental\": true` e `\"composite\": true` no tsconfig?",
+      "options": [
+        "São equivalentes — `composite` é apenas o nome moderno de `incremental`",
+        "`composite` é apenas para monorepos — `incremental` funciona em qualquer projeto, inclusive monorepos",
+        "`incremental` ativa cache de build (`.tsbuildinfo`) para acelerar compilações futuras, mas não gera `.d.ts` automaticamente — é ideal para aplicações que não são consumidas como bibliotecas. `composite` inclui `incremental` e também força `declaration: true`, exigindo `rootDir` e permitindo que o projeto seja referenciado por outros projetos via `references`",
+        "`incremental` requer que todos os arquivos sejam listados em `files` — `composite` não tem essa restrição"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A distinção é de propósito: `incremental` é otimização de performance local — salva o estado do compilador para evitar trabalho redundante em builds subsequentes. `composite` é um contrato arquitetural — declara que este projeto pode ser referenciado por outros e fornece `.d.ts` como interface pública. `composite` implica `incremental`, mas o inverso não vale. Um app Next.js pode usar apenas `incremental` sem ser `composite` (ninguém importa o app como biblioteca). Uma lib em um monorepo precisa de `composite` para que `tsc -b` saiba que ela fornece tipos para outros pacotes. `composite` também exige `rootDir` para garantir que os arquivos gerados tenham paths previsíveis."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `\"moduleResolution\": \"bundler\"` é a escolha correta para projetos React com Vite, mas `\"moduleResolution\": \"node16\"` seria problemático?",
+      "options": [
+        "Bundler e node16 são intercambiáveis em projetos React — a diferença é apenas estética",
+        "`bundler` gera código 30% menor porque otimiza os imports durante a verificação de tipos",
+        "O problema com `node16` é que ele não suporta JSX — `bundler` tem suporte nativo a arquivos `.tsx`",
+        "Com `node16`, o TypeScript exige extensões explícitas nos imports ESM (`.js`, `.ts`), o que quebra o estilo de import sem extensão comum em projetos React (`'./Button'` ao invés de `'./Button.tsx'`). `bundler` espelha o comportamento dos bundlers modernos: sem exigência de extensão, suporte a imports de `.css`, `.svg`, `.json` etc., e compatível com `\"module\": \"ESNext\"`. `node16` é para código que roda diretamente no Node.js sem bundle"
+      ],
+      "correctAnswer": 3,
+      "explanation": "`moduleResolution: bundler` foi introduzido no TypeScript 5.0 especificamente para refletir como bundlers como Vite, esbuild e Webpack resolvem módulos: (1) sem exigência de extensão explícita — o bundler sabe que `'./Button'` é `Button.tsx`; (2) suporte a imports de assets não-JS via plugins do bundler; (3) `exports` do `package.json` são respeitados, mas sem a rigidez ESM-puro do `node16`; (4) deve ser usado com `\"module\": \"ESNext\"` ou `\"Preserve\"`. Usar `node16` em um projeto Vite causaria erros em todo import sem extensão e quebraria imports de CSS modules. A configuração `\"noEmit\": true` é tipicamente usada junto com `bundler` — o TypeScript só verifica tipos, o Vite faz o bundle real."
+    }
+  ]
+}

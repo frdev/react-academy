@@ -1,1 +1,420 @@
-# Conteúdo em breve
+# Branded & Opaque Types
+
+O sistema de tipos do TypeScript é estrutural: dois tipos com a mesma forma são intercambiáveis, mesmo que tenham nomes diferentes. Isso é ótimo na maioria dos casos — mas existe uma classe de bugs que a subtipagem estrutural não consegue prevenir: confundir valores que têm o mesmo tipo primitivo mas significados completamente diferentes. `UserId` e `OrderId` são ambos `number`; `Email` e `Slug` são ambos `string`. Branded types resolvem exatamente esse problema, simulando **nominal typing** sobre o sistema estrutural do TypeScript sem nenhum custo em tempo de execução.
+
+## Nominal Typing em TypeScript Estrutural
+
+Em linguagens com **nominal typing** (Java, C#, Rust), dois tipos são compatíveis somente se forem o mesmo tipo ou houver declaração explícita de herança/implementação. Em TypeScript, nominal typing não existe nativamente — dois tipos com a mesma estrutura são sempre compatíveis:
+
+```typescript
+type UserId = number;
+type OrderId = number;
+
+function getUser(id: UserId): User { /* ... */ }
+
+const orderId: OrderId = 42;
+getUser(orderId); // ✓ — TypeScript aceita! Ambos são number
+//       ^^^^^^^ Bug silencioso: passamos um OrderId onde UserId era esperado
+```
+
+Esse comportamento é intencional para JavaScript, mas em domínios onde IDs de diferentes entidades não devem ser intercambiáveis, ele gera bugs difíceis de rastrear. A solução é **simular** distinção nominal dentro do sistema estrutural.
+
+### A Limitação dos Type Aliases Simples
+
+```typescript
+// Aliases simples NÃO criam tipos nominais — são apenas apelidos
+type Meters = number;
+type Seconds = number;
+
+const distance: Meters = 100;
+const time: Seconds = distance; // ✓ — TypeScript não reclama
+//                   ^^^^^^^^ Errado semanticamente, mas válido estruturalmente
+```
+
+## `Brand<T, B>` — O Padrão Fundamental
+
+A técnica de branded types funciona adicionando uma propriedade "fantasma" que nunca existe em runtime, mas que o TypeScript usa para distinguir tipos:
+
+```typescript
+// Definição genérica do brand
+type Brand<T, B extends string> = T & { readonly __brand: B };
+
+// Tipos branded concretos
+type UserId  = Brand<number, 'UserId'>;
+type OrderId = Brand<number, 'OrderId'>;
+type PostId  = Brand<number, 'PostId'>;
+```
+
+Agora os tipos são estruturalmente diferentes — `UserId` tem `__brand: 'UserId'` enquanto `OrderId` tem `__brand: 'OrderId'`:
+
+```typescript
+function getUser(id: UserId): void {
+  console.log('Buscando usuário', id);
+}
+
+const userId  = 1 as UserId;
+const orderId = 2 as OrderId;
+
+getUser(userId);  // ✓ — correto
+getUser(orderId); // ✗ — Argument of type 'OrderId' is not assignable to parameter of type 'UserId'
+getUser(3);       // ✗ — number não é UserId
+```
+
+### Como a Intersecção Funciona
+
+`Brand<number, 'UserId'>` é equivalente a `number & { readonly __brand: 'UserId' }`. Qualquer `number` puro não tem `__brand`, então não satisfaz o tipo. A propriedade `__brand` nunca é criada em runtime — ela existe apenas no nível do sistema de tipos:
+
+```typescript
+type UserId = Brand<number, 'UserId'>;
+
+const id = 42 as UserId;
+console.log(typeof id);    // "number" — é um number puro em runtime
+console.log(id.__brand);   // undefined — a propriedade não existe
+console.log(id + 1);       // 43 — operações numéricas funcionam normalmente
+```
+
+### Funções de Construção (Smart Constructors)
+
+O `as UserId` deve aparecer **apenas** em pontos de entrada controlados, nunca espalhado pelo código:
+
+```typescript
+type Brand<T, B extends string> = T & { readonly __brand: B };
+
+type UserId  = Brand<number, 'UserId'>;
+type OrderId = Brand<number, 'OrderId'>;
+
+// Smart constructors — único local onde o cast ocorre
+function toUserId(id: number): UserId {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`ID inválido: ${id}`);
+  }
+  return id as UserId;
+}
+
+function toOrderId(id: number): OrderId {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`ID inválido: ${id}`);
+  }
+  return id as OrderId;
+}
+
+// Uso no domínio — sem casts
+function fetchUser(id: UserId): Promise<User> { /* ... */ }
+function fetchOrder(id: OrderId): Promise<Order> { /* ... */ }
+
+const uid = toUserId(123);
+const oid = toOrderId(456);
+
+fetchUser(uid);  // ✓
+fetchOrder(oid); // ✓
+fetchUser(oid);  // ✗ — Argument of type 'OrderId' is not assignable to parameter of type 'UserId'
+```
+
+### Variações de Implementação
+
+Existem algumas formas comuns de implementar o brand; cada uma tem trade-offs:
+
+```typescript
+// 1. Intersecção com objeto (mais comum)
+type Brand<T, B extends string> = T & { readonly __brand: B };
+
+// 2. Usando unique symbol (mais robusto — evita colisões de nome de propriedade)
+declare const __brand: unique symbol;
+type Brand<T, B extends string> = T & { readonly [__brand]: B };
+
+// 3. Múltiplos brands no mesmo tipo
+type PositiveInt  = Brand<number, 'PositiveInt'>;
+type EvenNumber   = Brand<number, 'EvenNumber'>;
+type PositiveEven = Brand<number, 'PositiveInt'> & Brand<number, 'EvenNumber'>;
+// PositiveEven satisfaz tanto PositiveInt quanto EvenNumber ✓
+```
+
+## Phantom Types
+
+Phantom types são uma generalização: um parâmetro de tipo que aparece na definição mas não corresponde a nenhum campo real em runtime. Enquanto branded types tipicamente usam intersecção com uma string literal, phantom types usam um parâmetro genérico como "ghost" para codificar estado ou fase no tipo:
+
+```typescript
+// O tipo carrega informação que não existe nos dados
+declare const _phantom: unique symbol;
+type Tagged<T, Tag> = T & { readonly [_phantom]: Tag };
+
+// Estados de verificação — marcados no tipo, não nos dados
+type Unverified = { readonly _tag: 'Unverified' };
+type Verified   = { readonly _tag: 'Verified' };
+
+type Email<State = Unverified> = Tagged<string, State>;
+
+// Só podemos criar emails não-verificados diretamente
+function parseEmail(raw: string): Email<Unverified> {
+  if (!raw.includes('@')) throw new Error('Email inválido');
+  return raw as Email<Unverified>;
+}
+
+// Verificação promove o tipo
+function verifyEmail(email: Email<Unverified>): Email<Verified> {
+  // Verificação real aqui (DNS, MX lookup, etc.)
+  return email as Email<Verified>;
+}
+
+// Só aceita emails verificados
+function sendNewsletter(email: Email<Verified>): void {
+  console.log(`Enviando para ${email}`);
+}
+
+const raw      = parseEmail('user@example.com'); // Email<Unverified>
+sendNewsletter(raw);                             // ✗ — Unverified não é Verified
+
+const verified = verifyEmail(raw);               // Email<Verified>
+sendNewsletter(verified);                        // ✓
+```
+
+### Phantom Types para Estado de Permissão
+
+```typescript
+declare const _role: unique symbol;
+type WithRole<T, R extends string> = T & { readonly [_role]: R };
+
+type Request              = { userId: number; body: unknown };
+type AuthenticatedRequest = WithRole<Request, 'authenticated'>;
+type AdminRequest         = WithRole<Request, 'admin'>;
+
+// Middleware retorna o request "promovido" no tipo
+function authenticate(req: Request): AuthenticatedRequest {
+  // Verificação JWT, sessão, etc.
+  return req as AuthenticatedRequest;
+}
+
+function requireAdmin(req: AuthenticatedRequest): AdminRequest {
+  // Verifica papel admin
+  return req as AdminRequest;
+}
+
+// Rota protegida — o tipo garante que a autenticação ocorreu
+function deleteUser(req: AdminRequest, userId: UserId): void { /* ... */ }
+
+function handleDelete(rawReq: Request) {
+  const authed = authenticate(rawReq);
+  const admin  = requireAdmin(authed);
+
+  deleteUser(admin,   toUserId(42)); // ✓
+  deleteUser(authed,  toUserId(42)); // ✗ — AuthenticatedRequest não é AdminRequest
+  deleteUser(rawReq,  toUserId(42)); // ✗ — Request não é AdminRequest
+}
+```
+
+### Phantom Types para Unidades de Medida
+
+```typescript
+declare const _unit: unique symbol;
+type Quantity<Unit extends string> = number & { readonly [_unit]: Unit };
+
+type Meters  = Quantity<'m'>;
+type Seconds = Quantity<'s'>;
+type Mph     = Quantity<'mph'>;
+
+function meters(n: number): Meters   { return n as Meters; }
+function seconds(n: number): Seconds { return n as Seconds; }
+
+function speed(distance: Meters, time: Seconds): Mph {
+  return (distance / time * 3.6) as Mph;
+}
+
+const d = meters(100);
+const t = seconds(9.58);
+const v = speed(d, t); // ✓
+
+speed(t, d); // ✗ — Seconds não é Meters, Meters não é Seconds
+```
+
+## Type-Safe IDs
+
+Em aplicações reais, IDs de diferentes entidades são o caso de uso mais comum para branded types. Um padrão robusto combina o brand com validação e serialização:
+
+```typescript
+type Brand<T, B extends string> = T & { readonly __brand: B };
+
+// IDs de diferentes entidades — mesmo primitivo, tipos distintos
+type UserId    = Brand<number, 'UserId'>;
+type ProductId = Brand<number, 'ProductId'>;
+type CartId    = Brand<string, 'CartId'>;   // UUIDs são strings
+
+// Fábrica genérica de smart constructors para IDs numéricos
+function makeIdFactory<T extends Brand<number, string>>(name: string) {
+  return (n: number): T => {
+    if (!Number.isInteger(n) || n <= 0) {
+      throw new Error(`${name} deve ser inteiro positivo, recebeu: ${n}`);
+    }
+    return n as T;
+  };
+}
+
+const toUserId    = makeIdFactory<UserId>('UserId');
+const toProductId = makeIdFactory<ProductId>('ProductId');
+
+// Repositórios completamente type-safe
+interface UserRepository {
+  findById(id: UserId): Promise<User | null>;
+  delete(id: UserId): Promise<void>;
+}
+
+interface CartService {
+  addItem(cartId: CartId, productId: ProductId, qty: number): Promise<void>;
+}
+
+// Em handlers: parse na borda, domínio interno totalmente typed
+async function handleDeleteUser(rawId: number) {
+  const userId = toUserId(rawId);
+  await userRepo.delete(userId); // ✓
+}
+
+async function handleAddToCart(rawCartId: string, rawProductId: number) {
+  const cartId    = rawCartId as CartId;
+  const productId = toProductId(rawProductId);
+  await cartService.addItem(cartId, productId, 1); // ✓
+}
+```
+
+### IDs e Serialização JSON
+
+Uma preocupação comum: como IDs branded se comportam com JSON?
+
+```typescript
+type UserId = Brand<number, 'UserId'>;
+
+const id: UserId = 42 as UserId;
+
+// JSON.stringify funciona normalmente — __brand não existe em runtime
+const json   = JSON.stringify({ userId: id }); // '{"userId":42}'
+const parsed = JSON.parse(json) as { userId: number };
+
+// Ao desserializar, precisa repassar pelo smart constructor
+const safeId = toUserId(parsed.userId); // ✓ — volta a ser UserId validado
+```
+
+## Validated Strings
+
+O mesmo padrão se aplica a strings que precisam de validação prévia:
+
+```typescript
+type Brand<T, B extends string> = T & { readonly __brand: B };
+
+// Strings com semântica específica
+type Email    = Brand<string, 'Email'>;
+type Slug     = Brand<string, 'Slug'>;
+type HexColor = Brand<string, 'HexColor'>;
+type SafeHtml = Brand<string, 'SafeHtml'>;
+
+// Smart constructors com validação real
+function parseEmail(raw: string): Email {
+  const trimmed = raw.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    throw new Error(`Email inválido: "${raw}"`);
+  }
+  return trimmed as Email;
+}
+
+function parseSlug(raw: string): Slug {
+  const normalized = raw
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+  if (!normalized) throw new Error(`Slug inválido: "${raw}"`);
+  return normalized as Slug;
+}
+
+function parseHexColor(raw: string): HexColor {
+  if (!/^#[0-9a-fA-F]{6}$/.test(raw)) {
+    throw new Error(`Cor hex inválida: "${raw}"`);
+  }
+  return raw.toLowerCase() as HexColor;
+}
+
+// Interface de domínio que comunica requisitos via tipos
+interface BlogPost {
+  title: string;
+  slug: Slug;
+  authorEmail: Email;
+  accentColor: HexColor;
+  content: SafeHtml;
+}
+
+function createPost(
+  title: string,
+  rawSlug: string,
+  rawEmail: string,
+  rawColor: string,
+): Omit<BlogPost, 'content'> {
+  return {
+    title,
+    slug:        parseSlug(rawSlug),
+    authorEmail: parseEmail(rawEmail),
+    accentColor: parseHexColor(rawColor),
+  };
+}
+
+// Funções internas confiam nos tipos — sem re-validação
+function renderPost(post: BlogPost): string {
+  // accentColor garantida como hex válida; content garantido como html seguro
+  return `<article style="color: ${post.accentColor}">${post.content}</article>`;
+}
+```
+
+### Validated Strings com Result
+
+Para cenários onde o erro deve ser tratado sem exceções, o padrão `Result` combina bem com branded types:
+
+```typescript
+type Brand<T, B extends string> = T & { readonly __brand: B };
+type Email = Brand<string, 'Email'>;
+
+type Result<T, E = string> =
+  | { ok: true;  value: T }
+  | { ok: false; error: E };
+
+function parseEmail(raw: string): Result<Email> {
+  const trimmed = raw.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return { ok: false, error: `Email inválido: "${raw}"` };
+  }
+  return { ok: true, value: trimmed as Email };
+}
+
+// Uso sem exceções
+const result = parseEmail('user@example.com');
+
+if (result.ok) {
+  sendEmail(result.value); // result.value é Email ✓
+} else {
+  showError(result.error); // string com mensagem de erro
+}
+```
+
+### Combinando Múltiplos Brands
+
+```typescript
+type Brand<T, B extends string> = T & { readonly __brand: B };
+
+type Trimmed   = Brand<string, 'Trimmed'>;
+type NonEmpty  = Brand<string, 'NonEmpty'>;
+type Lowercase = Brand<string, 'Lowercase'>;
+
+// Composição de brands — um tipo com todas as garantias
+type NormalizedTag = Trimmed & NonEmpty & Lowercase;
+
+function normalizeTag(raw: string): NormalizedTag {
+  const trimmed = raw.trim();
+  if (!trimmed) throw new Error('Tag não pode ser vazia');
+  return trimmed.toLowerCase() as NormalizedTag;
+}
+
+function acceptsTrimmed(s: Trimmed): void {}
+function acceptsNonEmpty(s: NonEmpty): void {}
+
+const tag = normalizeTag('  TypeScript  ');
+acceptsTrimmed(tag);  // ✓ — NormalizedTag satisfaz Trimmed
+acceptsNonEmpty(tag); // ✓ — NormalizedTag satisfaz NonEmpty
+
+acceptsTrimmed('raw string'); // ✗ — string pura não tem __brand: 'Trimmed'
+```
+
+**Branded e opaque types são a resposta do TypeScript a uma limitação fundamental da subtipagem estrutural: valores com o mesmo tipo primitivo mas semântica diferente. Ao adicionar uma propriedade fantasma via intersecção, criamos distinção nominal sem nenhum custo em tempo de execução — o brand existe apenas em tempo de compilação. O padrão de smart constructors garante que a validação ocorra em um único ponto de entrada, e o restante do código pode confiar nas garantias expressas no tipo. `Brand<T, B>` com suas variantes (phantom types, validated strings, type-safe IDs) é uma das ferramentas mais poderosas para modelar domínios corretamente em TypeScript.**

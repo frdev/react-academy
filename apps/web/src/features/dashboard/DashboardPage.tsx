@@ -5,7 +5,6 @@ import { DayGrid } from './components/DayGrid'
 import { useCurrentStreak } from '@/features/progress/hooks/useStreak'
 import { useNavigate, useParams, Link } from 'react-router'
 import { StreakCalendar } from '@/features/progress/components/StreakCalendar'
-import { useDevStore } from '@/features/dev/devStore'
 import { getStackById } from '@/features/stacks/data/stacks'
 
 export default function DashboardPage() {
@@ -15,7 +14,6 @@ export default function DashboardPage() {
   const streak = useCurrentStreak()
   const completedDays = useCompletedDaysCount()
   const navigate = useNavigate()
-  const { unlockAll, toggle } = useDevStore()
 
   if (!isLoaded) {
     return (
@@ -47,18 +45,6 @@ export default function DashboardPage() {
                 <span className="text-sm font-semibold text-orange-300">{streak} dias</span>
               </div>
             )}
-            <button
-              onClick={toggle}
-              title={unlockAll ? 'Dev: todos desbloqueados — clique para desativar' : 'Dev: desbloquear todos os dias'}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
-                unlockAll
-                  ? 'bg-violet-900/40 border-violet-600 text-violet-300 hover:bg-violet-900/60'
-                  : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300'
-              }`}
-            >
-              <span>{unlockAll ? '🔓' : '🔒'}</span>
-              <span>{unlockAll ? 'Dev ON' : 'Dev'}</span>
-            </button>
           </div>
         </div>
       </header>

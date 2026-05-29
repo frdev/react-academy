@@ -9,12 +9,6 @@ import {
   getLevelFromXp,
 } from '../types'
 
-function isLessonUnlocked(day: number, progress: Record<string, LessonProgress>): boolean {
-  if (day === 1) return true
-  const prevId = `day-${String(day - 1).padStart(2, '0')}`
-  return progress[prevId]?.status === 'completed'
-}
-
 interface ProgressState {
   currentStackId: string
   lessonProgress: Record<string, LessonProgress>
@@ -29,7 +23,6 @@ interface ProgressState {
     submitQuiz: (lessonId: string, score: number) => Promise<void>
     addXp: (amount: number) => Promise<void>
     unlockAchievement: (id: AchievementId) => Promise<void>
-    isLessonUnlocked: (day: number) => boolean
   }
 }
 
@@ -282,10 +275,6 @@ export const useProgressStore = create<ProgressState>((set, get) => {
         const achievement = { id, unlockedAt: new Date().toISOString() }
         await db.achievements.put(achievement)
         set(state => ({ achievements: [...state.achievements, achievement] }))
-      },
-
-      isLessonUnlocked: (day: number) => {
-        return isLessonUnlocked(day, get().lessonProgress)
       },
     },
   }

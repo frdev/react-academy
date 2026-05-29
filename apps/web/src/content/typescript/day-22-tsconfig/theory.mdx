@@ -1,1 +1,599 @@
-# Conteúdo em breve
+# tsconfig em Profundidade
+
+O `tsconfig.json` é muito mais do que um arquivo de configuração — é o contrato entre você e o compilador TypeScript. Cada opção influencia diretamente quais erros são detectados, como módulos são resolvidos e até como projetos grandes são estruturados. Conhecer cada flag em profundidade permite ajustar o compilador com precisão cirúrgica, extraindo o máximo de segurança de tipos sem sacrificar ergonomia ou desempenho de build.
+
+## Strict Mode — Flags Individuais
+
+Ativar `"strict": true` é atalho para um conjunto de flags — mas entender cada uma individualmente permite habilitar gradualmente em projetos legados ou desabilitar pontualmente onde necessário.
+
+### `strictNullChecks`
+
+A flag mais impactante. Sem ela, `null` e `undefined` são subtipos de todos os tipos — o que significa que qualquer variável pode silenciosamente ser `null`.
+
+```typescript
+// strictNullChecks: false (perigoso — padrão antigo)
+let name: string = null; // ✓ sem erro — null vira subtipo de string
+name.toUpperCase();      // explode em runtime
+
+// strictNullChecks: true (correto)
+let name: string = null; // ✗ Type 'null' is not assignable to type 'string'
+let safeName: string | null = null; // ✓ — null é explícito
+```
+
+### `noImplicitAny`
+
+Proíbe que o TypeScript infira `any` silenciosamente quando não consegue determinar o tipo:
+
+```typescript
+// noImplicitAny: false
+function greet(name) { // 'name' implicitamente any — sem aviso
+  return name.toUpperCase();
+}
+
+// noImplicitAny: true
+function greet(name) { // ✗ Parameter 'name' implicitly has an 'any' type
+  return name.toUpperCase();
+}
+
+function greet(name: string) { // ✓ — tipo explícito
+  return name.toUpperCase();
+}
+```
+
+### `strictFunctionTypes`
+
+Ativa verificação contravariante para parâmetros de funções (exceto em métodos de objetos, por retrocompatibilidade):
+
+```typescript
+type Logger = (message: string) => void;
+
+// strictFunctionTypes: true
+const log: Logger = (m: string | number) => {}; // ✗ — parâmetro mais amplo não é atribuível
+const log: Logger = (m: string) => {};           // ✓
+const log: Logger = (m: 'hello') => {};          // ✗ — parâmetro mais restrito também não
+
+// Métodos de objeto usam bivariance (retrocompatibilidade):
+interface EventHandler {
+  handle(event: Event): void; // bivariant — aceita subtipo ou supertipo de Event
+}
+```
+
+### `strictPropertyInitialization`
+
+Garante que propriedades de classe com tipo não-opcional sejam inicializadas no construtor:
+
+```typescript
+class UserService {
+  db: Database;           // ✗ Property 'db' has no initializer
+  name: string = 'svc';  // ✓ — inicializada inline
+
+  // Operador ! para casos onde você garante a inicialização externamente:
+  repo!: UserRepository; // ✓ — definite assignment assertion
+
+  constructor(db: Database) {
+    this.db = db; // ✓ — inicializada no constructor
+  }
+}
+```
+
+### `noImplicitOverride`
+
+Exige a keyword `override` ao sobrescrever métodos de classe base:
+
+```typescript
+class Base {
+  greet() { return 'hello'; }
+}
+
+class Child extends Base {
+  greet() { return 'hi'; }           // ✗ — falta 'override'
+  override greet() { return 'hi'; }  // ✓
+  override greet2() { return 'hi'; } // ✗ — greet2 não existe na Base
+}
+```
+
+### `exactOptionalPropertyTypes`
+
+Por padrão, `prop?: string` aceita `prop: undefined` explícito. Com essa flag, a distinção entre "propriedade ausente" e "propriedade com valor `undefined`" é preservada:
+
+```typescript
+interface Config {
+  timeout?: number;
+}
+
+// exactOptionalPropertyTypes: false (padrão)
+const c: Config = { timeout: undefined }; // ✓ — sem distinção
+
+// exactOptionalPropertyTypes: true
+const c: Config = { timeout: undefined }; // ✗ — undefined explícito é diferente de ausente
+const c: Config = {};                     // ✓ — propriedade ausente
+const c: Config = { timeout: 5000 };      // ✓ — valor definido
+```
+
+### `useUnknownInCatchVariables`
+
+A partir do TypeScript 4.4, com `strict: true`, variáveis de `catch` têm tipo `unknown` ao invés de `any`:
+
+```typescript
+try {
+  doSomething();
+} catch (err) {
+  // useUnknownInCatchVariables: false — err: any (perigoso)
+  console.log(err.message); // sem erro de tipo — mas pode explodir em runtime
+
+  // useUnknownInCatchVariables: true — err: unknown (seguro)
+  if (err instanceof Error) {
+    console.log(err.message); // ✓ — narrowed para Error
+  }
+}
+```
+
+### Resumo: todas as flags do `strict`
+
+```jsonc
+{
+  "compilerOptions": {
+    // "strict": true habilita todas abaixo:
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,              // emite "use strict" em todo arquivo JS
+    "useUnknownInCatchVariables": true,
+
+    // Flags além do strict (recomendadas para máxima segurança):
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,  // arr[0] tem tipo T | undefined
+    "noPropertyAccessFromIndexSignature": true
+  }
+}
+```
+
+## `module` e `moduleResolution` — Node16 e Bundler
+
+Essas duas opções definem como o TypeScript gera e resolve módulos. Muita confusão vem de usar combinações incompatíveis entre elas.
+
+### A opção `module`
+
+Define o formato de módulo que o TypeScript **emite** (ou assume no output):
+
+```jsonc
+{
+  "compilerOptions": {
+    // CommonJS — require/exports (Node antigo, Jest sem config especial)
+    "module": "commonjs",
+
+    // ESNext — import/export nativos (bundlers modernos)
+    "module": "esnext",
+
+    // Node16/NodeNext — suporte híbrido ESM+CJS no Node.js moderno
+    "module": "node16",
+
+    // Bundler — para Vite, esbuild, Webpack 5 (sem exigir extensões)
+    "module": "bundler"
+  }
+}
+```
+
+### A opção `moduleResolution`
+
+Define como o TypeScript **encontra** os arquivos referenciados pelos imports:
+
+```jsonc
+{
+  "compilerOptions": {
+    // Classic — algoritmo antigo (evite em projetos novos)
+    "moduleResolution": "classic",
+
+    // Node — algoritmo do Node.js CommonJS (mais comum historicamente)
+    "moduleResolution": "node",
+
+    // Node16/NodeNext — algoritmo híbrido ESM+CJS do Node 16+
+    "moduleResolution": "node16",
+
+    // Bundler — para bundlers modernos (não exige extensões em imports)
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+### Node16/NodeNext — O Modo Híbrido
+
+Com `"module": "node16"`, o TypeScript entende que um projeto Node pode ter arquivos CJS e ESM simultaneamente, determinado pela extensão e pelo `package.json`:
+
+```typescript
+// Em arquivo .mts (sempre ESM) — DEVE usar extensão .js no import
+import { foo } from './utils.js'; // ✓ — aponta para utils.ts compilado como utils.js
+import { foo } from './utils';    // ✗ — extensão obrigatória em ESM
+
+// Em arquivo .cts (sempre CJS) — comportamento CommonJS
+const { foo } = require('./utils'); // ✓ — sem exigência de extensão
+
+// Em arquivo .ts — depende do campo "type" no package.json:
+// "type": "module"    → tratado como ESM
+// "type": "commonjs" → tratado como CJS (padrão)
+```
+
+```jsonc
+// tsconfig para Node 18+ com ESM puro:
+{
+  "compilerOptions": {
+    "module": "node16",
+    "moduleResolution": "node16",
+    "target": "es2022",
+    "outDir": "./dist"
+  }
+}
+```
+
+### Bundler — Para Vite, esbuild, Webpack
+
+`"moduleResolution": "bundler"` é a escolha correta para projetos React/Vue/Svelte modernos. Bundlers resolvem imports de forma diferente do Node:
+
+```typescript
+// moduleResolution: "bundler" — sem exigência de extensão explícita
+import { Button } from './components/Button'; // ✓ — bundler resolve
+import styles from './App.module.css';        // ✓ — bundler processa CSS
+import data from './data.json';              // ✓ — com "resolveJsonModule"
+
+// moduleResolution: "node16" quebraria os dois primeiros imports:
+// sem extensão .js explícita → erro de resolução
+```
+
+```jsonc
+// tsconfig para projeto React com Vite:
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true        // Vite cuida do bundle — TS só verifica tipos
+  }
+}
+```
+
+### Combinações válidas e inválidas
+
+```jsonc
+// ✓ Válidas e recomendadas:
+{ "module": "commonjs",  "moduleResolution": "node"    }
+{ "module": "node16",    "moduleResolution": "node16"  }
+{ "module": "nodenext",  "moduleResolution": "nodenext"}
+{ "module": "esnext",    "moduleResolution": "bundler" }
+
+// ✗ Inválidas (TypeScript emite aviso ou comportamento inesperado):
+{ "module": "commonjs",  "moduleResolution": "bundler" }
+{ "module": "node16",    "moduleResolution": "node"    }
+{ "module": "esnext",    "moduleResolution": "classic" }
+```
+
+## `paths` e `baseUrl` — Aliases de Import
+
+Essas opções permitem criar aliases para caminhos longos, melhorando a legibilidade dos imports e eliminando `../../..` aninhados.
+
+### `baseUrl`
+
+Define o diretório raiz para resolução de imports não-relativos (sem `./` ou `../`):
+
+```jsonc
+{
+  "compilerOptions": {
+    "baseUrl": "./src"
+  }
+}
+```
+
+```typescript
+// Com baseUrl: "./src", qualquer arquivo pode importar de src/ diretamente:
+import { UserService } from 'services/UserService'; // ✓ → src/services/UserService
+import { Button } from 'components/Button';          // ✓ → src/components/Button
+
+// Sem baseUrl, seria necessário:
+import { UserService } from '../../services/UserService'; // relativo longo
+```
+
+### `paths`
+
+Cria mapeamentos customizados de aliases para caminhos reais. Os valores são sempre relativos ao `baseUrl` (ou à raiz do projeto se `baseUrl` não for definido):
+
+```jsonc
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*":           ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "@utils/*":      ["./src/utils/*"],
+      "@types/*":      ["./src/types/*"],
+      "~config":       ["./config/app.config.ts"]
+    }
+  }
+}
+```
+
+```typescript
+// Com os paths acima:
+import { Button } from '@/components/Button'; // ✓ → src/components/Button
+import { formatDate } from '@utils/date';     // ✓ → src/utils/date
+import config from '~config';                // ✓ → config/app.config.ts
+```
+
+### `paths` NÃO transforma o output
+
+Esta é a pegadinha mais frequente: `paths` é **somente para o verificador de tipos**. O `tsc` não reescreve os imports no JavaScript emitido — você precisa de uma ferramenta complementar:
+
+```typescript
+// Arquivo TypeScript fonte:
+import { foo } from '@/utils/foo';
+
+// JavaScript emitido pelo tsc (sem transformação de path):
+import { foo } from '@/utils/foo'; // ← ainda "@/utils/foo" → quebra no Node!
+```
+
+```jsonc
+// Para projetos Node — use tsc-alias ou tsconfig-paths no runtime:
+// npm install -D tsc-alias
+// "build": "tsc && tsc-alias"
+
+// Para Vite — configure também no vite.config.ts:
+// resolve: { alias: { "@": "/src" } }
+
+// Para Webpack — configure também no webpack.config.js:
+// resolve: { alias: { "@": path.resolve(__dirname, "src") } }
+```
+
+### Múltiplos fallbacks em `paths`
+
+`paths` aceita arrays — útil para monorepos com múltiplos locais de resolução:
+
+```jsonc
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": [
+        "./packages/shared/src/*",
+        "./node_modules/@myorg/shared/dist/*"
+      ]
+    }
+  }
+}
+```
+
+O TypeScript tenta cada caminho na ordem até encontrar o arquivo. O primeiro que existir é usado.
+
+## Project References — Projetos Compostos
+
+Project references permitem dividir um código TypeScript em múltiplos projetos menores que se referenciam entre si. O resultado é build incremental, verificação isolada por projeto e clareza arquitetural.
+
+### Estrutura básica de monorepo
+
+```
+monorepo/
+├── tsconfig.json           ← raiz (sem files, só references)
+├── packages/
+│   ├── core/
+│   │   ├── tsconfig.json
+│   │   └── src/
+│   ├── api/
+│   │   ├── tsconfig.json   ← referencia core
+│   │   └── src/
+│   └── web/
+│       ├── tsconfig.json   ← referencia core e api
+│       └── src/
+```
+
+```jsonc
+// packages/api/tsconfig.json
+{
+  "compilerOptions": {
+    "composite": true,       // obrigatório para poder ser referenciado
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "references": [
+    { "path": "../core" }    // api depende de core
+  ]
+}
+```
+
+```jsonc
+// tsconfig.json raiz — orquestra todos os projetos
+{
+  "files": [],               // sem arquivos diretos na raiz
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/api" },
+    { "path": "./packages/web" }
+  ]
+}
+```
+
+### Build com project references
+
+```bash
+# Builda todos os projetos na ordem correta de dependência:
+tsc --build
+# ou abreviado:
+tsc -b
+
+# Builda um projeto específico e suas dependências:
+tsc -b packages/web
+
+# Watch mode com project references (recompila só o que muda):
+tsc -b --watch
+
+# Limpa todos os outputs gerados:
+tsc -b --clean
+
+# Força rebuild mesmo sem mudanças (ignora cache):
+tsc -b --force
+```
+
+### Declarações automáticas como contrato entre projetos
+
+Com `composite: true`, o TypeScript gera automaticamente arquivos `.d.ts`. Projetos que referenciam `core` leem `core/dist/*.d.ts` sem recompilar o fonte — isso é o que torna o build incremental tão rápido:
+
+```typescript
+// packages/api/src/server.ts — usa core sem recompilar core
+import { Database } from '@myorg/core'; // lê packages/core/dist/Database.d.ts
+
+// Se core não mudou desde o último build, tsc -b pula a compilação de core
+// e usa os .d.ts em cache — a verificação de tipos ainda é completa
+```
+
+## `composite` e `incremental` — Build Eficiente
+
+### `composite`
+
+Habilita um conjunto de restrições e recursos necessários para project references funcionarem:
+
+```jsonc
+{
+  "compilerOptions": {
+    "composite": true,
+    // composite: true implica automaticamente:
+    // - declaration: true    (gera .d.ts para cada arquivo)
+    // - declarationMap: true (recomendado — mapeia .d.ts de volta para .ts)
+    // - incremental: true    (habilita cache de build via .tsbuildinfo)
+
+    // Requisitos adicionais com composite:
+    "rootDir": "./src",  // deve ser especificado explicitamente
+    "outDir": "./dist"   // outputs devem ir para um diretório separado do src
+  }
+}
+```
+
+A restrição principal do `composite`: todo arquivo `.ts` do projeto deve ser explicitamente incluído via `files`, `include`, ou sendo importado por outro arquivo incluído. Não pode haver "arquivos fantasma" que o compilador desconhece.
+
+### `incremental`
+
+Pode ser usado independentemente do `composite`. Salva informações sobre o estado do build em um arquivo `.tsbuildinfo`:
+
+```jsonc
+{
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuildinfo" // padrão: ./tsconfig.tsbuildinfo
+    // incremental sem composite — útil para apps simples (não libs)
+    // não gera .d.ts automaticamente, mas salva cache de tipos
+  }
+}
+```
+
+```bash
+# Primeira build — demora o tempo normal de compilação:
+$ tsc
+# Gera: dist/, .tsbuildinfo (cache do estado de tipos)
+
+# Segunda build sem mudanças — praticamente instantânea:
+$ tsc
+# TS lê .tsbuildinfo e detecta que nada mudou → pula tudo
+
+# Mudança em um arquivo — só recompila esse arquivo e seus dependentes:
+$ tsc
+# Usa .tsbuildinfo para determinar o mínimo a recompilar
+```
+
+### Diferença prática entre `incremental` e `composite`
+
+```jsonc
+// incremental — para aplicações (não são referenciados por outros projetos):
+{
+  "compilerOptions": {
+    "incremental": true,
+    "outDir": "./dist"
+    // Não gera .d.ts — ninguém importa este projeto pelos seus tipos
+  }
+}
+
+// composite — para bibliotecas e pacotes (serão referenciados por outros):
+{
+  "compilerOptions": {
+    "composite": true,  // inclui incremental + declaration automaticamente
+    "outDir": "./dist",
+    "rootDir": "./src"
+    // Gera .d.ts — outros projetos dependem dos tipos publicados aqui
+  }
+}
+```
+
+### Configuração completa realista para monorepo
+
+```jsonc
+// tsconfig.base.json — compartilhado entre todos os pacotes via "extends"
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "target": "ES2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}
+```
+
+```jsonc
+// packages/core/tsconfig.json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"]
+}
+```
+
+```jsonc
+// packages/api/tsconfig.json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@core/*": ["../core/src/*"],
+      "@api/*":  ["./src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../core" }
+  ]
+}
+```
+
+### Cache de `.tsbuildinfo` em CI
+
+Em ambientes de CI, o arquivo `.tsbuildinfo` pode ser cacheado para acelerar builds repetidos:
+
+```yaml
+# GitHub Actions — cache do tsbuildinfo para build incremental no CI:
+- uses: actions/cache@v3
+  with:
+    path: |
+      .tsbuildinfo
+      packages/*/dist
+    key: tsbuild-${{ hashFiles('**/tsconfig.json', 'src/**/*.ts') }}
+    restore-keys: |
+      tsbuild-
+```
+
+**Dominar o `tsconfig.json` em profundidade é o que separa projetos TypeScript de alta qualidade dos demais: as flags individuais do `strict` garantem máxima segurança de tipos com controle granular; `module` e `moduleResolution` alinhados ao ambiente de runtime evitam toda uma classe de erros de resolução em produção; `paths` e `baseUrl` organizam imports sem caminhos relativos longos; e project references com `composite` e `incremental` transformam builds de minutos em segundos em monorepos grandes. Cada opção tem uma razão de existir — conhecê-las permite configurar o compilador como uma ferramenta de precisão.**

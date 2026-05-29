@@ -1,1 +1,404 @@
-# Conteúdo em breve
+# Performance do Type Checker
+
+O TypeScript é uma ferramenta poderosa, mas à medida que uma base de código cresce — milhares de arquivos, tipos genéricos profundos, bibliotecas de terceiros volumosas — o type checker pode se tornar lento o suficiente para prejudicar o ciclo de desenvolvimento. Compilações demoradas, IntelliSense travado no editor e builds de CI custosos são sintomas de problemas de performance de tipagem. Nesta aula você vai aprender a identificar os gargalos, usar as ferramentas de diagnóstico do TypeScript e aplicar as refatorações que fazem mais diferença na prática.
+
+## Tipos Lentos e Como Identificar
+
+Nem toda lentidão é causada pelo mesmo problema. O type checker pode ser lento por razões distintas: tipos condicionais com recursão profunda, grandes uniões que precisam ser distribuídas, inferência de generics em cadeias longas, ou simplesmente um volume excessivo de arquivos sendo processados.
+
+### Sintomas comuns
+
+- O editor demora para mostrar erros ou completar código
+- `tsc` demora vários segundos (ou minutos) mesmo em builds incrementais
+- A memória do processo `tsserver` cresce continuamente
+- Projetos com muitas reexportações barril (`index.ts`) ficam lentos para navegar
+
+### Localizando os tipos custosos
+
+O primeiro passo é identificar quais tipos são os responsáveis. O TypeScript fornece um mecanismo de rastreamento que mostra o tempo gasto em cada operação. Para ativar um rastreamento detalhado, use a flag `--generateTrace`:
+
+```bash
+# Gera um diretório com arquivos de trace no formato do Chrome DevTools
+npx tsc --generateTrace ./trace-output
+
+# Depois carregue trace-output/trace.json no Perfetto UI:
+# https://ui.perfetto.dev
+```
+
+O arquivo `trace.json` gerado pode ser carregado no Perfetto UI e mostra visualmente quais tipos custaram mais tempo para checar. Cada entrada representa uma operação do compilador com duração, arquivo e posição de origem.
+
+Além do trace visual, dois flags de linha de comando oferecem diagnósticos textuais rápidos:
+
+```bash
+# Resumo de alto nível: tempo total, número de arquivos, memória usada
+npx tsc --diagnostics
+
+# Diagnósticos estendidos: breakdown por fase (parse, bind, check, emit)
+npx tsc --extendedDiagnostics
+```
+
+O repositório oficial do TypeScript mantém um script auxiliar que resume os tipos mais custosos diretamente no terminal:
+
+```bash
+# Analisa o trace e imprime uma tabela com os tipos mais caros
+npx @typescript/analyze-trace ./trace-output
+```
+
+## `--extendedDiagnostics` — Lendo os Números
+
+O flag `--extendedDiagnostics` é o mais útil para diagnóstico rápido. Ele imprime uma tabela com o tempo gasto em cada fase do compilador:
+
+```bash
+npx tsc --extendedDiagnostics 2>&1 | grep -E "Files|Check|Bind|Parse|Emit|Memory"
+```
+
+Saída típica com comentários explicando cada linha:
+
+```
+Files:                         1842    # total de arquivos carregados (inclui libs)
+Lines of library:            358621    # linhas de .d.ts de libs (lib.dom, etc.)
+Lines of user code:           42310    # linhas do seu próprio código
+Parse time:                   2.12s    # tempo para converter texto em AST
+Bind time:                    0.89s    # tempo para resolver símbolos
+Check time:                   8.43s   # ← gargalo principal: inferência e verificação
+Emit time:                    0.31s    # tempo para gerar .js / .d.ts
+Total time:                  11.75s
+```
+
+**O que observar:**
+
+- **Check time alto** (mais de 60% do total): problema em tipos complexos — condicional/recursivo, inferência de genérico, grandes uniões
+- **Files alto** (mais de 2000 para um projeto médio): pode indicar `skipLibCheck: false` ou reexportações desnecessárias puxando módulos extras
+- **Parse time alto**: pode indicar arquivos muito grandes ou muitos arquivos sendo reprocessados do zero (sem cache incremental)
+
+### Usando `--generateTrace` para identificar tipos específicos
+
+Após carregar o trace no Perfetto UI, procure por entradas `checkExpression`, `checkCall` e `checkType` com duração longa. Cada entrada mostra o arquivo e posição de origem, apontando diretamente para o tipo ou expressão problemática.
+
+```bash
+# Gerar trace com informações de tipos detalhadas
+npx tsc --generateTrace /tmp/ts-trace --traceResolution
+
+# Depois abra https://ui.perfetto.dev e carregue /tmp/ts-trace/trace.json
+# Filtre por "check" na barra de pesquisa para focar em verificação de tipos
+```
+
+## `interface` vs `type` em Grandes Bases — Caching de Interfaces
+
+Esta é uma das otimizações mais impactantes e menos conhecidas. O TypeScript trata `interface` e `type` de formas fundamentalmente diferentes internamente:
+
+- **`interface`**: o tipo resultante é **cacheado pelo nome**. Quando o mesmo `interface Foo` aparece em múltiplos contextos, o compilador reutiliza a mesma representação interna.
+- **`type` (alias)**: aliases de tipo que envolvem tipos complexos (interseções, mapeados, condicionais) são **reavaliados** a cada referência em alguns contextos, especialmente em verificações de assignability.
+
+### Exemplo prático
+
+```typescript
+// ✗ Potencialmente mais lento em grandes bases — type alias com interseção
+type UserWithMetadata = User & { createdAt: Date; updatedAt: Date };
+type AdminUser = UserWithMetadata & { permissions: string[] };
+type SuperAdmin = AdminUser & { bypassAll: boolean };
+// Cada vez que SuperAdmin é checado, a cadeia de interseções é reavaliada
+
+// ✓ Mais rápido — interface com extends (o compilador cacheia cada nível)
+interface UserWithMetadata extends User {
+  createdAt: Date;
+  updatedAt: Date;
+}
+interface AdminUser extends UserWithMetadata {
+  permissions: string[];
+}
+interface SuperAdmin extends AdminUser {
+  bypassAll: boolean;
+}
+```
+
+A regra prática: **prefira `interface` com `extends` para hierarquias de objetos**. Use `type` quando precisar de recursos que `interface` não suporta: uniões, interseções complexas, tipos mapeados, tipos condicionais, ou aliases para primitivos.
+
+### Por que interfaces são mais rápidas?
+
+Quando o compilador vê `interface Foo extends Bar`, ele registra `Foo` como "Bar com propriedades adicionais" e cacheia essa relação. Ao verificar se um valor satisfaz `Foo`, ele pode reutilizar o resultado anterior da verificação de `Bar`. Com interseções de `type`, o compilador precisa resolver a estrutura completa a cada verificação, percorrendo todos os membros da interseção.
+
+```typescript
+// Arquivo shared/config.ts — BaseConfig com muitas propriedades:
+interface BaseConfig {
+  host: string;
+  port: number;
+  timeout: number;
+  retries: number;
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  // ... 20+ propriedades adicionais
+}
+
+// Arquivo server/config.ts — extensão via interface (resultado cacheado):
+interface ServerConfig extends BaseConfig {
+  ssl: boolean;
+  certPath: string;
+}
+
+// Arquivo server/config-alt.ts — extensão via type alias de interseção:
+type ServerConfigAlt = BaseConfig & { ssl: boolean; certPath: string };
+// Em uma base com centenas de arquivos referenciando ambos,
+// a diferença de performance acumula de forma perceptível
+```
+
+### Quando `type` é inevitável (e tudo bem)
+
+```typescript
+// Unions — interface não suporta, type é obrigatório:
+type Result<T> = { ok: true; value: T } | { ok: false; error: Error };
+
+// Aliases para primitivos:
+type UserId = string;
+type Timestamp = number;
+
+// Tipos mapeados e condicionais — exclusivos de type:
+type Readonly<T> = { readonly [K in keyof T]: T[K] };
+type NonNullable<T> = T extends null | undefined ? never : T;
+```
+
+Nesses casos use `type` sem hesitar. O problema de performance surge quando você usa `type alias` para hierarquias de objetos que poderiam ser `interface extends`.
+
+## Simplificação de Tipos Complexos
+
+Tipos condicionais e recursivos são ferramentas poderosas, mas o type checker paga um custo real para avaliá-los. Saber quando simplificar — ou quando uma abstração elegante está custando segundos de compilação — é uma habilidade essencial.
+
+### Tipos condicionais profundos
+
+```typescript
+// ✗ Condicional aninhado e recursivo — difícil de checar, erros crípticos
+type DeepRequired<T> =
+  T extends object
+    ? { [K in keyof T]-?: DeepRequired<T[K]> }
+    : T;
+
+// Ao compor vários tipos custosos:
+type ComplexConfig = DeepRequired<Partial<DeepReadonly<MyConfig>>>;
+// O compilador pode levar centenas de millisegundos só para este tipo
+// e erros de incompatibilidade viram mensagens de dezenas de linhas
+```
+
+```typescript
+// ✓ Alternativa mais simples — quebrar em passos nomeados e rasos
+type RequiredProps<T> = { [K in keyof T]-?: T[K] };
+// Não recursivo: aplica apenas um nível, mas cacheia bem
+
+// Para deep required, documente a limitação e use only when needed:
+type ShallowRequired<T> = Required<T>; // alias da stdlib — bem otimizado
+```
+
+### Recursão com limite explícil de profundidade
+
+O TypeScript limita a profundidade de recursão de tipos (atualmente 100 níveis por padrão). Tipos recursivos muito profundos causam o erro `Type instantiation is excessively deep` e deixam o compilador lento antes disso:
+
+```typescript
+// ✗ Recursão sem controle — pode explodir o checker
+type Flatten<T> = T extends Array<infer Item> ? Flatten<Item> : T;
+// Para arrays muito aninhados, isso recursiona muitos níveis
+
+// ✓ Versão com limite explícito usando contador de profundidade via tuple
+type Flatten<T, Depth extends unknown[] = []> =
+  Depth['length'] extends 10
+    ? T                                              // para em 10 níveis
+    : T extends Array<infer Item>
+      ? Flatten<Item, [...Depth, unknown]>           // incrementa contador
+      : T;
+
+// Garantia: no máximo 10 níveis de recursão
+type Test1 = Flatten<number[][][]>;         // number
+type Test2 = Flatten<string[][][][][][]>;   // string
+```
+
+### Uniões grandes e distribuição custosa
+
+Uniões com muitos membros são custosas porque operações distributivas precisam ser aplicadas a cada membro individualmente:
+
+```typescript
+// ✗ União de 50+ strings literais processada em condicional distributiva:
+type AllRoutes =
+  | '/home'
+  | '/about'
+  | '/products'
+  | '/products/:id'
+  | '/users/:id'
+  // ... 50 membros adicionais
+
+type RouteParams<T extends AllRoutes> =
+  T extends `${string}/:${infer Param}` ? { [K in Param]: string } : {};
+// O distribuição percorre todos os 50+ membros a cada uso de RouteParams
+```
+
+```typescript
+// ✓ Lookup via Record — O(1) em vez de distribuição linear
+type RouteParamMap = {
+  '/products/:id': { id: string };
+  '/users/:id': { id: string };
+  '/categories/:slug': { slug: string };
+};
+
+type StaticRoutes = '/home' | '/about' | '/products';
+type DynamicRoutes = keyof RouteParamMap;
+type AllRoutes = StaticRoutes | DynamicRoutes;
+
+// Lookup direto no mapa — muito mais rápido:
+type RouteParams<T extends AllRoutes> =
+  T extends keyof RouteParamMap ? RouteParamMap[T] : Record<string, never>;
+
+type Params1 = RouteParams<'/products/:id'>;   // { id: string }
+type Params2 = RouteParams<'/home'>;           // Record<string, never>
+```
+
+### Evitar re-computação com tipos intermediários nomeados
+
+```typescript
+// ✗ Tipo calculado inline repetidamente em cada uso:
+function processEvent(
+  handler: (event: Extract<AppEvent, { type: 'click' | 'submit' | 'focus' }>) => void
+): void {}
+
+// ✓ Nomear o tipo intermediário — o compilador cacheia pelo nome:
+type InteractiveEvent = Extract<AppEvent, { type: 'click' | 'submit' | 'focus' }>;
+type InteractiveHandler = (event: InteractiveEvent) => void;
+
+function processEvent(handler: InteractiveHandler): void {}
+// Cada referência a InteractiveHandler reutiliza o resultado cacheado
+```
+
+## `skipLibCheck` e `isolatedModules`
+
+Duas flags de configuração do `tsconfig.json` têm impacto imediato e significativo na velocidade do compilador, sem exigir refatoração de código.
+
+### `skipLibCheck`
+
+```json
+{
+  "compilerOptions": {
+    "skipLibCheck": true
+  }
+}
+```
+
+Quando `skipLibCheck: true`, o TypeScript pula a verificação de tipos em todos os arquivos `.d.ts` — tanto os da lib padrão (`lib.dom.d.ts`, `lib.es2022.d.ts`) quanto os de pacotes de terceiros em `node_modules`.
+
+**Quando usar:** Quase sempre em projetos de aplicação. Os tipos de bibliotecas bem mantidas raramente têm erros, e verificá-los a cada build é custo puro. Em projetos de biblioteca que você publica, pode valer manter `skipLibCheck: false` para garantir que seus próprios arquivos `.d.ts` gerados são válidos.
+
+**Impacto:** Em projetos com muitas dependências, reduz o check time em 20–40%. O benefício é proporcional ao número de linhas de `.d.ts` nas libs:
+
+```bash
+# Comparação rápida — executar com e sem a flag:
+npx tsc --extendedDiagnostics 2>&1 | grep "Check time"
+# Sem skipLibCheck: Check time: 8.4s
+# Com skipLibCheck: Check time: 5.1s  (redução de ~39%)
+```
+
+### `isolatedModules`
+
+```json
+{
+  "compilerOptions": {
+    "isolatedModules": true
+  }
+}
+```
+
+`isolatedModules: true` restringe o código a padrões que podem ser transpilados **arquivo por arquivo**, sem informação de tipo global. Isso permite que ferramentas como esbuild, SWC e Babel transpilem TypeScript sem rodar o type checker completo — o que é ordens de magnitude mais rápido que `tsc`.
+
+**O que `isolatedModules` proíbe e como corrigir:**
+
+```typescript
+// ✗ Re-export de tipo sem modificador 'type' — a ferramenta de transpilação
+// não sabe se 'User' é um tipo ou um valor sem rodar o checker:
+export { User } from './user';
+// ERRO: Re-exporting a type when 'isolatedModules' is enabled requires 'export type'
+
+// ✓ Correto — deixa inequivocamente claro que é um tipo:
+export type { User } from './user';
+
+// ✗ const enum — requer informação cross-arquivo para ser inlineado:
+const enum Direction { Up, Down, Left, Right }
+// ERRO: Cannot use const enum with 'isolatedModules'
+
+// ✓ Use enum regular (ou union de strings literais):
+enum Direction { Up = 'Up', Down = 'Down', Left = 'Left', Right = 'Right' }
+// — ou, sem custo de runtime:
+type Direction = 'Up' | 'Down' | 'Left' | 'Right';
+const Direction = { Up: 'Up', Down: 'Down', Left: 'Left', Right: 'Right' } as const;
+```
+
+### Como `isolatedModules` acelera o desenvolvimento
+
+Com `isolatedModules: true`, você pode usar esbuild ou SWC para o **transpile** (remoção de tipos e geração de JS) e rodar `tsc --noEmit` separadamente apenas para **type checking**. Os dois processos podem correr em paralelo, e o desenvolvedor vê resultado de ambos quase imediatamente:
+
+```json
+{
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --outfile=dist/index.js --sourcemap",
+    "typecheck": "tsc --noEmit",
+    "dev": "concurrently \"npm run build -- --watch\" \"npm run typecheck -- --watch\""
+  }
+}
+```
+
+```bash
+# esbuild transpila em ~50ms (sem type checking — só remove tipos)
+# tsc --noEmit checa tipos em paralelo (sem emitir arquivos .js)
+# O desenvolvedor vê erros de tipo sem aguardar o transpile completo
+```
+
+### `verbatimModuleSyntax` — o sucessor moderno do `isolatedModules`
+
+No TypeScript 5.0+, `verbatimModuleSyntax` é a evolução de `isolatedModules` para projetos novos:
+
+```json
+{
+  "compilerOptions": {
+    "verbatimModuleSyntax": true
+  }
+}
+```
+
+Garante que toda importação e exportação de tipo use `import type` / `export type` explicitamente, tornando o código compatível com qualquer transpilador de arquivo único e eliminando ambiguidade:
+
+```typescript
+// Com verbatimModuleSyntax: true — obrigatório distinguir valor de tipo:
+import type { User } from './types';       // removido completamente na transpilação
+import { createUser } from './factory';    // mantido no output (é um valor)
+
+// ✗ O compilador recusa importações mistas ambíguas:
+import { User, createUser } from './user';
+// ERRO: 'User' is a type and must be imported using 'import type'
+
+// ✓ Separar explicitamente:
+import type { User } from './user';
+import { createUser } from './user';
+```
+
+### Configuração recomendada para aplicações grandes
+
+```json
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "composite": true
+  }
+}
+```
+
+A flag `incremental: true` merece destaque: ela gera um arquivo `.tsbuildinfo` que cacheia o estado do compilador entre execuções, fazendo com que builds subsequentes reprocessem apenas os arquivos alterados:
+
+```bash
+# Primeira build (sem cache): 11.7s
+npx tsc --incremental
+
+# Segunda build (sem mudanças de código):
+npx tsc --incremental
+# Total time: 0.4s — TypeScript leu o cache e não precisou rechear nada
+
+# Após alterar um arquivo:
+npx tsc --incremental
+# Total time: 1.2s — apenas o arquivo alterado e seus dependentes foram rechecados
+```
+
+**Identificar tipos lentos começa com `--extendedDiagnostics` e `--generateTrace`; acelerar o check time passa por preferir `interface extends` a interseções de `type` em hierarquias de objetos, simplificar tipos condicionais e recursivos profundos, separar uniões grandes em grupos nomeados e substituir distribuições por lookups em `Record`, e ativar `skipLibCheck`, `isolatedModules` e `incremental` no `tsconfig.json`. Cada uma dessas práticas é aditiva — combinadas, podem transformar uma compilação de 15 segundos em menos de 3 segundos sem tocar na lógica do sistema.**

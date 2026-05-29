@@ -1,1 +1,97 @@
-{"lessonId": "day-23", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-23",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental entre `declare module 'foo'` em um arquivo `.d.ts` e criar um arquivo `foo.ts` com `export {}`?",
+      "options": [
+        "`declare module 'foo'` em um `.d.ts` adiciona ou sobrescreve a tipagem do módulo sem emitir código; `foo.ts` com `export {}` cria um módulo real que é compilado e incluído no bundle. O primeiro é pura informação de tipo; o segundo produz JavaScript executável",
+        "Não há diferença — ambos criam a mesma tipagem para o módulo 'foo'",
+        "`declare module` só funciona para módulos de terceiros em `node_modules`; para módulos locais, é obrigatório criar um arquivo `.ts`",
+        "`declare module` requer que o pacote esteja listado em `dependencies` no `package.json`, caso contrário TypeScript emite erro"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Esta é a distinção central de arquivos de declaração: `.d.ts` existe exclusivamente no mundo dos tipos — o compilador o usa para verificação, mas o bundler o ignora completamente. `declare module 'csv-parser'` em um `.d.ts` diz ao TypeScript 'este módulo existe em runtime com essa forma', sem criar nenhum código. Um `foo.ts` real é compilado para `foo.js` e incluído na saída. Para tipar pacotes JavaScript sem tipos, sempre use `declare module` em `.d.ts` — nunca crie um arquivo `.ts` que finge ser o pacote."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Um arquivo `globals.d.ts` tem imports de outros módulos. Para estender a interface `Window` com uma propriedade customizada, qual sintaxe está correta?",
+      "options": [
+        "Declarar `interface Window { myProp: string }` diretamente no nível raiz do arquivo — imports não afetam isso",
+        "Usar `export declare global { interface Window { myProp: string } }` — o `export` é necessário para que TypeScript processe a declaração",
+        "Usar `declare global { interface Window { myProp: string } }` dentro do arquivo, porque a presença de imports transforma o arquivo em módulo ES, e declarações de nível raiz em módulos têm escopo local, não global",
+        "Não é possível estender `Window` em arquivos que têm imports — é preciso criar um arquivo `.d.ts` separado sem imports"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A regra é simples mas crítica: um arquivo TypeScript com ao menos um `import` ou `export` de nível raiz é tratado como módulo ES. Em módulos, declarações de interface e namespace têm escopo local, não global — ou seja, `interface Window { ... }` no nível raiz de um módulo não estende o global `Window`. Para extender globals dentro de um módulo, é obrigatório usar `declare global { ... }`. Arquivos sem nenhum import/export são 'scripts' (não módulos) e suas declarações são automaticamente globais — por isso a diferença importa."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O código abaixo usa module augmentation para estender o Express. Por que é necessário importar `'express'` no início do arquivo de augmentation?\n\n```typescript\nimport 'express';\ndeclare module 'express' {\n  interface Request { user?: { id: string } }\n}\n```",
+      "options": [
+        "Não é necessário — `declare module 'express'` funciona sem o import prévio",
+        "O import serve para que o bundler inclua `express` no bundle final junto com os tipos customizados",
+        "O import é necessário apenas para evitar conflito com outros arquivos de augmentation no projeto",
+        "O import garante que TypeScript carregue a declaração original do módulo antes de mesclá-la. Sem o import, TypeScript cria um módulo 'express' completamente novo do zero em vez de aumentar o existente, e a `interface Request` original seria perdida"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Esta é uma armadilha frequente em module augmentation. Quando você escreve `declare module 'express' { ... }` sem importar o módulo, TypeScript trata o bloco como uma declaração de módulo ambiente (ambient module declaration) que define o módulo do zero — apagando todos os tipos originais. Com `import 'express'` (ou `import type { ... } from 'express'`), TypeScript sabe que o módulo já existe e o bloco `declare module 'express'` é interpretado como uma augmentation (mesclagem), não como uma redefinição. A diferença entre 'criar' e 'extender' depende exatamente desse import."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é o comportamento de `declare const enum Direction { Up, Down }` comparado a `declare enum Direction { Up, Down }` ao compilar código que os usa?",
+      "options": [
+        "São idênticos — `const` em enums ambient não tem efeito na compilação",
+        "`declare const enum` faz o compilador substituir cada uso pelo valor literal inline (`Direction.Up` → `0`) sem emitir referência ao objeto enum; `declare enum` preserva a referência ao objeto em runtime, assumindo que ele existe em algum JS externo. Se o objeto não existir em runtime, `declare enum` causa ReferenceError",
+        "`declare const enum` só funciona com `isolatedModules: false`; com `isolatedModules: true`, é equivalente a `declare enum`",
+        "`declare enum` é inválido — enums ambient devem sempre usar `const`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`const enum` é inlinado: o compilador substitui cada `Direction.Up` por `0` diretamente no JS gerado, eliminando qualquer referência ao objeto `Direction`. Isso é eficiente e seguro para enums ambient porque o objeto nunca precisa existir em runtime. `declare enum` (sem `const`) preserva referências ao objeto: `Direction.Up` no TypeScript se torna `Direction.Up` no JS, então o objeto `Direction` precisa existir em runtime (tipicamente definido em algum arquivo JS externo). Se não existir, é `ReferenceError`. Com `isolatedModules: true` (usado por Vite, esbuild), `const enum` não-ambient é proibido por uma razão diferente — mas `declare const enum` ainda funciona de forma limitada."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Para tipar imports de arquivos `.svg` como strings em um projeto Vite, qual declaração de módulo usar, e onde esse arquivo deve estar para que o TypeScript o reconheça automaticamente?",
+      "options": [
+        "`declare module '*.svg' { const content: string; export default content }` em um arquivo `.d.ts` dentro de um diretório listado em `include` no `tsconfig.json` (ex: `types/` ou `src/`)",
+        "`declare module 'svg' { const content: string; export default content }` no arquivo `src/index.ts`",
+        "`declare module './assets/*.svg' { ... }` — o caminho deve ser relativo ao arquivo que faz o import",
+        "`declare type SVG = string` no `tsconfig.json` dentro de `compilerOptions.types`"
+      ],
+      "correctAnswer": 0,
+      "explanation": "O padrão wildcard `*.svg` em `declare module '*.svg'` cobre qualquer import cujo especificador termine em `.svg`, independentemente do caminho. Para que o TypeScript processe o arquivo `.d.ts`, ele precisa estar em um local incluído pelo `tsconfig.json` — via `include` (que aceita globs como `types/**/*.d.ts`) ou via `typeRoots`. O Vite já inclui `/// <reference types=\"vite/client\" />` que declara módulos para `.svg`, `.png`, `.css` etc. Se você precisa de uma forma customizada (ex: componente React em vez de string), cria seu próprio `types/assets.d.ts` e garante que o diretório `types/` está em `include` ou `typeRoots`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que a seguinte extensão de `ProcessEnv` via `declare global` funciona para garantir que `process.env.NODE_ENV` retorne `'development' | 'production' | 'test'` em vez de `string | undefined`?\n\n```typescript\ndeclare global {\n  namespace NodeJS {\n    interface ProcessEnv {\n      NODE_ENV: 'development' | 'production' | 'test';\n    }\n  }\n}\n```",
+      "options": [
+        "Sobrescreve completamente o tipo de `process.env` — todos os outros campos deixam de existir",
+        "Funciona apenas se `@types/node` não estiver instalado — com `@types/node`, a augmentation é ignorada",
+        "TypeScript mescla (merges) a interface `ProcessEnv` da augmentation com a definição original de `@types/node`. A propriedade `NODE_ENV` na augmentation tem precedência sobre a definição original (`string | undefined`), enquanto todas as outras propriedades de `ProcessEnv` são preservadas pela fusão de interfaces",
+        "O `namespace NodeJS` é necessário apenas em Node.js; em aplicações browser, a augmentation seria diretamente `interface ProcessEnv { ... }`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Interface merging (fusão de interfaces) é o mecanismo que torna essa augmentation possível. TypeScript mescla todas as declarações de uma mesma interface em um único tipo — incluindo declarações em múltiplos arquivos `.d.ts`. Quando você declara `interface ProcessEnv { NODE_ENV: 'development' | 'production' | 'test' }` na augmentation, TypeScript mescla com a `ProcessEnv` de `@types/node` que tem `[key: string]: string | undefined`. Propriedades nomeadas explicitamente têm precedência sobre index signatures, então `NODE_ENV` passa a ser `'development' | 'production' | 'test'` (sem `undefined`). Todas as outras propriedades do `@types/node` continuam disponíveis — não há perda."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o propósito da diretiva `/// <reference types=\"vite/client\" />` em um arquivo `.d.ts` ou `.ts`, e quando ela é necessária versus quando pode ser omitida?",
+      "options": [
+        "É sempre obrigatória em projetos Vite — sem ela, o TypeScript não consegue processar nenhum arquivo do projeto",
+        "`/// <reference types>` só funciona em arquivos `.d.ts` — em arquivos `.ts` regulares é um comentário ignorado",
+        "É uma diretiva de import de runtime — ela faz o Vite injetar os tipos em tempo de desenvolvimento mas os remove em produção",
+        "Instrui o compilador a incluir os tipos do pacote `vite` (equivalente a ter `vite` em `compilerOptions.types`). É necessária quando o arquivo precisa dos tipos e `vite` não está listado em `types` no `tsconfig.json`. Pode ser omitida se `vite` já está em `typeRoots`/`types` ou se o `tsconfig.json` já o inclui automaticamente (ex: via template oficial do Vite)"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Triple-slash reference directives são instruções ao compilador, não ao runtime — o compilador as processa; o bundler as ignora. `/// <reference types=\"vite/client\" />` é equivalente a adicionar `\"vite/client\"` em `compilerOptions.types` no `tsconfig.json`, mas com escopo por arquivo. Ela é necessária quando você quer os tipos de `vite` disponíveis em um arquivo específico sem habilitá-los globalmente via `tsconfig`. Nos templates oficiais do Vite (`create vite`), o arquivo `src/vite-env.d.ts` já contém essa diretiva e está incluído via `tsconfig.json`, então outros arquivos do projeto não precisam repetir. Em monorepos ou setups customizados, pode ser necessário adicioná-la explicitamente."
+    }
+  ]
+}

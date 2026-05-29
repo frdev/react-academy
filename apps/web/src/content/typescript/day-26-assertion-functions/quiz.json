@@ -1,1 +1,97 @@
-{"lessonId": "day-26", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-26",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental entre `function isString(v: unknown): v is string` e `function assertString(v: unknown): asserts v is string`?",
+      "options": [
+        "O type guard retorna `boolean` e estreita o tipo apenas dentro do branch verdadeiro de um `if`. A assertion function retorna `void`, lança em caso de falha, e estreita o tipo a partir da linha de chamada até o fim do escopo — sem necessidade de `if`",
+        "Não há diferença — ambas estreitam o tipo da variável da mesma forma após serem chamadas",
+        "A assertion function só funciona com parâmetros do tipo `unknown`; o type guard funciona com qualquer tipo",
+        "O type guard é verificado em runtime pelo TypeScript; a assertion function é verificada apenas em compile time"
+      ],
+      "correctAnswer": 0,
+      "explanation": "A distinção é fundamental: um type guard (`v is string`) é uma função que retorna `boolean`. O TypeScript usa o resultado para estreitar o tipo no branch `true` de um `if/while/ternário`. Após o bloco, o tipo volta ao original. Uma assertion function (`asserts v is string`) retorna `void` — ela ou lança (falha) ou garante silenciosamente. Se ela retornar normalmente, o TypeScript interpreta isso como prova de que a condição é verdadeira, e o narrowing se propaga para todas as linhas seguintes no mesmo escopo, sem precisar de `if`. Use type guards para bifurcação de fluxo; use assertions para invariantes obrigatórias."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Dado `function assert(condition: boolean, msg: string): asserts condition {}`, ao chamar `assert(user !== null, 'user must exist')`, o que o TypeScript infere sobre `user` após a chamada?",
+      "options": [
+        "Nada — `asserts condition` só funciona com `asserts value is T`, não com condições booleanas arbitrárias",
+        "O TypeScript estreita `user` para `boolean`, pois a condição é do tipo `boolean`",
+        "O TypeScript estreita o tipo de `user` removendo `null`, porque a asserção garante que `user !== null` é verdadeiro após o retorno normal da função",
+        "Ocorre um erro de compilação — `asserts condition` requer que `condition` seja um parâmetro da própria função"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A forma `asserts condition` (sem `is T`) é uma assertion function que atesta sobre uma expressão booleana arbitrária, não sobre o tipo de um parâmetro específico. Quando o TypeScript vê `assert(user !== null, ...)`, ele analisa a condição `user !== null` e, assumindo que a função retornou normalmente (ou seja, não lançou), conclui que a condição é verdadeira — portanto `user` não pode ser `null`. Isso é equivalente a escrever `if (user === null) throw new Error(msg)` inline, mas empacotado em uma função reutilizável. A forma `asserts condition` foi adicionada no TypeScript 3.7 junto com `asserts value is T`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que `const strings: string[] = values.filter(isNotNull)` funciona sem cast quando `isNotNull` é definida como `function isNotNull<T>(v: T | null): v is T`?",
+      "options": [
+        "Não funciona — `filter` sempre retorna `(T | null)[]`, independente do callback",
+        "O compilador usa inferência de tipo bidirecional para inferir o retorno de `filter` a partir da anotação `string[]`",
+        "Funciona porque `isNotNull` é genérica — qualquer função genérica passada para `filter` produz um array sem `null`",
+        "O TypeScript possui uma sobrecarga especial de `Array.prototype.filter` que reconhece quando o callback é um type guard predicado (`v is T`) e usa o tipo narrowed como tipo do array resultante"
+      ],
+      "correctAnswer": 3,
+      "explanation": "As definições de `Array.prototype.filter` na biblioteca padrão do TypeScript incluem uma sobrecarga específica: `filter<S extends T>(predicate: (value: T) => value is S): S[]`. Quando o callback é um type guard com predicado `value is S`, o TypeScript usa essa sobrecarga e infere que o array resultante é `S[]` — sem a possibilidade de `null`. Isso é intencional e extremamente útil: `items.filter(Boolean)`, `items.filter(isString)`, `items.filter(isNotNull)` todos beneficiam dessa sobrecarga. Sem o predicado de tipo, o retorno seria `(T | null)[]`, exigindo cast manual."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que acontece em tempo de compilação ao adicionar `{ kind: 'pentagon'; sides: number[] }` a uma union `Shape` se o `switch` usa `assertNever(shape)` no `default` sem cobrir o novo caso?",
+      "options": [
+        "Nenhum erro — o TypeScript não analisa o conteúdo do `default` de switches",
+        "Um erro de compilação na chamada `assertNever(shape)`: o argumento tem tipo `{ kind: 'pentagon'; sides: number[] }` que não é atribuível a `never`",
+        "Um erro de runtime quando `shape.kind === 'pentagon'` for processado",
+        "Um aviso (warning) de TypeScript, mas não um erro — o código compila normalmente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O padrão `assertNever` funciona porque `assertNever` é declarada como `function assertNever(x: never): never`. No `default` de um `switch` que cobre todos os casos de uma union, o TypeScript infere o tipo do discriminante como `never` — não há valor possível. Se um novo membro `'pentagon'` é adicionado sem um `case 'pentagon'`, o TypeScript infere que `shape` no `default` ainda pode ter o tipo `{ kind: 'pentagon'; ... }`. Ao passar isso para `assertNever`, que exige `never`, há um erro de tipo: `Argument of type '{ kind: \"pentagon\"; ... }' is not assignable to parameter of type 'never'`. Esse erro de compilação é exatamente o objetivo — forçar que cada novo membro da union seja tratado explicitamente."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Ao compor `function isArrayOf<T>(arr: unknown, guard: (item: unknown) => item is T): arr is T[]`, qual é a vantagem dessa abordagem sobre escrever um guard específico para cada tipo de array?",
+      "options": [
+        "O guard genérico é reutilizável com qualquer tipo `T` que possua um guard predicado existente, eliminando duplicação: `isArrayOf(v, isString)`, `isArrayOf(v, isNumber)`, `isArrayOf(v, isApiResponse)` reutilizam a mesma lógica de verificação de array",
+        "Não há vantagem — guards genéricos são mais lentos em runtime",
+        "Guards genéricos funcionam apenas com tipos primitivos como `string` e `number`",
+        "A vantagem é apenas estética — o TypeScript trata guards genéricos e específicos de forma idêntica"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Composição de type guards com generics é o mesmo princípio de DRY aplicado ao sistema de tipos. Sem o guard genérico, você precisaria de `isStringArray`, `isNumberArray`, `isApiResponseArray` — cada uma com a mesma lógica `Array.isArray(arr) && arr.every(...)`. Com `isArrayOf`, a lógica de 'verificar se é array e se cada elemento passa no guard' é escrita uma vez. O tipo `T` é inferido automaticamente pelo TypeScript a partir do guard passado: se você passa `isString` (do tipo `(v: unknown) => v is string`), então `T` é `string` e o resultado é `arr is string[]`. Isso permite composição ilimitada: `isArrayOf(v, isArrayOf(v2, isString))` verificaria um array de arrays de strings."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que o narrowing \"se perde\" após um `if (isString(value))` quando `value` é usado fora do bloco, mas persiste quando se usa `assertString(value)` (assertion function)?",
+      "options": [
+        "É um bug do TypeScript — ambos deveriam manter o narrowing fora do bloco",
+        "O narrowing de `if (isString(value))` persiste sim, mas apenas se `value` for declarado com `let`",
+        "CFA (Control Flow Analysis) modela type guards como condicionais: o narrowing é local ao branch verdadeiro porque o compilador não pode garantir que o código *não passou pelo branch falso*. Já assertion functions mudam o tipo da variável no ponto de chamada, permanentemente no escopo corrente, porque se a função retornou, a condição necessariamente é verdadeira",
+        "Assertion functions usam metadados de runtime para rastrear o tipo; type guards são só hints de compilação"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O CFA modela um `if (isString(value))` como um ponto de bifurcação: no branch `true`, `value` é `string`; no branch `false`, `value` é `number`. Após o `if`, o compilador faz a junção (join) dos tipos de ambos os branches — resultado: `string | number`. O TypeScript não pode saber, após o `if`, por qual branch o código passou. Uma assertion function não bifurca: ela é uma chamada de função que ou retorna normalmente (provando a condição) ou não retorna (lançou). Após o retorno normal, o TypeScript atualiza o tipo da variável no ponto de chamada, e esse tipo estreitado vale para todo o código subsequente no mesmo escopo. Essa é a razão semântica precisa pela qual assertions são usadas para invariantes e guards são usados para bifurcação."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o tipo de retorno correto para uma função `fail` que sempre lança uma exceção, e por que isso importa para o TypeScript?",
+      "options": [
+        "`void` — porque a função não retorna um valor útil",
+        "`unknown` — porque não se sabe o que acontece após uma exceção",
+        "`undefined` — porque lançar uma exceção é equivalente a retornar `undefined`",
+        "`never` — porque a função nunca retorna normalmente. Isso permite ao TypeScript saber que qualquer código após uma chamada a `fail()` é inalcançável, e que `fail()` pode ser usada no `default` de um switch como alternativa a `assertNever` para exhaustiveness checking"
+      ],
+      "correctAnswer": 3,
+      "explanation": "O tipo `never` significa literalmente 'este ponto do código nunca é alcançado' ou 'esta função nunca retorna normalmente'. Uma função que sempre lança deve ter retorno `never` por duas razões: (1) Permite que o TypeScript marque código após a chamada como inalcançável — `const x: string = fail('error'); x.toUpperCase();` não emite erro de 'x não inicializado' porque o compilador sabe que `fail` nunca retorna, portanto `x.toUpperCase()` nunca é executado. (2) Permite usar a função em posições onde `never` é necessário — como no `default` de um switch de exhaustiveness, ou como valor em uma expressão onde o tipo deve ser consistente: `const val = condition ? someString : fail('impossible')` — o tipo de `val` é `string`, pois `fail` tem tipo `never` que não contribui para a union."
+    }
+  ]
+}
