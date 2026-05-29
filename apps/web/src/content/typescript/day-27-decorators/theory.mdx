@@ -1,1 +1,500 @@
-# Conteúdo em breve
+# Decorators (Stage 3)
+
+Decorators são uma proposta ECMAScript que chegou ao Stage 3 em 2022 e foi incorporada ao TypeScript 5.0. Eles permitem **anotar e modificar classes, métodos, campos e acessadores de forma declarativa**, sem dispersar lógica transversal pelo código de negócios. Esta lição foca na especificação Stage 3 — a API moderna, tipada e estável. Se você já usou decorators com `experimentalDecorators: true` no TypeScript 4.x, saiba que as assinaturas são completamente diferentes: os novos decorators recebem um objeto `context` rico em vez de `target/propertyKey/descriptor` separados, e não dependem do polyfill `reflect-metadata`. Os dois sistemas coexistem no ecossistema (cada projeto escolhe um), mas Stage 3 é o futuro e o foco desta lição.
+
+## Class Decorators Tipados
+
+Um class decorator recebe a própria classe como primeiro argumento e um objeto de contexto `ClassDecoratorContext` como segundo. Ele pode retornar uma nova classe (subclasse ou função construtora substituta) ou `undefined` para apenas observar/modificar sem trocar a identidade da classe.
+
+```typescript
+// ✓ Decorator básico — sela a classe contra extensão e modificação
+function sealed<T extends abstract new (...args: any) => any>(
+  value: T,
+  context: ClassDecoratorContext<T>
+): void {
+  Object.seal(value);
+  Object.seal(value.prototype);
+}
+
+@sealed
+class ApiService {
+  baseUrl = 'https://api.example.com';
+  fetch(path: string) { /* ... */ }
+}
+```
+
+O objeto `context` em `ClassDecoratorContext` carrega informações úteis:
+
+```typescript
+// context.kind  === 'class'
+// context.name  === nome da classe como string
+// context.addInitializer(fn) — registra callback para cada new ClassName()
+// context.metadata — objeto compartilhado para metadados (TS 5.2+)
+
+function logClass<T extends abstract new (...args: any) => any>(
+  value: T,
+  context: ClassDecoratorContext<T>
+): T {
+  console.log(`Classe decorada: ${context.name}`);
+
+  // Retornar subclasse estende o comportamento:
+  return class extends (value as any) {
+    constructor(...args: any[]) {
+      super(...args);
+      console.log(`Nova instância de ${context.name}`);
+    }
+  } as T;
+}
+
+@logClass
+class UserRepository {
+  find(id: number) { return { id, name: 'Alice' }; }
+}
+
+const repo = new UserRepository();
+// "Classe decorada: UserRepository"   — ao importar o módulo
+// "Nova instância de UserRepository"  — ao chamar new
+```
+
+### Tipagem Estrita de Class Decorators
+
+A grande evolução do Stage 3 é que a tipagem é **genérica e verificada pelo compilador**. Você pode restringir em quais classes o decorator pode ser aplicado usando constraints:
+
+```typescript
+interface Validatable {
+  validate(): boolean;
+}
+
+// Só pode decorar classes cujas instâncias implementam Validatable
+function requireValidation<
+  T extends abstract new (...args: any) => Validatable
+>(value: T, context: ClassDecoratorContext<T>): void {
+  context.addInitializer(function (this: Validatable) {
+    if (!this.validate()) {
+      throw new Error(`${context.name}: validação inicial falhou`);
+    }
+  });
+}
+
+@requireValidation  // ✓ — UserModel produz instâncias com validate()
+class UserModel implements Validatable {
+  constructor(public name: string) {}
+  validate() { return this.name.length > 0; }
+}
+
+// @requireValidation  // ✗ ERRO de compilação — SimpleClass não tem validate()
+class SimpleClass {}
+```
+
+## Method Decorators
+
+Method decorators recebem a função original como `value` e o contexto `ClassMethodDecoratorContext`. Eles podem retornar uma nova função que substitui o método original, ou `undefined` para deixá-lo intacto.
+
+```typescript
+// ✓ Decorator de log — envolve o método original transparentemente
+function log(
+  value: Function,
+  context: ClassMethodDecoratorContext
+): Function {
+  const methodName = String(context.name);
+
+  return function (this: unknown, ...args: unknown[]) {
+    console.log(`[${methodName}] chamado com`, args);
+    const result = value.apply(this, args);
+    console.log(`[${methodName}] retornou`, result);
+    return result;
+  };
+}
+
+class Calculator {
+  @log
+  add(a: number, b: number): number {
+    return a + b;
+  }
+}
+
+const calc = new Calculator();
+calc.add(2, 3);
+// "[add] chamado com [2, 3]"
+// "[add] retornou 5"
+```
+
+```typescript
+// ✓ Decorator parametrizado — recebe configuração via closure
+function throttle(ms: number) {
+  return function (
+    value: Function,
+    context: ClassMethodDecoratorContext
+  ): Function {
+    let lastCall = 0;
+
+    return function (this: unknown, ...args: unknown[]) {
+      const now = Date.now();
+      if (now - lastCall >= ms) {
+        lastCall = now;
+        return value.apply(this, args);
+      }
+      // ✗ Chamada descartada se dentro do intervalo de throttle
+    };
+  };
+}
+
+class SearchBar {
+  @throttle(300)
+  onInput(query: string): void {
+    console.log('Buscando:', query);
+  }
+}
+```
+
+### Method Decorators com Tipagem Forte
+
+Usando generics, o TypeScript pode verificar que o método decorado tem a assinatura esperada:
+
+```typescript
+// Decorator que só aceita métodos assíncronos — erro em compile time para síncronos
+function catchErrors<This, Args extends unknown[]>(
+  value: (this: This, ...args: Args) => Promise<unknown>,
+  context: ClassMethodDecoratorContext<This>
+): (this: This, ...args: Args) => Promise<unknown> {
+  return async function (this: This, ...args: Args) {
+    try {
+      return await value.apply(this, args);
+    } catch (err) {
+      console.error(`Erro em ${String(context.name)}:`, err);
+      throw err;
+    }
+  };
+}
+
+class UserService {
+  @catchErrors  // ✓ — fetchUser retorna Promise
+  async fetchUser(id: number): Promise<{ id: number; name: string }> {
+    const res = await fetch(`/api/users/${id}`);
+    return res.json();
+  }
+
+  // @catchErrors  // ✗ ERRO — syncMethod não retorna Promise
+  syncMethod() { return 42; }
+}
+```
+
+O campo `context.name` retorna o nome do método como `string | symbol`, e `context.static` indica se o método é estático. `context.private` indica se o método foi declarado com `#`.
+
+## Field Decorators
+
+Field decorators interceptam a **inicialização** de campos de instância. Como os campos não existem quando o decorator é executado (apenas durante `new`), o `value` recebido é sempre `undefined`. Em vez disso, o decorator retorna uma **função inicializadora** que recebe o valor inicial do campo e retorna o valor que será efetivamente atribuído.
+
+```typescript
+// ✓ Decorator de validação — garante que strings não são vazias
+function nonEmpty(
+  value: undefined,
+  context: ClassFieldDecoratorContext<unknown, string>
+): (initialValue: string) => string {
+  const fieldName = String(context.name);
+
+  return function (this: unknown, initialValue: string): string {
+    if (initialValue.trim() === '') {
+      throw new Error(`Campo "${fieldName}" não pode ser vazio`);
+    }
+    return initialValue;
+  };
+}
+
+class Product {
+  @nonEmpty
+  name: string = 'Produto Exemplo'; // ✓ — inicialização válida
+
+  // @nonEmpty com '' lançaria erro:
+  // ✗ Error: Campo "sku" não pode ser vazio
+  sku: string = 'ABC-001';
+}
+```
+
+```typescript
+// ✓ Decorator de transformação — normaliza para lowercase
+function lowercase(
+  value: undefined,
+  context: ClassFieldDecoratorContext<unknown, string>
+): (initialValue: string) => string {
+  return (initialValue) => initialValue.toLowerCase();
+}
+
+// ✓ Decorator que torna campo readonly em runtime via defineProperty
+function readonly<This extends object, Value>(
+  value: undefined,
+  context: ClassFieldDecoratorContext<This, Value>
+): (initialValue: Value) => Value {
+  context.addInitializer(function (this: This) {
+    Object.defineProperty(this, context.name, {
+      writable: false,
+      configurable: false,
+    });
+  });
+  return (initialValue) => initialValue;
+}
+
+class Config {
+  @lowercase
+  environment: string = 'Production'; // será 'production'
+
+  @readonly
+  version: string = '1.0.0'; // imutável em runtime
+}
+
+const cfg = new Config();
+console.log(cfg.environment); // 'production'
+// cfg.version = '2.0.0';    // ✗ TypeError em runtime (strict mode)
+```
+
+### Accessor Decorators
+
+Para campos declarados com a keyword `accessor` (introduzida junto com Stage 3), existe um tipo específico de decorator que pode interceptar tanto leitura quanto escrita:
+
+```typescript
+// accessor cria automaticamente um backing field privado + getter/setter
+class Observable {
+  accessor count: number = 0; // equivale a #count + get count() + set count()
+}
+
+function observed(
+  value: ClassAccessorDecoratorTarget<unknown, number>,
+  context: ClassAccessorDecoratorContext<unknown, number>
+): ClassAccessorDecoratorResult<unknown, number> {
+  return {
+    get(this: unknown) {
+      console.log(`Lendo ${String(context.name)}`);
+      return value.get.call(this);
+    },
+    set(this: unknown, newValue: number) {
+      console.log(`Escrevendo ${String(context.name)} = ${newValue}`);
+      value.set.call(this, newValue);
+    },
+  };
+}
+
+class Store {
+  @observed
+  accessor count: number = 0;
+}
+
+const store = new Store();
+store.count = 5; // "Escrevendo count = 5"
+console.log(store.count); // "Lendo count" → 5
+```
+
+## `context.addInitializer`
+
+O método `context.addInitializer(fn)` é uma das adições mais poderosas do Stage 3. Ele registra uma função que será executada durante a **inicialização de cada instância** (equivalente ao corpo do constructor), com `this` apontando para a instância recém-criada. Isso permite que decorators de método e campo configurem estado por-instância sem interceptar o constructor.
+
+```typescript
+// Registro automático de métodos em um mapa WeakMap por instância
+const handlerMap = new WeakMap<object, Set<string>>();
+
+function handler(
+  value: Function,
+  context: ClassMethodDecoratorContext
+): void {
+  const methodName = String(context.name);
+
+  context.addInitializer(function (this: object) {
+    if (!handlerMap.has(this)) {
+      handlerMap.set(this, new Set());
+    }
+    handlerMap.get(this)!.add(methodName);
+  });
+}
+
+class EventBus {
+  @handler
+  onUserCreated(event: unknown) { /* ... */ }
+
+  @handler
+  onUserDeleted(event: unknown) { /* ... */ }
+}
+
+const bus = new EventBus();
+console.log(handlerMap.get(bus));
+// Set { 'onUserCreated', 'onUserDeleted' }
+```
+
+```typescript
+// Caso clássico: binding automático de métodos (resolve perda de `this`)
+function bound(
+  value: Function,
+  context: ClassMethodDecoratorContext
+): void {
+  context.addInitializer(function (this: Record<string | symbol, unknown>) {
+    // Sobrescreve a propriedade na instância com o método vinculado
+    this[context.name] = value.bind(this);
+  });
+}
+
+class Timer {
+  private count = 0;
+
+  @bound
+  tick(): void {
+    this.count++;
+    console.log('Tick:', this.count);
+  }
+}
+
+const timer = new Timer();
+const { tick } = timer; // ✓ — sem @bound, `this` seria undefined
+setInterval(tick, 1000); // ✓ — this corretamente vinculado à instância
+```
+
+### Ordem de Execução dos Decorators
+
+Entender a ordem é essencial para evitar surpresas:
+
+```typescript
+// 1. Decorators de método/campo: executam de baixo para cima durante definição da classe
+// 2. Decorator de classe: executa por último, após todos os membros
+// 3. addInitializer callbacks: executam durante new ClassName(), na ordem de registro
+
+@logClass('C')    // executa 3º (decorator de classe)
+class Demo {
+  @logField('F')  // executa 1º (membros de baixo para cima — mas aqui é 1 só)
+  name = 'demo';
+
+  @logMethod('M') // executa 2º
+  greet() {}
+}
+
+// Em tempo de definição da classe: F → M → C
+// Em cada new Demo():               inicializadores na ordem em que foram registrados
+```
+
+## Metadata e Reflect — `Symbol.metadata` e TypeScript 5.2
+
+O TypeScript 5.2 introduziu suporte à proposta de **decorator metadata** (também Stage 3), que permite que decorators anexem metadados arbitrários a classes via `Symbol.metadata`. Esse mecanismo é o substituto seguro e padronizado para `Reflect.metadata` do polyfill `reflect-metadata` (vinculado ao sistema `experimentalDecorators`).
+
+```typescript
+// Cada decorator recebe context.metadata — objeto compartilhado por toda a classe
+// Ao final, ele é atribuído a Classe[Symbol.metadata]
+
+function route(path: string) {
+  return function (
+    value: Function,
+    context: ClassMethodDecoratorContext
+  ): void {
+    // Inicializa o array se ainda não existe
+    const routes = (context.metadata['routes'] as any[]) ?? [];
+    routes.push({ method: String(context.name), path });
+    context.metadata['routes'] = routes;
+  };
+}
+
+class UserController {
+  @route('/users')
+  listUsers() { /* ... */ }
+
+  @route('/users/:id')
+  getUser() { /* ... */ }
+}
+
+// Acesso após definição da classe:
+const meta = UserController[Symbol.metadata];
+console.log(meta?.['routes']);
+// [ { method: 'listUsers', path: '/users' },
+//   { method: 'getUser',  path: '/users/:id' } ]
+```
+
+### Tipagem de `Symbol.metadata`
+
+Para que o TypeScript reconheça as chaves de `context.metadata` com tipos corretos, declare a interface global `DecoratorMetadataObject` em um arquivo `.d.ts`:
+
+```typescript
+// types/decorator-metadata.d.ts
+declare global {
+  interface DecoratorMetadataObject {
+    routes?: Array<{ method: string; path: string }>;
+    permissions?: string[];
+  }
+}
+
+export {};
+```
+
+```typescript
+// Com a declaração global, o acesso é completamente type-safe:
+function requiresPermission(permission: string) {
+  return function (
+    value: Function,
+    context: ClassMethodDecoratorContext
+  ): void {
+    context.metadata.permissions ??= [];
+    context.metadata.permissions.push(permission);
+    //                ^^^^^^^^^^^ ✓ TypeScript conhece esse campo
+  };
+}
+
+function hasAccess(
+  ctrl: abstract new (...args: any) => any,
+  userRoles: string[]
+): boolean {
+  const required = ctrl[Symbol.metadata]?.permissions ?? [];
+  return (required as string[]).every((p) => userRoles.includes(p));
+}
+```
+
+### Herança de Metadata via Prototype Chain
+
+`Symbol.metadata` usa herança de prototype: o metadata de uma subclasse herda o da superclasse, mas modificações na subclasse não afetam a superclasse — comportamento idêntico ao prototype normal do JavaScript:
+
+```typescript
+function tag(label: string) {
+  return function (value: unknown, context: ClassDecoratorContext): void {
+    const tags = ((context.metadata['tags'] as string[]) ?? []);
+    context.metadata['tags'] = [...tags, label];
+  };
+}
+
+@tag('base')
+class Base {}
+
+@tag('derived')
+class Derived extends Base {}
+
+console.log(Base[Symbol.metadata]?.['tags']);    // ['base']
+console.log(Derived[Symbol.metadata]?.['tags']); // ['base', 'derived']
+// ✓ Derived herda 'base' da chain e adiciona 'derived'
+```
+
+### Comparação Rápida: Stage 3 vs `experimentalDecorators`
+
+```typescript
+// ✗ Legado (experimentalDecorators: true) — assinatura com 3 parâmetros
+function oldLog(
+  target: any,
+  propertyKey: string,
+  descriptor: PropertyDescriptor
+): PropertyDescriptor {
+  const original = descriptor.value;
+  descriptor.value = function (...args: any[]) {
+    console.log(`chamado: ${propertyKey}`);
+    return original.apply(this, args);
+  };
+  return descriptor;
+}
+
+// ✓ Stage 3 (TS 5.0+, sem flags) — assinatura com context rico
+function newLog(
+  value: Function,
+  context: ClassMethodDecoratorContext
+): Function {
+  return function (this: unknown, ...args: unknown[]) {
+    console.log(`chamado: ${String(context.name)}`);
+    return value.apply(this, args);
+  };
+}
+// Diferenças-chave:
+// - Stage 3 não precisa de tsconfig flags
+// - context.name, context.kind, context.static, context.private disponíveis
+// - Tipagem genérica verificada pelo compilador
+// - Symbol.metadata nativo em vez de Reflect.metadata polyfill
+```
+
+**Decorators Stage 3 representam a versão madura e padronizada de um dos padrões mais poderosos do ecossistema TypeScript: class decorators tipados garantem que somente classes compatíveis com a interface esperada podem ser anotadas; method decorators permitem cross-cutting concerns como log, cache e throttle sem poluir a lógica de negócio; field decorators interceptam a inicialização para validação e transformação de valores; `context.addInitializer` resolve o problema de configuração por-instância de forma elegante e sem acesso ao constructor; e `Symbol.metadata` oferece um canal type-safe para comunicação entre decorators e código de infraestrutura. Com a chegada ao Stage 3, decorators deixaram de ser uma aposta experimental e passaram a ser uma ferramenta de produção confiável — sem flags experimentais, sem polyfills, com tipagem forte.**

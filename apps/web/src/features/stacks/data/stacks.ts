@@ -37,6 +37,15 @@ export const STACKS: Stack[] = [
     status: 'coming-soon',
     color: 'green',
   },
+  {
+    id: 'ai',
+    name: 'AI Moderna',
+    tagline: '14 dias construindo com AI: da API aos agentes',
+    description: 'LLMs, Anthropic API, tool use, RAG, MCP, Skills, agents e multi-agentes — hands-on, do zero ao sistema agêntico.',
+    totalDays: 14,
+    status: 'coming-soon',
+    color: 'purple',
+  },
 ]
 
 export function getStackById(id: string): Stack | undefined {

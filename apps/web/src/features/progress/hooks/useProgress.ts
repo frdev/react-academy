@@ -18,10 +18,6 @@ export function useInitProgress(stackId?: string) {
   return { isLoaded }
 }
 
-export function useLessonUnlockStatus(day: number): boolean {
-  return useProgressStore(state => state.actions.isLessonUnlocked(day))
-}
-
 export function useCompletedDaysCount(): number {
   return useProgressStore(state =>
     Object.values(state.lessonProgress).filter(p => p.status === 'completed').length

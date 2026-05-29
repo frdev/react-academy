@@ -1,1 +1,503 @@
-# Conteúdo em breve
+# Projeto Final: Type-safe Query Builder
+
+Chegamos ao dia 30. A proposta deste projeto final é construir, do zero, um **Query Builder type-safe** — uma mini-biblioteca estilo ORM que permite escrever consultas SQL de forma fluente, com encadeamento de métodos, e onde o TypeScript conhece em tempo de compilação exatamente quais colunas existem, quais são os tipos de cada campo, e quais colunas foram selecionadas. Nenhum `any`, nenhum cast manual.
+
+Este projeto é uma **síntese deliberada** de tudo que estudamos nos dias 15 a 29: conditional types, `infer`, template literal types, mapped types, builder pattern e distribuição de tipos. Se algo parecer familiar, é porque é — cada peça foi introduzida progressivamente nos dias anteriores. Agora vamos montá-las juntas.
+
+---
+
+## Etapa 1 — Definindo o Schema de Tabelas
+
+Tudo começa com o schema. Em vez de strings soltas, vamos representar cada tabela como um tipo TypeScript onde as chaves são os nomes das colunas e os valores descrevem o tipo dos dados.
+
+```typescript
+// O "schema" é um Record onde cada valor descreve o tipo da coluna.
+type ColumnType = 'string' | 'number' | 'boolean' | 'date';
+
+// Cada tabela é um mapeamento de nome-de-coluna → tipo-de-coluna
+type TableSchema = Record<string, ColumnType>;
+
+// Convertemos ColumnType para o tipo TypeScript equivalente via conditional type
+type Resolve<T extends ColumnType> =
+  T extends 'string'  ? string  :
+  T extends 'number'  ? number  :
+  T extends 'boolean' ? boolean :
+  T extends 'date'    ? Date    :
+  never;
+
+// Dado um TableSchema, produz o tipo do "row" (linha de resultado)
+type Row<S extends TableSchema> = {
+  [K in keyof S]: Resolve<S[K]>
+};
+
+// --- Exemplos de schemas de tabelas ---
+const usersSchema = {
+  id:        'number',
+  name:      'string',
+  email:     'string',
+  active:    'boolean',
+  createdAt: 'date',
+} as const satisfies TableSchema;
+
+const ordersSchema = {
+  id:       'number',
+  userId:   'number',
+  total:    'number',
+  status:   'string',
+  placedAt: 'date',
+} as const satisfies TableSchema;
+
+// O tipo de um row de users — inferido automaticamente:
+type UsersRow = Row<typeof usersSchema>;
+// { id: number; name: string; email: string; active: boolean; createdAt: Date }
+```
+
+O tipo `Row<S>` usa **mapped types** para transformar cada `ColumnType` literal em seu primitivo TypeScript correspondente via **conditional types**. O `satisfies TableSchema` garante que o objeto literal obedeça ao contrato sem perder os tipos literais das strings — se escrevermos `'numbr'` por engano, o erro aparece imediatamente.
+
+---
+
+## Etapa 2 — Select com Tipos Inferidos
+
+O método `select` é a peça central: ele deve receber uma lista de nomes de colunas válidas para aquela tabela e retornar um builder cujo tipo de resultado já é restrito a exatamente essas colunas.
+
+```typescript
+// Utilitário: dado um schema S e um conjunto de chaves K,
+// produz apenas as colunas selecionadas com seus tipos resolvidos.
+type SelectResult<S extends TableSchema, K extends keyof S> = {
+  [P in K]: Resolve<S[P]>
+};
+
+// Exemplo — usado só para visualizar o tipo gerado:
+type SelectedUsers = SelectResult<typeof usersSchema, 'id' | 'name' | 'email'>;
+// { id: number; name: string; email: string }
+
+// O builder carrega o schema e as colunas selecionadas como parâmetros de tipo.
+// TSelected começa como "todas as colunas" e é refinado pelo .select().
+class QueryBuilder<
+  S extends TableSchema,
+  TSelected extends keyof S = keyof S
+> {
+  private _table: string;
+  private _schema: S;
+  private _selected: Array<keyof S>;
+  private _wheres: string[] = [];
+  private _joins: string[] = [];
+
+  constructor(table: string, schema: S) {
+    this._table = table;
+    this._schema = schema;
+    this._selected = Object.keys(schema) as Array<keyof S>;
+  }
+
+  // Retorna um NOVO builder com TSelected restrito às colunas escolhidas.
+  // K extends keyof S garante que só colunas válidas podem ser passadas.
+  select<K extends keyof S>(...columns: K[]): QueryBuilder<S, K> {
+    const next = new QueryBuilder<S, K>(this._table, this._schema);
+    next._selected = columns;
+    next._wheres = [...this._wheres];
+    next._joins = [...this._joins];
+    return next;
+  }
+
+  async execute(): Promise<Array<SelectResult<S, TSelected>>> {
+    const cols = (this._selected as string[]).join(', ');
+    const sql = `SELECT ${cols} FROM ${this._table}`;
+    console.log('[SQL]', sql);
+    return [] as Array<SelectResult<S, TSelected>>;
+  }
+}
+
+// Uso:
+const usersQuery = new QueryBuilder('users', usersSchema);
+
+const rows = await usersQuery
+  .select('id', 'name', 'email')
+  .execute();
+
+// rows: Array<{ id: number; name: string; email: string }>
+// TypeScript sabe exatamente quais colunas existem no resultado!
+
+// ERRO em tempo de compilação:
+// usersQuery.select('nonexistent');
+// ✗ Argument of type '"nonexistent"' is not assignable to parameter of type 'keyof typeof usersSchema'
+```
+
+O segredo está na assinatura de `select`: o tipo genérico `K` é **inferido dos argumentos passados**, e o retorno `QueryBuilder<S, K>` propaga esse subconjunto como `TSelected` para o próximo método na cadeia. O TypeScript literalmente acumula a informação de quais colunas foram escolhidas no tipo do builder.
+
+---
+
+## Etapa 3 — Where Type-safe
+
+Uma cláusula `WHERE` ingênua recebe uma string arbitrária — o desenvolvedor pode escrever qualquer coisa e não há verificação. Nossa versão type-safe deve garantir que apenas colunas existentes no schema possam ser usadas como filtro, e que o operador e o valor sejam compatíveis com o tipo daquela coluna.
+
+```typescript
+// Operadores disponíveis por tipo de dado — conditional type distribuído
+type Operators<T> =
+  T extends number  ? '=' | '!=' | '>' | '<' | '>=' | '<=' :
+  T extends string  ? '=' | '!=' | 'LIKE' | 'IN'           :
+  T extends boolean ? '=' | '!='                            :
+  T extends Date    ? '=' | '!=' | '>' | '<' | '>=' | '<=' :
+  never;
+
+// Adicionamos where() ao builder — retorna `this` para manter o encadeamento.
+class QueryBuilder<
+  S extends TableSchema,
+  TSelected extends keyof S = keyof S
+> {
+  // ... campos anteriores
+
+  where<K extends keyof S>(
+    column: K,
+    operator: Operators<Resolve<S[K]>>,
+    value: Resolve<S[K]>
+  ): this {
+    const clause = `${String(column)} ${operator} ?`;
+    this._wheres.push(clause);
+    return this;
+  }
+
+  private buildWhere(): string {
+    return this._wheres.length
+      ? `WHERE ${this._wheres.join(' AND ')}`
+      : '';
+  }
+}
+
+// Exemplos de uso correto:
+const q = new QueryBuilder('users', usersSchema);
+
+q.where('active', '=', true);     // ✓ boolean — operador '=' válido
+q.where('name', 'LIKE', 'Ana%'); // ✓ string — LIKE válido
+q.where('id', '>', 10);          // ✓ number — '>' válido
+
+// ERROS em tempo de compilação:
+// q.where('active', 'LIKE', true);  // ✗ LIKE não existe em Operators<boolean>
+// q.where('name', '>', 'Ana');      // ✗ '>' não existe em Operators<string>
+// q.where('id', '=', 'dez');        // ✗ 'dez' não é assignable a number
+// q.where('missing', '=', 0);      // ✗ 'missing' não é keyof typeof usersSchema
+```
+
+O tipo `Operators<T>` usa **conditional types** para mapear o tipo primitivo ao conjunto correto de operadores de comparação. A assinatura de `where` então garante que `operator` e `value` sejam coerentes com o tipo da coluna escolhida — tudo resolvido no typechecking, sem custo de runtime.
+
+---
+
+## Etapa 4 — Join com Inferência de Schema
+
+Joins são a operação mais complexa: ao unir duas tabelas, o schema resultante é a **combinação** dos dois schemas. Precisamos expressar isso no sistema de tipos, e template literal types são a ferramenta ideal para prefixar as colunas de cada tabela.
+
+```typescript
+// Dado dois schemas, produz um schema merged com prefixo de tabela
+// para evitar colisões de nomes de colunas.
+// Template literal type como chave mapeada: a chave vira "alias.coluna".
+type PrefixedSchema<
+  Prefix extends string,
+  S extends TableSchema
+> = {
+  [K in keyof S as `${Prefix}.${string & K}`]: S[K]
+};
+
+// Um join tipado: combina dois schemas prefixados
+type JoinedSchema<
+  LeftAlias extends string,
+  LeftSchema extends TableSchema,
+  RightAlias extends string,
+  RightSchema extends TableSchema
+> = PrefixedSchema<LeftAlias, LeftSchema>
+  & PrefixedSchema<RightAlias, RightSchema>;
+
+// Exemplo de schema resultante — inferido automaticamente pelo TypeScript:
+type UsersOrdersJoin = JoinedSchema<
+  'u', typeof usersSchema,
+  'o', typeof ordersSchema
+>;
+// {
+//   'u.id': 'number';   'u.name': 'string'; 'u.email': 'string';
+//   'u.active': 'boolean'; 'u.createdAt': 'date';
+//   'o.id': 'number'; 'o.userId': 'number'; 'o.total': 'number';
+//   'o.status': 'string'; 'o.placedAt': 'date';
+// }
+
+// Função fábrica: constrói um QueryBuilder com o schema combinado
+function createJoinBuilder<
+  LA extends string, LS extends TableSchema,
+  RA extends string, RS extends TableSchema
+>(
+  leftAlias: LA, leftSchema: LS,
+  rightAlias: RA, rightSchema: RS,
+  leftTable: string, rightTable: string,
+  onLeft: keyof LS, onRight: keyof RS
+): QueryBuilder<JoinedSchema<LA, LS, RA, RS>> {
+
+  // Constrói o schema merged em runtime
+  const merged: Record<string, ColumnType> = {};
+  for (const [k, v] of Object.entries(leftSchema)) {
+    merged[`${leftAlias}.${k}`] = v as ColumnType;
+  }
+  for (const [k, v] of Object.entries(rightSchema)) {
+    merged[`${rightAlias}.${k}`] = v as ColumnType;
+  }
+
+  const builder = new QueryBuilder(
+    `${leftTable} AS ${leftAlias}`,
+    merged as JoinedSchema<LA, LS, RA, RS>
+  );
+  builder._joins.push(
+    `JOIN ${rightTable} AS ${rightAlias} ` +
+    `ON ${leftAlias}.${String(onLeft)} = ${rightAlias}.${String(onRight)}`
+  );
+  return builder;
+}
+
+// Uso:
+const joinedQuery = createJoinBuilder(
+  'u', usersSchema,
+  'o', ordersSchema,
+  'users', 'orders',
+  'id', 'userId'
+);
+
+const result = await joinedQuery
+  .select('u.id', 'u.name', 'o.total', 'o.status')
+  .where('u.active', '=', true)
+  .execute();
+
+// result: Array<{
+//   'u.id': number;
+//   'u.name': string;
+//   'o.total': number;
+//   'o.status': string;
+// }>
+
+// ERRO em compilação — coluna não existe no schema joined:
+// joinedQuery.select('users.id'); // ✗ — use 'u.id', não 'users.id'
+```
+
+A chave aqui é o tipo `PrefixedSchema` usando **template literal types como chave mapeada**: a construção `` [K in keyof S as `${Prefix}.${string & K}`] `` transforma cada chave `K` do schema em `"alias.coluna"`, preservando completamente os tipos dos valores. O `& string` é necessário porque `keyof S` pode incluir `symbol` — a interseção garante que só string keys participem do template.
+
+---
+
+## Etapa 5 — Builder Pattern Tipado com Encadeamento Acumulativo
+
+Um query builder real precisa de mais métodos — `orderBy`, `limit`, `offset` — e cada um deve retornar o tipo correto para manter o encadeamento fluente. Vamos montar a classe completa e mostrar um exemplo de consulta end-to-end.
+
+```typescript
+type SortDirection = 'ASC' | 'DESC';
+
+class QueryBuilder<
+  S extends TableSchema,
+  TSelected extends keyof S = keyof S
+> {
+  _table: string;    // interno — público apenas para createJoinBuilder
+  _schema: S;
+  _selected: Array<keyof S>;
+  _wheres: string[] = [];
+  _joins: string[] = [];
+  private _orderBys: string[] = [];
+  private _limit?: number;
+  private _offset?: number;
+
+  constructor(table: string, schema: S) {
+    this._table = table;
+    this._schema = schema;
+    this._selected = Object.keys(schema) as Array<keyof S>;
+  }
+
+  select<K extends keyof S>(...columns: K[]): QueryBuilder<S, K> {
+    const next = new QueryBuilder<S, K>(this._table, this._schema);
+    next._selected = columns;
+    next._wheres = [...this._wheres];
+    next._joins = [...this._joins];
+    return next;
+  }
+
+  where<K extends keyof S>(
+    column: K,
+    operator: Operators<Resolve<S[K]>>,
+    value: Resolve<S[K]>
+  ): this {
+    this._wheres.push(`${String(column)} ${operator} ?`);
+    return this;
+  }
+
+  // Apenas colunas do schema podem ser usadas para ordenar
+  orderBy<K extends keyof S>(column: K, direction: SortDirection = 'ASC'): this {
+    this._orderBys.push(`${String(column)} ${direction}`);
+    return this;
+  }
+
+  limit(n: number): this {
+    this._limit = n;
+    return this;
+  }
+
+  offset(n: number): this {
+    this._offset = n;
+    return this;
+  }
+
+  build(): string {
+    const cols = (this._selected as string[]).join(', ');
+    const parts: string[] = [
+      `SELECT ${cols}`,
+      `FROM ${this._table}`,
+      ...this._joins,
+    ];
+    if (this._wheres.length)  parts.push(`WHERE ${this._wheres.join(' AND ')}`);
+    if (this._orderBys.length) parts.push(`ORDER BY ${this._orderBys.join(', ')}`);
+    if (this._limit != null)  parts.push(`LIMIT ${this._limit}`);
+    if (this._offset != null) parts.push(`OFFSET ${this._offset}`);
+    return parts.join('\n');
+  }
+
+  async execute(): Promise<Array<SelectResult<S, TSelected>>> {
+    console.log('[SQL]\n' + this.build());
+    return [] as Array<SelectResult<S, TSelected>>;
+  }
+}
+
+// Encadeamento completo — cada método retorna o builder correto:
+const query = new QueryBuilder('users', usersSchema)
+  .select('id', 'name', 'email')    // retorna QueryBuilder<S, 'id'|'name'|'email'>
+  .where('active', '=', true)       // retorna this (mesmo tipo)
+  .where('id', '>=', 100)           // retorna this
+  .orderBy('name', 'ASC')           // retorna this
+  .limit(20)                        // retorna this
+  .offset(0);                       // retorna this
+
+console.log(query.build());
+// SELECT id, name, email
+// FROM users
+// WHERE active = ? AND id >= ?
+// ORDER BY name ASC
+// LIMIT 20
+// OFFSET 0
+
+const results = await query.execute();
+// results: Array<{ id: number; name: string; email: string }>
+// — TSelected = 'id' | 'name' | 'email', preservado por toda a cadeia
+
+// orderBy com coluna inválida — erro em compilação:
+// new QueryBuilder('users', usersSchema).orderBy('nonexistent');
+// ✗ Argument of type '"nonexistent"' is not assignable to parameter of type 'keyof typeof usersSchema'
+```
+
+Repare que `where()`, `orderBy()`, `limit()` e `offset()` retornam `this` — o TypeScript preserva o tipo concreto do builder (com `TSelected` já fixado pelo `select` anterior) em toda a cadeia. O método `build()` é chamável em qualquer ponto e gera a SQL correspondente ao estado atual.
+
+---
+
+## Etapa 6 — Síntese: Conditional Types, Infer e Template Literals
+
+Para encerrar, vamos extrair tipos avançados que demonstram como as ferramentas se combinam para criar utilitários que seriam impossíveis sem o sistema de tipos avançado do TypeScript.
+
+```typescript
+// ── Filtrar colunas por tipo de dado ──────────────────────────────────────
+
+// Dado um schema e um tipo primitivo, retorna apenas as colunas desse tipo.
+// Padrão: mapped type com never + lookup [keyof S] para "filtrar" chaves.
+type ColumnsOfType<S extends TableSchema, T extends ColumnType> = {
+  [K in keyof S]: S[K] extends T ? K : never
+}[keyof S];
+
+// Exemplos:
+type NumericUserCols = ColumnsOfType<typeof usersSchema, 'number'>;
+// 'id'
+
+type StringUserCols = ColumnsOfType<typeof usersSchema, 'string'>;
+// 'name' | 'email'
+
+type DateUserCols = ColumnsOfType<typeof usersSchema, 'date'>;
+// 'createdAt'
+
+
+// ── Template literals para gerar nomes de métodos dinamicamente ───────────
+
+// Gera o nome do método "findBy<Column>" para cada coluna do schema.
+// Capitalize é um tipo utilitário nativo do TypeScript.
+type FindByMethod<S extends TableSchema> = {
+  [K in keyof S & string as `findBy${Capitalize<K>}`]: (
+    value: Resolve<S[K]>
+  ) => Promise<Array<Row<S>>>
+};
+
+// O tipo gerado para usersSchema:
+type UserRepository = FindByMethod<typeof usersSchema>;
+// {
+//   findById:        (value: number) => Promise<Array<UsersRow>>;
+//   findByName:      (value: string) => Promise<Array<UsersRow>>;
+//   findByEmail:     (value: string) => Promise<Array<UsersRow>>;
+//   findByActive:    (value: boolean) => Promise<Array<UsersRow>>;
+//   findByCreatedAt: (value: Date) => Promise<Array<UsersRow>>;
+// }
+
+
+// ── Infer para extrair o tipo de resultado de um QueryBuilder ──────────────
+
+// Dado um QueryBuilder qualquer, extrai o tipo do array retornado por execute().
+// Usa infer para "desestruturar" os parâmetros de tipo da classe.
+type InferResult<Q> =
+  Q extends QueryBuilder<infer S, infer K>
+    ? Array<SelectResult<S, K>>
+    : never;
+
+// Uso:
+const partialQuery = new QueryBuilder('users', usersSchema)
+  .select('id', 'email');
+
+type QResult = InferResult<typeof partialQuery>;
+// Array<{ id: number; email: string }>
+
+
+// ── Nullable columns via template literal type como padrão ────────────────
+
+// Estendemos ColumnType para suportar colunas opcionais
+type ExtendedColumnType = ColumnType | `nullable:${ColumnType}`;
+
+// Conditional type com infer extrai a parte "base" de uma coluna nullable
+type ResolveExtended<T extends ExtendedColumnType> =
+  T extends `nullable:${infer Base extends ColumnType}`
+    ? Resolve<Base> | null
+    : T extends ColumnType
+      ? Resolve<T>
+      : never;
+
+// Schema que declara colunas nullable:
+const profileSchema = {
+  id:      'number',
+  bio:     'nullable:string',
+  website: 'nullable:string',
+  score:   'number',
+} as const satisfies Record<string, ExtendedColumnType>;
+
+// Tipo de row produzido pelo schema extended:
+type ProfileRow = {
+  [K in keyof typeof profileSchema]: ResolveExtended<typeof profileSchema[K]>
+};
+// {
+//   id:      number;
+//   bio:     string | null;
+//   website: string | null;
+//   score:   number;
+// }
+
+
+// ── Distribuição de conditional types para separar colunas ────────────────
+
+// Retorna apenas as chaves de colunas que NÃO são nullable
+type RequiredCols<S extends Record<string, ExtendedColumnType>> = {
+  [K in keyof S]: S[K] extends `nullable:${string}` ? never : K
+}[keyof S];
+
+type ProfileRequiredCols = RequiredCols<typeof profileSchema>;
+// 'id' | 'score'
+```
+
+Estas combinações mostram os padrões mais poderosos em ação simultânea:
+
+- **`ColumnsOfType`** usa mapped types com `never` em valores e lookup `[keyof S]` para filtrar chaves — o mesmo padrão de "filter via mapped type" visto nos dias anteriores.
+- **`FindByMethod`** combina `keyof S & string`, template literal com `Capitalize` e remapeamento de chaves para gerar um objeto de métodos com assinaturas completamente tipadas — sem escrever nenhum método manualmente.
+- **`InferResult`** usa `infer` dentro de conditional types para destrinchar os parâmetros de tipo de uma instância genérica, extraindo o resultado sem acesso direto ao tipo interno.
+- **`ResolveExtended`** combina template literal como **padrão de matching** com `infer` para extrair a parte relevante da string literal e mapeá-la ao tipo concreto — a mesma técnica usada pelo TypeScript para parsear tipos de strings em runtime.
+
+---
+
+**Chegamos ao fim da trilha. Neste projeto, você construiu um Query Builder type-safe do zero — com `select` que infere colunas como parâmetro de tipo acumulado, `where` que valida operadores com base no tipo primitivo de cada coluna, `join` que mescla schemas usando template literal types como chaves mapeadas, e um builder pattern cujo encadeamento preserva o tipo em cada etapa. Cada peça usou ferramentas aprendidas progressivamente ao longo desses 30 dias: subtipagem estrutural, conditional types e `infer`, template literal types, mapped types e o padrão de composição via generics acumulativos. O TypeScript avançado não é uma coleção de truques isolados — é um sistema coerente onde cada feature se encaixa nas outras. Você agora tem as ferramentas para modelar domínios complexos com segurança total de tipos, criar APIs que guiam o desenvolvedor sem documentação externa, e transformar erros de runtime em erros de compilação detectados a centenas de quilômetros do usuário final. Esta é a promessa do TypeScript — e você a entendeu por dentro.**

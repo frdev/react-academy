@@ -1,1 +1,97 @@
-{"lessonId": "day-29", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-29",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Você roda `npx tsc --extendedDiagnostics` e observa: `Check time: 9.2s`, `Parse time: 1.1s`, `Files: 2400`. Qual é o diagnóstico mais provável e o próximo passo correto?",
+      "options": [
+        "Check time alto (>80% do total) indica tipos complexos sendo avaliados — o próximo passo é rodar `--generateTrace` e analisar com `@typescript/analyze-trace` para identificar os tipos específicos",
+        "Parse time alto indica arquivos grandes — dividir os arquivos em partes menores resolverá o problema",
+        "Files: 2400 está dentro do normal — o projeto simplesmente é grande e não há o que fazer",
+        "O problema é o Emit time — ativar `declaration: false` eliminará o gargalo"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Check time representando 80%+ do tempo total é o sinal claro de que o gargalo está na inferência e verificação de tipos, não no processamento de arquivos ou emissão. Parse time alto indicaria arquivos enormes ou muitos arquivos sem cache. Files: 2400 é alto para um projeto médio e pode ser investigado, mas não é a causa imediata do Check time elevado. O fluxo correto é: `--extendedDiagnostics` para identificar a fase problemática → `--generateTrace` para capturar detalhes → `@typescript/analyze-trace` para encontrar os tipos mais custosos com nome de arquivo e linha de código."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `interface ServerConfig extends BaseConfig { ssl: boolean }` tende a ser verificado mais rapidamente pelo compilador do que `type ServerConfigAlt = BaseConfig & { ssl: boolean }` em uma base de código grande?",
+      "options": [
+        "Interfaces são compiladas para código JavaScript otimizado, enquanto type aliases não geram código",
+        "Type aliases com `&` são proibidos pelo compilador em modo strict — a diferença de performance é secundária",
+        "O TypeScript cacheia o resultado de verificações de interface pelo nome do identificador. Uma vez que `BaseConfig` foi checado, o resultado é reutilizado ao checar `ServerConfig extends BaseConfig`. Com uma interseção de type alias, o compilador precisa recalcular a estrutura completa em cada verificação de assignability",
+        "Não há diferença de performance — interface e type alias são equivalentes internamente"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O mecanismo de caching é fundamental aqui. Quando o compilador encontra `interface Foo extends Bar`, ele registra a relação e cacheia o resultado da verificação de `Bar`. Referências subsequentes a `Foo` reutilizam esse cache, verificando apenas as propriedades adicionais declaradas em `Foo`. Com `type FooAlt = Bar & { extra: string }`, o compilador precisa resolver a interseção completa — expandindo todos os membros de `Bar` e mesclando com `{ extra: string }` — a cada contexto de verificação. Em uma base com centenas de arquivos referenciando o mesmo tipo, essa diferença se acumula. A regra prática é: use `interface extends` para hierarquias de objetos, e `type` apenas quando precisar de recursos exclusivos como unions, tipos mapeados ou condicionais."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que acontece ao habilitar `isolatedModules: true` e qual problema imediato isso pode revelar em um código existente?",
+      "options": [
+        "O TypeScript passa a checar cada arquivo em um processo separado, acelerando o build automaticamente sem nenhuma mudança de código necessária",
+        "`isolatedModules: true` é equivalente a `skipLibCheck: true` — ambas pulam arquivos de declaração",
+        "A flag desabilita toda a verificação de tipos para acelerar builds de produção",
+        "`isolatedModules: true` exige que re-exports de tipos usem `export type { Foo }` em vez de `export { Foo }`. Code que usa `const enum` também passa a ser inválido. A flag não acelera o `tsc` em si — ela habilita o uso de transpiladores como esbuild/SWC que não rodam o type checker"
+      ],
+      "correctAnswer": 3,
+      "explanation": "`isolatedModules: true` não muda como o `tsc` funciona internamente — ele continua rodando o type checker completo. O que a flag faz é *validar* que o código pode ser transpilado arquivo por arquivo sem informação de tipo cross-arquivo. Isso revela dois problemas comuns em código existente: (1) `export { User }` onde `User` é um tipo — o transpilador não sabe se deve preservar ou remover, então `export type { User }` é exigido; (2) `const enum` — cujos valores são inlineados pelo `tsc` usando informação de outros arquivos, algo que transpiladores de arquivo único não podem fazer. A aceleração real vem de usar esbuild/SWC para transpile em paralelo com `tsc --noEmit` para type checking, aproveitando a garantia que `isolatedModules` oferece."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Dado o tipo `type Flatten<T> = T extends Array<infer Item> ? Flatten<Item> : T`, qual é o problema de performance e como corrigi-lo?",
+      "options": [
+        "O problema é o uso de `infer` — substituir por `T[number]` elimina a recursão",
+        "A recursão não tem limite explícito. Para arrays profundamente aninhados, o compilador recursiona até atingir o limite interno (100 níveis) antes de falhar com `Type instantiation is excessively deep`. A correção é adicionar um contador de profundidade via tuple para parar a recursão antes do limite",
+        "Não há problema — TypeScript otimiza recursão de cauda automaticamente",
+        "O problema é o uso de conditional type — substituir por mapped type resolve o gargalo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Tipos recursivos sem limite são problemáticos porque o TypeScript precisa explorar cada nível de recursão para determinar o tipo final. Para `Flatten<number[][][][][][][][][][][]>` (11 níveis), o compilador pode atingir o limite de instantiation depth e emitir `Type instantiation is excessively deep and possibly infinite`. A solução com contador de profundidade usa um tuple acumulador: `type Flatten<T, Depth extends unknown[] = []> = Depth['length'] extends 10 ? T : T extends Array<infer Item> ? Flatten<Item, [...Depth, unknown]> : T`. `Depth['length']` acessa o comprimento do tuple como um número literal, e `[...Depth, unknown]` incrementa o contador. Essa técnica é usada em tipos de bibliotecas populares como ts-toolbelt para garantir terminação previsível."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `--diagnostics` e `--extendedDiagnostics`, e em qual situação você usaria cada um?",
+      "options": [
+        "`--diagnostics` emite um resumo de alto nível (total de arquivos, tempo total, memória). `--extendedDiagnostics` emite o breakdown por fase: parse, bind, check e emit separadamente. Use `--diagnostics` para uma visão rápida do projeto; use `--extendedDiagnostics` para identificar qual fase específica é o gargalo antes de investigar com `--generateTrace`",
+        "São idênticos — `--extendedDiagnostics` é apenas um alias mais verboso de `--diagnostics`",
+        "`--diagnostics` detecta erros de tipo adicionais que `--extendedDiagnostics` ignora por questão de performance",
+        "`--extendedDiagnostics` só funciona com `--noEmit` — não pode ser usado em builds normais"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Os dois flags são complementares no fluxo de diagnóstico de performance. `--diagnostics` dá uma visão macro: quantos arquivos, linhas de código, tempo total, memória pico. Útil para uma comparação rápida antes/depois de uma mudança. `--extendedDiagnostics` detalha o tempo por fase: `Parse time` (AST), `Bind time` (resolução de símbolos), `Check time` (inferência e verificação de tipos), `Emit time` (geração de .js e .d.ts). Saber qual fase domina o tempo guia a investigação: Check time alto → `--generateTrace` + `analyze-trace`; Parse time alto → arquivos grandes ou muitos arquivos sem cache incremental; Files alto → reexportações excessivas ou `skipLibCheck: false` puxando .d.ts desnecessários."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que substituir `type RouteParams<T> = T extends `${string}/:${infer P}`` ? { [K in P]: string } : {} por um lookup em `Record` melhora a performance?",
+      "options": [
+        "Template literal types são sempre mais lentos que Record — é uma limitação conhecida do compilador que será corrigida em versões futuras",
+        "Template literal types não suportam `infer` — o código do exemplo seria inválido",
+        "O tipo condicional com `infer` é distribuído sobre cada membro da união `T`. Se `T = '/home' | '/about' | '/products/:id' | '/users/:id' | ...` com 50 membros, o compilador instancia o tipo condicional 50 vezes a cada uso. Um `Record` lookup é resolvido com uma única indexação — O(1) em vez de O(n) no número de membros da união",
+        "Não há diferença de performance — o compilador otimiza distribuição de tipos condicionais automaticamente"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A distribuição de tipos condicionais sobre uniões tem custo linear no número de membros: `ConditionalType<A | B | C>` se expande para `ConditionalType<A> | ConditionalType<B> | ConditionalType<C>`. Com 50 rotas, cada uso de `RouteParams<T>` instancia o tipo condicional 50 vezes — e se `RouteParams` aparece em 200 lugares no código, são 10.000 instanciações. O `Record` lookup `RouteParamMap[T]` é uma operação de indexação direta: o compilador encontra a chave no mapa e retorna o valor sem distribuição. A otimização é especialmente eficaz quando a união é extensa e o tipo é usado frequentemente. Esta é a diferença entre complexidade algorítmica O(n) e O(1) aplicada ao sistema de tipos."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Você habilita `incremental: true` no `tsconfig.json` e a primeira build leva 12s. Após alterar um único arquivo, a segunda build leva 1.3s. O que o TypeScript fez para atingir esse resultado?",
+      "options": [
+        "O TypeScript compilou apenas o arquivo alterado e ignorou completamente os outros — pode haver erros em outros arquivos que não foram detectados",
+        "O TypeScript usou o cache do sistema operacional para evitar reler arquivos do disco — `incremental: true` não tem relação com o type checking",
+        "`incremental: true` ativa multi-threading no TypeScript — a segunda build foi mais rápida porque usou todos os cores da CPU",
+        "O TypeScript gerou um arquivo `.tsbuildinfo` na primeira build contendo o estado do type checker (tipos inferidos, grafo de dependências, hashes de arquivos). Na segunda build, ele leu esse cache, identificou que apenas um arquivo mudou, e rechecou apenas esse arquivo e seus dependentes diretos — mantendo a corretude global"
+      ],
+      "correctAnswer": 3,
+      "explanation": "O arquivo `.tsbuildinfo` é uma representação serializada do estado completo do compilador após uma build bem-sucedida: inclui os tipos inferidos de cada declaração, o grafo de dependências entre módulos (quem importa quem), e um hash de conteúdo de cada arquivo. Na build incremental, o compilador lê esse cache, compara os hashes atuais com os salvos, identifica quais arquivos mudaram, e reconstrói o subgrafo de dependências afetado. Isso garante corretude: se o arquivo alterado exporta algo que outro arquivo usa, esse outro arquivo também é rechecado. O resultado é velocidade com segurança — não é uma otimização que ignora erros, é uma forma inteligente de fazer o trabalho mínimo necessário. `composite: true` estende esse mecanismo para monorepos com múltiplos projetos TypeScript inter-relacionados."
+    }
+  ]
+}

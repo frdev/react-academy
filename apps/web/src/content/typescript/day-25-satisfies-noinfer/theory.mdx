@@ -1,1 +1,503 @@
-# Conteúdo em breve
+# satisfies & NoInfer
+
+TypeScript 4.9 e 5.x trouxeram ferramentas cirúrgicas para um problema antigo: como validar que um valor respeita um tipo *sem* perder a informação de tipo mais específica que o compilador já inferiu? O operador `satisfies` e o utilitário `NoInfer<T>` respondem a esse problema de lados opostos — um preserva precisão na definição de valores, o outro protege a inferência de generics contra influências indesejadas.
+
+## Operador `satisfies` (TS 4.9)
+
+Introduzido no **TypeScript 4.9**, o operador `satisfies` valida que uma expressão é compatível com um tipo, mas mantém o tipo inferido mais estreito — em vez de ampliar para o tipo da anotação.
+
+### O problema que ele resolve
+
+```typescript
+// Abordagem tradicional com anotação de tipo
+const palette: Record<string, string | number[]> = {
+  red: [255, 0, 0],
+  green: '#00ff00',
+  blue: [0, 0, 255],
+};
+
+// ✗ — TypeScript sabe que palette.red é string | number[],
+//     mas não sabe que é especificamente number[]
+palette.red.map(v => v * 2); // Erro: Property 'map' does not exist on 'string | number[]'
+
+// Precisaríamos de um cast manual:
+(palette.red as number[]).map(v => v * 2);
+```
+
+```typescript
+// Com satisfies — validação sem perda de tipo
+const palette = {
+  red: [255, 0, 0],
+  green: '#00ff00',
+  blue: [0, 0, 255],
+} satisfies Record<string, string | number[]>;
+
+// ✓ — TypeScript infere red como number[], green como string
+palette.red.map(v => v * 2);    // ✓ — é number[]
+palette.green.toUpperCase();    // ✓ — é string
+palette.blue.map(v => v / 255); // ✓ — é number[]
+```
+
+A anotação `: Record<string, string | number[]>` largaria toda a precisão. O `satisfies` valida a compatibilidade mas retém os tipos mais estreitos que o compilador inferiu.
+
+### Sintaxe e semântica
+
+A forma geral é `<expressão> satisfies <Tipo>`. O operador funciona como uma **asserção verificada**: se a expressão não for compatível com o tipo, ocorre um erro de compilação; se for compatível, o tipo resultante é o tipo *inferido* da expressão, não o tipo declarado.
+
+```typescript
+type Config = {
+  port: number;
+  host: string;
+  ssl?: boolean;
+};
+
+// ✓ — Cada campo tem tipo exato inferido
+const config = {
+  port: 3000,        // tipo: 3000 (literal number)
+  host: 'localhost', // tipo: 'localhost' (literal string)
+} satisfies Config;
+
+// Com anotação `: Config` => config.port seria number, não 3000
+// Com satisfies   => config.port é 3000 — o literal é preservado
+
+// ✗ ERRO — campo 'port' ausente, ou tipo errado:
+const badConfig = {
+  host: 'localhost',
+  ssl: 'yes', // ✗ — string não é boolean
+} satisfies Config;
+```
+
+## Inferência Preservada com `satisfies`
+
+Esse é o diferencial central: `satisfies` não "colapsa" o tipo — ele o verifica e o deixa intacto.
+
+### Preservação de literais
+
+```typescript
+type Direction = 'north' | 'south' | 'east' | 'west';
+type Velocity = { direction: Direction; speed: number };
+
+// Com anotação : Velocity  => direction seria Direction (union), speed seria number
+// Com satisfies            => direction é 'north' (literal!), speed é 10 (literal!)
+const movement = {
+  direction: 'north',
+  speed: 10,
+} satisfies Velocity;
+
+function describe(dir: 'north' | 'south'): string {
+  return dir === 'north' ? 'Indo ao norte' : 'Indo ao sul';
+}
+
+// ✓ com satisfies — movement.direction é 'north', compatível com 'north' | 'south'
+describe(movement.direction);
+
+// ✗ Com anotação : Velocity — movement.direction seria Direction (inclui 'east'/'west')
+```
+
+### Preservação de estrutura em objetos complexos
+
+```typescript
+type Routes = Record<string, { path: string; auth: boolean }>;
+
+const routes = {
+  home:    { path: '/',        auth: false },
+  profile: { path: '/profile', auth: true  },
+  admin:   { path: '/admin',   auth: true  },
+} satisfies Routes;
+
+// ✓ — TypeScript sabe que 'home', 'profile', 'admin' são chaves exatas
+type RouteKey = keyof typeof routes; // 'home' | 'profile' | 'admin'
+// Com anotação Routes: keyof seria string
+
+// ✓ — cada valor tem tipo preciso
+type HomeAuth    = (typeof routes)['home']['auth'];    // false (boolean literal)
+type ProfileAuth = (typeof routes)['profile']['auth']; // true  (boolean literal)
+```
+
+### Combinando `satisfies` com `as const`
+
+```typescript
+const PERMISSIONS = {
+  admin:  ['read', 'write', 'delete'],
+  editor: ['read', 'write'],
+  viewer: ['read'],
+} satisfies Record<string, string[]>;
+
+// ✓ — é um array string[], então .includes funciona
+PERMISSIONS.admin.includes('delete'); // ✓
+
+// Para literais em arrays, combine com as const:
+const STRICT_PERMISSIONS = {
+  admin:  ['read', 'write', 'delete'],
+  editor: ['read', 'write'],
+  viewer: ['read'],
+} as const satisfies Record<string, readonly string[]>;
+
+// Agora os arrays são tuples readonly com literais:
+// STRICT_PERMISSIONS.admin => readonly ['read', 'write', 'delete']
+type AdminPerm = (typeof STRICT_PERMISSIONS.admin)[number];
+// = 'read' | 'write' | 'delete'
+```
+
+## `const` Type Parameters — `const T extends` (TS 5.0)
+
+O **TypeScript 5.0** introduziu **const type parameters**: a capacidade de anotar um parâmetro de tipo genérico com `const`, fazendo o compilador inferir tipos literais (como `as const`) sem que o chamador precise anotar manualmente.
+
+### O problema anterior
+
+```typescript
+// Sem const T: literais são ampliados
+function makeArray<T>(items: T[]): T[] {
+  return items;
+}
+
+const arr = makeArray(['a', 'b', 'c']);
+// T inferido como: string (widened) — não 'a' | 'b' | 'c'
+// arr: string[]
+```
+
+### Com `const T extends`
+
+```typescript
+// TS 5.0+: const no parâmetro de tipo
+function makeArray<const T>(items: T[]): T[] {
+  return items;
+}
+
+const arr = makeArray(['a', 'b', 'c']);
+// T inferido como: readonly ['a', 'b', 'c'] — literais preservados!
+// arr: readonly ['a', 'b', 'c']
+
+// Uso prático — rotas com tipo exato:
+function defineRoutes<const T extends Record<string, string>>(routes: T): T {
+  return routes;
+}
+
+const routes = defineRoutes({
+  home:    '/',
+  profile: '/profile',
+  admin:   '/admin',
+});
+
+type RouteKey = keyof typeof routes; // 'home' | 'profile' | 'admin' — não string
+```
+
+### `const T` vs `as const` no callsite
+
+```typescript
+// Sem const T — chamador precisa usar as const
+function old<T extends readonly string[]>(items: T): T { return items; }
+const x = old(['a', 'b'] as const); // T = readonly ['a', 'b']
+const y = old(['a', 'b']);          // T = string[] (widened)
+
+// Com const T — chamador não precisa de as const
+function modern<const T extends string[]>(items: T): T { return items; }
+const x2 = modern(['a', 'b']); // T = readonly ['a', 'b'] — automático
+const y2 = modern(['a', 'b'] as const); // também funciona
+```
+
+### Restrições dos const type parameters
+
+```typescript
+// const T só afeta a inferência no callsite — não muda o tipo da variável
+function tag<const T extends string>(value: T): `tagged:${T}` {
+  return `tagged:${value}` as `tagged:${T}`;
+}
+
+const result = tag('hello'); // tipo: 'tagged:hello' (não 'tagged:string')
+
+// const T funciona melhor quando T é inferido diretamente do argumento:
+function first<const T extends readonly unknown[]>(arr: T): T[0] {
+  return arr[0];
+}
+
+const head = first([1, 'two', true] as const);
+// head: 1 (literal number)
+```
+
+## `NoInfer<T>` (TS 5.4)
+
+O **TypeScript 5.4** introduziu `NoInfer<T>`, um utilitário de tipo que **bloqueia a inferência** de `T` a partir de uma posição específica. Isso resolve um problema sutil: quando múltiplos argumentos contribuem para a inferência de um parâmetro genérico, às vezes um deles "contamina" a inferência com um tipo mais amplo do que o desejado.
+
+### O problema: inferência indesejada
+
+```typescript
+// Sem NoInfer: o valor default "vaza" para a inferência de T
+function createState<T>(initial: T, fallback: T): T {
+  return initial ?? fallback;
+}
+
+// Intenção: T = 'active' | 'inactive'
+// Problema: fallback 'pending' wideia T para incluir 'pending'
+const state = createState(
+  'active' as 'active' | 'inactive',
+  'pending' // ← TypeScript inclui 'pending' em T!
+);
+// T inferido como: 'active' | 'inactive' | 'pending'
+// Mas 'pending' nunca deveria fazer parte de T!
+```
+
+### Com `NoInfer<T>`
+
+```typescript
+// TS 5.4+: NoInfer bloqueia a inferência a partir de 'fallback'
+function createState<T>(initial: T, fallback: NoInfer<T>): T {
+  return initial ?? fallback;
+}
+
+type Status = 'active' | 'inactive';
+
+// ✗ ERRO — 'pending' não é atribuível a NoInfer<Status>
+const bad = createState<Status>('active', 'pending');
+
+// ✓ — 'inactive' é Status válido
+const good = createState<Status>('active', 'inactive');
+
+// T é inferido apenas do primeiro argumento:
+const inferred = createState(
+  'active' as Status,
+  // 'pending' ✗ ERRO — não é Status
+  'inactive' // ✓
+);
+```
+
+### Caso de uso: fallback com tipos discriminados
+
+```typescript
+// Sem NoInfer: o fallback contamina o tipo inferido
+function withDefault<T>(value: T | undefined, defaultValue: T): T {
+  return value ?? defaultValue;
+}
+
+const result = withDefault(
+  undefined as 'success' | 'error' | undefined,
+  'loading' // ← 'loading' não deveria ser um Status!
+);
+// T = 'success' | 'error' | 'loading' — contaminado
+
+// Com NoInfer:
+function withDefault2<T>(value: T | undefined, defaultValue: NoInfer<T>): T {
+  return value ?? defaultValue;
+}
+
+const result2 = withDefault2(
+  undefined as 'success' | 'error' | undefined,
+  'loading' // ✗ ERRO — 'loading' não é 'success' | 'error'
+);
+// T é inferido apenas de 'value' — não de 'defaultValue'
+
+const result3 = withDefault2(
+  undefined as 'success' | 'error' | undefined,
+  'success' // ✓
+);
+```
+
+### `NoInfer<T>` com callbacks e arrays
+
+```typescript
+// NoInfer em callbacks genéricos — fallback não contamina T
+function choose<T>(
+  options: T[],
+  predicate: (item: T) => boolean,
+  fallback: NoInfer<T>
+): T {
+  return options.find(predicate) ?? fallback;
+}
+
+// ✗ ERRO — 'viewer' não é 'admin' | 'editor'
+const bad = choose(
+  ['admin', 'editor'] as const,
+  role => role === 'admin',
+  'viewer'
+);
+
+// ✓
+const good = choose(
+  ['admin', 'editor'] as const,
+  role => role === 'admin',
+  'editor'
+);
+```
+
+```typescript
+// Validação de chave de objeto com NoInfer
+function getOrDefault<T extends Record<string, unknown>>(
+  obj: T,
+  key: keyof T,
+  defaultValue: NoInfer<T[keyof T]>
+): T[keyof T] {
+  return (obj[key] ?? defaultValue) as T[keyof T];
+}
+
+const config = { port: 3000, host: 'localhost', debug: false };
+
+const port = getOrDefault(config, 'port', 8080);  // ✓ — 8080 é number
+// ✗ ERRO — 'wrong' não é number | string | boolean
+// const bad = getOrDefault(config, 'port', 'wrong');
+```
+
+## Casos de Uso Práticos
+
+### `satisfies` para validação de configurações
+
+```typescript
+type AppConfig = {
+  env: 'development' | 'staging' | 'production';
+  port: number;
+  features: {
+    darkMode: boolean;
+    beta: boolean;
+  };
+  allowedOrigins: string[];
+};
+
+// ✓ Cada campo preserva seu tipo mais estreito
+const config = {
+  env: 'development',       // tipo: 'development' (não AppConfig['env'])
+  port: 3000,               // tipo: 3000 (literal)
+  features: {
+    darkMode: true,         // tipo: true
+    beta: false,            // tipo: false
+  },
+  allowedOrigins: ['http://localhost:3000'],
+} satisfies AppConfig;
+
+if (config.env === 'development') {
+  // ✓ TypeScript sabe que isso é sempre verdadeiro — útil para dead code detection
+  console.log('Modo dev ativo');
+}
+
+// ✗ ERRO detectado em build time:
+const badConfig = {
+  env: 'local', // ✗ — não é 'development' | 'staging' | 'production'
+  port: '3000', // ✗ — string não é number
+  features: { darkMode: true, beta: false },
+  allowedOrigins: [],
+} satisfies AppConfig;
+```
+
+### `satisfies` para tokens de design system
+
+```typescript
+type ColorScale = Record<string, string>;
+type DesignTokens = {
+  colors: Record<string, ColorScale>;
+  spacing: Record<string, number>;
+};
+
+const tokens = {
+  colors: {
+    primary: {
+      50:  '#eff6ff',
+      500: '#3b82f6',
+      900: '#1e3a8a',
+    },
+    gray: {
+      100: '#f3f4f6',
+      900: '#111827',
+    },
+  },
+  spacing: {
+    sm: 8,
+    md: 16,
+    lg: 24,
+  },
+} satisfies DesignTokens;
+
+// ✓ — chaves exatas preservadas, não string genérico
+type SpacingKey    = keyof typeof tokens.spacing;          // 'sm' | 'md' | 'lg'
+type PrimaryScale  = keyof typeof tokens.colors.primary;   // '50' | '500' | '900'
+```
+
+### `const T` para builders e DSLs type-safe
+
+```typescript
+// Select builder com tipos de campo exatos
+function select<const T extends readonly string[]>(
+  fields: T
+): { fields: T; from: (table: string) => { fields: T; table: string } } {
+  return {
+    fields,
+    from: (table) => ({ fields, table }),
+  };
+}
+
+const query = select(['id', 'name', 'email']).from('users');
+// query.fields: readonly ['id', 'name', 'email']
+type Field = (typeof query.fields)[number]; // 'id' | 'name' | 'email'
+
+// Registro de event handlers com nomes exatos
+function createEventMap<const T extends Record<string, unknown>>(
+  handlers: T
+): T {
+  return handlers;
+}
+
+const events = createEventMap({
+  click:  (e: MouseEvent)   => console.log(e.clientX),
+  keyup:  (e: KeyboardEvent) => console.log(e.key),
+  resize: (e: UIEvent)      => console.log(e.type),
+});
+
+type EventName = keyof typeof events; // 'click' | 'keyup' | 'resize'
+```
+
+### `NoInfer<T>` para hooks e APIs de estado
+
+```typescript
+// Hook de storage com fallback type-safe
+function useLocalStorage<T>(
+  key: string,
+  initial: T,
+  deserialize: (raw: string) => NoInfer<T>
+): [T, (value: T) => void] {
+  const stored = localStorage.getItem(key);
+  const value  = stored ? deserialize(stored) : initial;
+  const set    = (newValue: T) => localStorage.setItem(key, JSON.stringify(newValue));
+  return [value, set];
+}
+
+type Theme = 'light' | 'dark' | 'system';
+
+const [theme, setTheme] = useLocalStorage<Theme>(
+  'theme',
+  'system',
+  // ✓ — deserialize deve retornar Theme, não qualquer string
+  raw => (raw === 'light' || raw === 'dark' || raw === 'system' ? raw : 'system')
+  // ✗ ERRO se tentarmos: raw => 'invalid'
+);
+```
+
+### Combinando as três features
+
+```typescript
+// Rotas type-safe com validação, precisão e inferência protegida
+type RouteConfig = {
+  path: string;
+  exact?: boolean;
+  auth: boolean;
+};
+
+function defineRoutes<const T extends Record<string, RouteConfig>>(
+  routes: T,
+  defaultAuth: NoInfer<boolean>
+): T {
+  return routes;
+}
+
+const appRoutes = defineRoutes(
+  {
+    home:    { path: '/',        auth: false },
+    profile: { path: '/profile', auth: true  },
+    admin:   { path: '/admin',   auth: true  },
+  } satisfies Record<string, RouteConfig>,
+  false // defaultAuth — não contamina a inferência de T
+);
+
+// Tipos ultra-precisos disponíveis:
+type AppRoute  = keyof typeof appRoutes;                      // 'home' | 'profile' | 'admin'
+type HomeAuth  = (typeof appRoutes)['home']['auth'];          // false (literal boolean!)
+type AdminPath = (typeof appRoutes)['admin']['path'];         // '/admin' (literal string!)
+```
+
+**O operador `satisfies` (TS 4.9) é a resposta para "quero validar sem perder precisão": ele verifica a compatibilidade com um tipo mas mantém a inferência estreita, preservando literais, chaves exatas e estruturas específicas. Os const type parameters (TS 5.0) propagam esse espírito para generics — em vez de exigir `as const` no callsite, a função pode declarar `const T` e receber literais automaticamente. `NoInfer<T>` (TS 5.4) completa o trio protegendo a inferência de um parâmetro genérico de ser "contaminada" por posições que deveriam apenas consumir o tipo, não defini-lo. Juntos, esses três recursos formam um kit de precisão para APIs type-safe que antes exigiam casts manuais, asserções de tipo ou soluções de contorno elaboradas.**

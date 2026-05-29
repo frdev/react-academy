@@ -1,1 +1,655 @@
-# Conteúdo em breve
+# Compiler API
+
+A Compiler API do TypeScript expõe programaticamente o mesmo compilador que o `tsc` usa internamente. Com ela você pode criar ferramentas que leem, analisam, transformam e geram código TypeScript com total fidelidade ao sistema de tipos — diferente de parsers genéricos de AST, você tem acesso ao type checker real, ao fluxo de diagnósticos e ao sistema de transformação usado pelo próprio compilador. Neste módulo você vai aprender a criar programas TypeScript programaticamente, caminhar pela AST, emitir diagnósticos customizados, escrever codemods tipados e consultar o type checker para extrair informações de tipos em tempo de análise.
+
+## `ts.createProgram` — Criando um Programa Compilável
+
+O ponto de entrada de quase tudo na Compiler API é `ts.createProgram`. Ele recebe uma lista de arquivos raiz e opções do compilador, e devolve um objeto `Program` que representa o estado completo da compilação.
+
+```typescript
+import ts from 'typescript';
+
+// Criação básica de um programa a partir de arquivos no disco
+const program = ts.createProgram({
+  rootNames: ['src/index.ts', 'src/utils.ts'],
+  options: {
+    target: ts.ScriptTarget.ES2020,
+    module: ts.ModuleKind.ESNext,
+    strict: true,
+    noEmit: true, // só analisar, não emitir arquivos
+  },
+});
+
+// O Program expõe todas as source files parseadas
+for (const sourceFile of program.getSourceFiles()) {
+  if (!sourceFile.fileName.includes('node_modules')) {
+    console.log('Arquivo:', sourceFile.fileName);
+  }
+}
+```
+
+### Lendo `tsconfig.json` existente
+
+Na maioria dos casos você quer reutilizar o `tsconfig.json` do projeto em vez de passar opções manualmente:
+
+```typescript
+import ts from 'typescript';
+import path from 'path';
+
+function createProgramFromTsConfig(configPath: string): ts.Program {
+  // Lê e parseia o tsconfig.json
+  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (configFile.error) {
+    throw new Error(ts.flattenDiagnosticMessageText(configFile.error.messageText, '\n'));
+  }
+
+  // Resolve paths e herança de extends
+  const parsed = ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    path.dirname(configPath),
+  );
+
+  return ts.createProgram({
+    rootNames: parsed.fileNames,
+    options: parsed.options,
+  });
+}
+
+const program = createProgramFromTsConfig('./tsconfig.json');
+console.log('Root files:', program.getRootFileNames());
+```
+
+### Usando um compilador incremental com `ts.createIncrementalProgram`
+
+Para ferramentas de análise contínua (watchers, language servers), o modo incremental evita recompilar tudo a cada mudança:
+
+```typescript
+import ts from 'typescript';
+
+// BuilderProgram mantém estado entre compilações
+const host = ts.createIncrementalCompilerHost({
+  target: ts.ScriptTarget.ES2020,
+  strict: true,
+  incremental: true,
+  tsBuildInfoFile: '.tsbuildinfo',
+});
+
+const builderProgram = ts.createIncrementalProgram({
+  rootNames: ['src/index.ts'],
+  options: { target: ts.ScriptTarget.ES2020, strict: true },
+  host,
+});
+
+// Acessa o Program subjacente normalmente
+const program = builderProgram.getProgram();
+```
+
+## AST Walker em TypeScript — `ts.forEachChild` e Visita de Nós
+
+Toda source file é uma árvore de nós (`ts.Node`). Cada nó tem um `kind` (número da enum `ts.SyntaxKind`) e filhos. A função `ts.forEachChild` visita os filhos diretos de um nó — você compõe essa visita recursivamente para caminhar pela AST inteira.
+
+```typescript
+import ts from 'typescript';
+
+// Caminhada recursiva genérica pela AST
+function walk(node: ts.Node, depth = 0): void {
+  const indent = '  '.repeat(depth);
+  const kind = ts.SyntaxKind[node.kind]; // nome legível do kind
+  const text = node.getText().slice(0, 40).replace(/\n/g, '↵');
+
+  console.log(`${indent}[${kind}] ${text}`);
+
+  // forEachChild visita apenas os filhos diretos — chamamos walk recursivamente
+  ts.forEachChild(node, (child) => walk(child, depth + 1));
+}
+
+const program = ts.createProgram({ rootNames: ['src/index.ts'], options: {} });
+const sourceFile = program.getSourceFile('src/index.ts')!;
+walk(sourceFile);
+```
+
+### Visitando Nós por Tipo com Type Guards
+
+A API expõe funções `ts.isXxx(node)` para cada tipo de nó. Use-as como type guards para extrair informação estruturada:
+
+```typescript
+import ts from 'typescript';
+
+// Coleta todos os nomes de função declarados no arquivo
+function collectFunctionNames(sourceFile: ts.SourceFile): string[] {
+  const names: string[] = [];
+
+  function visit(node: ts.Node): void {
+    // ts.isFunctionDeclaration estreita o tipo para ts.FunctionDeclaration
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      names.push(node.name.text);
+    }
+
+    // ts.isArrowFunction captura arrow functions
+    if (ts.isVariableDeclaration(node) && node.initializer) {
+      if (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer)) {
+        if (ts.isIdentifier(node.name)) {
+          names.push(node.name.text);
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return names;
+}
+```
+
+### Usando `ts.visitEachChild` — Para Transformações
+
+`ts.forEachChild` é somente-leitura. Quando você precisa transformar a AST (devolver nós modificados), use `ts.visitEachChild` dentro de um transformer:
+
+```typescript
+import ts from 'typescript';
+
+// Contando imports por módulo — padrão common de análise
+function countImports(sourceFile: ts.SourceFile): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  function visit(node: ts.Node): void {
+    if (ts.isImportDeclaration(node)) {
+      // moduleSpecifier é sempre um StringLiteral
+      const specifier = node.moduleSpecifier;
+      if (ts.isStringLiteral(specifier)) {
+        const mod = specifier.text;
+        counts.set(mod, (counts.get(mod) ?? 0) + 1);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return counts;
+}
+```
+
+### Posição e Localização dos Nós
+
+Cada nó tem `pos` e `end` (offsets de byte na source). Para diagnósticos e LSP você precisa converter para linha/coluna:
+
+```typescript
+import ts from 'typescript';
+
+function getNodeLocation(node: ts.Node, sourceFile: ts.SourceFile) {
+  // getLineAndCharacterOfPosition retorna { line, character } (0-indexed)
+  const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd());
+
+  return {
+    file: sourceFile.fileName,
+    startLine: start.line + 1,   // convenção: 1-indexed para exibição
+    startCol: start.character + 1,
+    endLine: end.line + 1,
+    endCol: end.character + 1,
+  };
+}
+```
+
+## Custom Diagnostics — Emitindo Erros e Avisos Programáticos
+
+A Compiler API permite criar diagnósticos personalizados — útil para linters, regras de arquitetura e verificações de convenção que vão além do que o `tsc` verifica por padrão.
+
+```typescript
+import ts from 'typescript';
+
+// Um diagnóstico customizado precisa de: category, code, messageText, file e start/length
+function createDiagnostic(
+  file: ts.SourceFile,
+  node: ts.Node,
+  message: string,
+  category: ts.DiagnosticCategory = ts.DiagnosticCategory.Error,
+): ts.DiagnosticWithLocation {
+  return {
+    file,
+    start: node.getStart(file),
+    length: node.getWidth(file),
+    messageText: message,
+    category,
+    code: 9001, // código customizado — use > 9000 para evitar colisão com ts
+    source: 'minha-ferramenta', // identifica a origem do diagnóstico
+  };
+}
+```
+
+### Regra Completa: Proibir `console.log` em Produção
+
+```typescript
+import ts from 'typescript';
+
+function noConsoleLog(program: ts.Program): ts.Diagnostic[] {
+  const diagnostics: ts.Diagnostic[] = [];
+
+  for (const sourceFile of program.getSourceFiles()) {
+    // Ignora arquivos de declaração e node_modules
+    if (sourceFile.isDeclarationFile) continue;
+    if (sourceFile.fileName.includes('node_modules')) continue;
+
+    function visit(node: ts.Node): void {
+      // Detecta chamadas como console.log(...)
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        ts.isIdentifier(node.expression.expression) &&
+        node.expression.expression.text === 'console' &&
+        node.expression.name.text === 'log'
+      ) {
+        diagnostics.push({
+          file: sourceFile,
+          start: node.getStart(sourceFile),
+          length: node.getWidth(sourceFile),
+          messageText: 'console.log não é permitido em código de produção.',
+          category: ts.DiagnosticCategory.Warning,
+          code: 9001,
+          source: 'no-console-log',
+        });
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+  }
+
+  return diagnostics;
+}
+
+// Uso: formatar e exibir os diagnósticos
+const program = ts.createProgram({ rootNames: ['src/index.ts'], options: { strict: true } });
+const diags = [
+  ...ts.getPreEmitDiagnostics(program), // diagnósticos nativos do tsc
+  ...noConsoleLog(program),             // nossos diagnósticos customizados
+];
+
+const host = ts.createCompilerHost({});
+diags.forEach((d) => {
+  console.error(ts.formatDiagnosticsWithColorAndContext([d], host));
+});
+process.exit(diags.some((d) => d.category === ts.DiagnosticCategory.Error) ? 1 : 0);
+```
+
+### Diagnóstico com Sugestão de Correção
+
+Diagnósticos podem incluir `relatedInformation` para apontar outras localizações relevantes:
+
+```typescript
+import ts from 'typescript';
+
+function makeErrorWithRelated(
+  file: ts.SourceFile,
+  node: ts.Node,
+  message: string,
+  relatedFile: ts.SourceFile,
+  relatedNode: ts.Node,
+  relatedMessage: string,
+): ts.DiagnosticWithLocation {
+  return {
+    file,
+    start: node.getStart(file),
+    length: node.getWidth(file),
+    messageText: message,
+    category: ts.DiagnosticCategory.Error,
+    code: 9002,
+    relatedInformation: [
+      {
+        file: relatedFile,
+        start: relatedNode.getStart(relatedFile),
+        length: relatedNode.getWidth(relatedFile),
+        messageText: relatedMessage,
+        category: ts.DiagnosticCategory.Message,
+        code: 9002,
+      },
+    ],
+  };
+}
+```
+
+## Codemods Tipados — Transformers e Printer
+
+Um codemod é uma transformação automatizada de código-fonte. A Compiler API oferece o mecanismo de `CustomTransformer` para modificar a AST durante a compilação, e `ts.Printer` para serializar a AST modificada de volta em texto.
+
+### Anatomia de um Transformer
+
+```typescript
+import ts from 'typescript';
+
+// Um transformer recebe um TransformationContext e retorna uma função
+// que transforma cada SourceFile (ou outro tipo de nó raiz)
+function myTransformer(context: ts.TransformationContext): ts.Transformer<ts.SourceFile> {
+  return (sourceFile: ts.SourceFile): ts.SourceFile => {
+    function visitNode(node: ts.Node): ts.Node {
+      // Transformamos o nó e visitamos seus filhos recursivamente
+      return ts.visitEachChild(transformNode(node), visitNode, context);
+    }
+
+    function transformNode(node: ts.Node): ts.Node {
+      // Exemplo: substituir todos os identificadores "PLACEHOLDER" por "PRODUÇÃO"
+      if (ts.isIdentifier(node) && node.text === 'PLACEHOLDER') {
+        // ts.factory cria novos nós sem mutar os existentes
+        return context.factory.createIdentifier('PRODUCAO');
+      }
+      return node;
+    }
+
+    return ts.visitNode(sourceFile, visitNode) as ts.SourceFile;
+  };
+}
+```
+
+### Codemod Completo: Adicionar `readonly` a Propriedades de Interface
+
+```typescript
+import ts from 'typescript';
+import fs from 'fs';
+
+function addReadonlyToInterfaces(
+  context: ts.TransformationContext,
+): ts.Transformer<ts.SourceFile> {
+  const { factory } = context;
+
+  return (sourceFile: ts.SourceFile): ts.SourceFile => {
+    function visit(node: ts.Node): ts.Node {
+      // Ao encontrar uma declaração de propriedade em interface, adiciona readonly
+      if (ts.isPropertySignature(node)) {
+        // Verifica se readonly já está presente
+        const hasReadonly = node.modifiers?.some(
+          (m) => m.kind === ts.SyntaxKind.ReadonlyKeyword,
+        );
+
+        if (!hasReadonly) {
+          // Cria novo PropertySignature com readonly adicionado
+          return factory.updatePropertySignature(
+            node,
+            [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], // modifiers
+            node.name,
+            node.questionToken,
+            node.type,
+          );
+        }
+      }
+
+      return ts.visitEachChild(node, visit, context);
+    }
+
+    return ts.visitNode(sourceFile, visit) as ts.SourceFile;
+  };
+}
+
+function applyCodemod(filePath: string): void {
+  const source = fs.readFileSync(filePath, 'utf-8');
+
+  // Parseia sem program — para transformações puramente sintáticas
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    source,
+    ts.ScriptTarget.ES2020,
+    true, // setParentNodes — necessário para getStart(), getText(), etc.
+  );
+
+  const result = ts.transform(sourceFile, [addReadonlyToInterfaces]);
+  const transformedFile = result.transformed[0];
+
+  // Printer serializa a AST de volta para string
+  const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+  const output = printer.printFile(transformedFile);
+
+  fs.writeFileSync(filePath, output, 'utf-8');
+  console.log(`Codemod aplicado em: ${filePath}`);
+}
+```
+
+### Criando Nós Sintéticos com `factory`
+
+O `ts.factory` (ou `context.factory` dentro de um transformer) é a API de construção de nós imutáveis:
+
+```typescript
+import ts from 'typescript';
+
+const factory = ts.factory;
+
+// Criar: import React from 'react'
+const importDecl = factory.createImportDeclaration(
+  undefined, // modifiers
+  factory.createImportClause(
+    false,    // isTypeOnly
+    factory.createIdentifier('React'), // default import
+    undefined, // named bindings
+  ),
+  factory.createStringLiteral('react'),
+);
+
+// Criar: const x: string = 'hello'
+const varDecl = factory.createVariableStatement(
+  undefined, // modifiers
+  factory.createVariableDeclarationList(
+    [
+      factory.createVariableDeclaration(
+        'x',
+        undefined,
+        factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+        factory.createStringLiteral('hello'),
+      ),
+    ],
+    ts.NodeFlags.Const,
+  ),
+);
+
+// Serializar para texto sem um arquivo completo
+const printer = ts.createPrinter();
+const resultFile = ts.createSourceFile('temp.ts', '', ts.ScriptTarget.Latest);
+console.log(printer.printNode(ts.EmitHint.Unspecified, importDecl, resultFile));
+// → import React from "react"
+```
+
+## Type Checker Programático — `program.getTypeChecker`
+
+O type checker é o componente mais poderoso da Compiler API. Ele resolve tipos, símbolos, assinaturas e relações de assignability. Para acessá-lo, basta chamar `program.getTypeChecker()` — o mesmo checker que o `tsc` usa internamente.
+
+```typescript
+import ts from 'typescript';
+
+const program = ts.createProgram({
+  rootNames: ['src/index.ts'],
+  options: { strict: true, target: ts.ScriptTarget.ES2020 },
+});
+
+// O checker é específico para este program — não reutilize entre programs
+const checker = program.getTypeChecker();
+```
+
+### `checker.getTypeAtLocation` — Tipo de Qualquer Expressão
+
+```typescript
+import ts from 'typescript';
+
+function printAllVariableTypes(program: ts.Program): void {
+  const checker = program.getTypeChecker();
+
+  for (const sourceFile of program.getSourceFiles()) {
+    if (sourceFile.isDeclarationFile) continue;
+
+    function visit(node: ts.Node): void {
+      if (ts.isVariableDeclaration(node) && node.initializer) {
+        // getTypeAtLocation retorna o tipo inferido do initializer
+        const type = checker.getTypeAtLocation(node.initializer);
+        // typeToString converte o Type para string legível
+        const typeStr = checker.typeToString(type);
+        const name = ts.isIdentifier(node.name) ? node.name.text : '(pattern)';
+
+        console.log(`${name}: ${typeStr}`);
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+  }
+}
+```
+
+### Trabalhando com Símbolos
+
+Símbolos (`ts.Symbol`) representam entidades nomeadas — variáveis, funções, classes, tipos. O checker resolve o símbolo de um nó e permite inspecionar suas declarações e flags:
+
+```typescript
+import ts from 'typescript';
+
+function inspectSymbol(program: ts.Program, sourceFile: ts.SourceFile): void {
+  const checker = program.getTypeChecker();
+
+  function visit(node: ts.Node): void {
+    if (ts.isIdentifier(node)) {
+      // getSymbolAtLocation retorna undefined se o nó não tiver símbolo
+      const symbol = checker.getSymbolAtLocation(node);
+      if (symbol) {
+        const flags = symbol.getFlags(); // ts.SymbolFlags bitmask
+        const isFunction = !!(flags & ts.SymbolFlags.Function);
+        const isVariable = !!(flags & ts.SymbolFlags.Variable);
+        const isClass = !!(flags & ts.SymbolFlags.Class);
+
+        console.log(`'${symbol.name}': função=${isFunction} var=${isVariable} classe=${isClass}`);
+
+        // getDeclaredTypeOfSymbol retorna o tipo declarado (não o inferido)
+        const type = checker.getDeclaredTypeOfSymbol(symbol);
+        console.log('  tipo declarado:', checker.typeToString(type));
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+}
+```
+
+### Analisando Assinaturas de Função
+
+```typescript
+import ts from 'typescript';
+
+function analyzeFunctionSignatures(program: ts.Program): void {
+  const checker = program.getTypeChecker();
+
+  for (const sourceFile of program.getSourceFiles()) {
+    if (sourceFile.isDeclarationFile) continue;
+
+    function visit(node: ts.Node): void {
+      if (ts.isFunctionDeclaration(node) && node.name) {
+        const symbol = checker.getSymbolAtLocation(node.name);
+        if (!symbol) return;
+
+        const type = checker.getTypeOfSymbolAtLocation(symbol, node);
+        // getCallSignatures retorna as assinaturas de chamada do tipo
+        const signatures = checker.getCallSignatures(type);
+
+        for (const sig of signatures) {
+          const params = sig.getParameters().map((p) => {
+            const paramType = checker.getTypeOfSymbolAtLocation(p, p.valueDeclaration!);
+            return `${p.name}: ${checker.typeToString(paramType)}`;
+          });
+
+          const returnType = checker.typeToString(sig.getReturnType());
+          console.log(`${node.name!.text}(${params.join(', ')}): ${returnType}`);
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+  }
+}
+```
+
+### Verificando Assignability e Relações de Tipo
+
+```typescript
+import ts from 'typescript';
+
+function checkAssignability(program: ts.Program): void {
+  const checker = program.getTypeChecker();
+  const sourceFile = program.getSourceFiles().find((f) => !f.isDeclarationFile)!;
+
+  // Obtém tipos por nome de símbolo global
+  function getTypeByName(name: string): ts.Type {
+    const symbol = checker.resolveName(name, undefined, ts.SymbolFlags.Type, false);
+    return symbol ? checker.getDeclaredTypeOfSymbol(symbol) : checker.getAnyType();
+  }
+
+  // isTypeAssignableTo verifica se source é atribuível a target
+  // Útil para validar relações de tipo em ferramentas de análise estática
+  const stringType = checker.getStringType();
+  const numberType = checker.getNumberType();
+
+  // Acesso direto a isTypeAssignableTo via cast — é uma API interna não exportada
+  // Em ferramentas reais, use checker.isTypeAssignableTo se disponível na versão do TS
+  const internalChecker = checker as unknown as {
+    isTypeAssignableTo(source: ts.Type, target: ts.Type): boolean;
+  };
+
+  console.log(
+    'string assignable to number?',
+    internalChecker.isTypeAssignableTo(stringType, numberType),
+  ); // false
+
+  // Alternativa pública: verificar diagnostics de uma atribuição sintética
+}
+```
+
+### Ferramenta Completa: Detectar Parâmetros Sem Uso com Tipo `any`
+
+```typescript
+import ts from 'typescript';
+
+function detectImplicitAnyParams(program: ts.Program): ts.Diagnostic[] {
+  const checker = program.getTypeChecker();
+  const diagnostics: ts.Diagnostic[] = [];
+
+  for (const sourceFile of program.getSourceFiles()) {
+    if (sourceFile.isDeclarationFile) continue;
+
+    function visit(node: ts.Node): void {
+      const isFn =
+        ts.isFunctionDeclaration(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isMethodDeclaration(node);
+
+      if (isFn) {
+        const fn = node as ts.FunctionLikeDeclaration;
+
+        for (const param of fn.parameters) {
+          if (!param.type) {
+            // Sem anotação explícita — verifica se o tipo inferido é any
+            const type = checker.getTypeAtLocation(param);
+            const typeStr = checker.typeToString(type);
+
+            if (typeStr === 'any') {
+              diagnostics.push({
+                file: sourceFile,
+                start: param.getStart(sourceFile),
+                length: param.getWidth(sourceFile),
+                messageText: `Parâmetro '${param.name.getText()}' tem tipo 'any' implícito.`,
+                category: ts.DiagnosticCategory.Warning,
+                code: 9003,
+                source: 'detect-implicit-any',
+              });
+            }
+          }
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+  }
+
+  return diagnostics;
+}
+```
+
+**A Compiler API é o alicerce de todas as ferramentas sérias do ecossistema TypeScript: ESLint plugins tipados, codemods de migração, geradores de documentação, language servers customizados. Com `ts.createProgram` você instancia o compilador completo; com `ts.forEachChild` você caminha pela AST de forma segura e tipada; com custom diagnostics você emite erros e avisos com a mesma fidelidade do `tsc`; com transformers e `ts.Printer` você reescreve código preservando semântica; e com `program.getTypeChecker` você acessa o mesmo motor de tipos que o TypeScript usa internamente — abrindo caminho para análises que nenhum parser genérico consegue fazer.**

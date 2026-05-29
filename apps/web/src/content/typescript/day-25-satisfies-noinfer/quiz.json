@@ -1,1 +1,97 @@
-{"lessonId": "day-25", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-25",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Dado `const palette = { red: [255, 0, 0], green: '#00ff00' } satisfies Record<string, string | number[]>`, qual é o tipo de `palette.red` e `palette.green`?",
+      "options": [
+        "`number[]` para red e `string` para green — satisfies valida mas preserva o tipo inferido mais estreito",
+        "`string | number[]` para ambos — satisfies usa o tipo declarado como anotação",
+        "`[255, 0, 0]` (tuple literal) para red e `'#00ff00'` (string literal) para green",
+        "Erro de compilação — Record<string, string | number[]> não aceita arrays"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Essa é a diferença central entre `satisfies` e uma anotação de tipo. Com `: Record<string, string | number[]>`, o TypeScript colapsa os tipos dos valores para `string | number[]` — você perde a distinção entre quais chaves são arrays e quais são strings. Com `satisfies`, o TypeScript *verifica* que o objeto é compatível com o tipo, mas o tipo resultante é o inferido diretamente da expressão: `red` permanece `number[]` e `green` permanece `string`. Portanto, `palette.red.map(...)` compila sem cast, e `palette.green.toUpperCase()` também. A terceira opção (tuple literal) está errada porque arrays mutáveis não preservam literais — apenas `as const` faria isso."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que a expressão `as const satisfies` (nessa ordem) é necessária para obter tanto literais em arrays quanto validação de tipo?",
+      "options": [
+        "A ordem é irrelevante — `satisfies as const` e `as const satisfies` são equivalentes",
+        "`as const` deve vir depois de `satisfies` — a ordem correta é `valor satisfies Tipo as const`",
+        "`as const` vem antes para transformar os arrays em tuples readonly com literais; `satisfies` vem depois para validar a compatibilidade com o tipo alvo. Invertendo, o `satisfies` validaria o tipo *antes* da constificação e os arrays permaneceriam mutáveis",
+        "`as const` e `satisfies` não podem ser combinados — são mutuamente exclusivos"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A ordem de avaliação é da expressão para fora: `{ ... } as const satisfies Tipo` primeiro aplica `as const` ao objeto literal (transformando arrays em tuples readonly e valores em literais), depois aplica `satisfies` para checar se o resultado é compatível com `Tipo`. Se a ordem fosse `{ ... } satisfies Tipo as const`, o TypeScript interpretaria `satisfies` primeiro sobre o objeto sem constificação — os arrays seriam `string[]` no momento da verificação — e então `as const` seria aplicado sobre o tipo *resultante* (que já foi verificado). Na prática, `as const satisfies` é a forma idiomática para obter a combinação de literais + validação."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é o efeito de usar `const T` em um parâmetro de tipo genérico (introduzido no TS 5.0)?",
+      "options": [
+        "Torna o parâmetro de tipo readonly — valores do tipo T não podem ser mutados",
+        "É equivalente a escrever `T extends const` — uma sintaxe alternativa sem diferença semântica",
+        "Restringe T a apenas tipos primitivos como string, number e boolean",
+        "Faz o compilador inferir tipos literais (como se o argumento tivesse `as const`) sem que o chamador precise anotar manualmente"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Antes do TS 5.0, para preservar literais em generics, o chamador precisava passar `as const` explicitamente: `fn(['a', 'b'] as const)`. Com `const T`, a função declara que quer inferência constante e o chamador não precisa mais anotar. Por exemplo, `function makeArray<const T>(items: T[]): T[]` infere `T = readonly ['a', 'b', 'c']` quando chamada com `makeArray(['a', 'b', 'c'])` — sem `as const` no callsite. É uma feature de ergonomia que move a responsabilidade de preservar literais para a definição da função, não para cada chamada. O readonly nos arrays resultantes é consequência do comportamento de `as const` — não significa que o compilador proíbe mutação da variável."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Dado `function createState<T>(initial: T, fallback: T): T`, o que acontece ao chamar `createState('active' as 'active' | 'inactive', 'pending')`?",
+      "options": [
+        "Erro de compilação — 'pending' não é atribuível a 'active' | 'inactive'",
+        "T é inferido como `'active' | 'inactive' | 'pending'` — o TypeScript une os tipos de ambos os argumentos para satisfazer a constraint de que ambos são T",
+        "T é inferido como `string` — o TypeScript amplia para o tipo primitivo comum",
+        "T é inferido como `'active' | 'inactive'` — o primeiro argumento sempre tem precedência"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando o TypeScript precisa inferir um único tipo T a partir de múltiplas posições que contribuem para T, ele une (faz união de) todos os tipos candidatos. Aqui, `initial` sugere `'active' | 'inactive'` e `fallback` sugere `'pending'` — ambos devem ser T, então T = `'active' | 'inactive' | 'pending'`. Isso é o problema que `NoInfer<T>` resolve: ao tipar `fallback` como `NoInfer<T>`, o argumento de fallback é *verificado* contra T mas não *contribui* para inferir T. Assim T é inferido apenas de `initial`, e `'pending'` causa erro pois não satisfaz T = `'active' | 'inactive'`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença semântica entre `NoInfer<T>` e simplesmente não usar aquele argumento na inferência com uma asserção `as T`?",
+      "options": [
+        "`NoInfer<T>` é um bloqueio na *inferência*: o argumento ainda é verificado em tipo (erros se o valor não for atribuível a T), mas não influencia *como* T é inferido. Uma asserção `as T` silencia verificações completamente — é insegura e não gera erro se o valor for incompatível",
+        "São equivalentes — `NoInfer<T>` é apenas açúcar sintático para asserções de tipo",
+        "`NoInfer<T>` torna o argumento opcional automaticamente — se não fornecido, T ainda é inferido",
+        "`NoInfer<T>` só funciona com tipos primitivos — para objetos, é necessário usar asserções de tipo"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`NoInfer<T>` opera no sistema de inferência de tipo, não na verificação. Ele diz ao compilador: 'use este argumento para verificar se o valor é compatível com T, mas não use-o para deduzir o que T deve ser'. Uma asserção `as T` no corpo da função não tem nenhum efeito sobre a inferência no callsite — ela apenas silencia erros internamente, o que é perigoso porque contorna a verificação de tipos. Com `NoInfer<T>`, se você chamar `fn(initial, fallback)` e `fallback` não for compatível com o T inferido de `initial`, você recebe um erro real. Com `as T` você não receberia erro nenhum. `NoInfer<T>` foi adicionado ao TS 5.4 precisamente porque não havia uma forma segura e idiomática de expressar 'este argumento consome T mas não define T'."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual dos seguintes casos NÃO é um benefício direto de usar `satisfies` em vez de uma anotação de tipo?",
+      "options": [
+        "Preservar o tipo literal dos valores (ex: `'development'` em vez de `'development' | 'staging' | 'production'`)",
+        "Garantir que chaves extras não declaradas no tipo alvo causem erro de compilação",
+        "Tornar a variável imutável em runtime — impedir reatribuições do objeto",
+        "Permitir que o TypeScript faça inferência de retorno em funções que usam os valores do objeto"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`satisfies` opera inteiramente em *tempo de compilação* — não tem nenhum efeito em runtime. Ele não torna objetos imutáveis, não congela propriedades, não impede reatribuições. Os três primeiros itens são benefícios reais: (1) literais preservados — `config.env` é `'development'` e não o union completo; (2) excess property check — se você incluir uma chave que não existe no tipo alvo, `satisfies` emite erro (diferente de uma variável intermediária que passa pela verificação de freshness); (3) inferência precisa — funções que recebem `typeof config` como argumento recebem o tipo estreito, não o tipo da anotação. A mutabilidade em runtime é controlada por `Object.freeze()`, `as const` (que é também compile-time, mas ao menos impede reatribuições de propriedades no nível de tipo com `readonly`) — não por `satisfies`."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o resultado de `keyof typeof routes` quando `routes` é definido com anotação `: Record<string, RouteConfig>` vs com `satisfies Record<string, RouteConfig>`?",
+      "options": [
+        "Ambos produzem `'home' | 'profile' | 'admin'` — TypeScript sempre infere chaves exatas de objetos literais",
+        "Ambos produzem `string` — o keyof de qualquer objeto com chaves dinâmicas é sempre string",
+        "Com anotação: `never` (objeto vazio após a anotação). Com satisfies: `string`",
+        "Com anotação: `string` (pois Record<string, ...> tem keyof = string). Com satisfies: `'home' | 'profile' | 'admin'` (chaves literais do objeto são preservadas)"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Esse é um dos casos de uso mais impactantes do `satisfies`. Quando você anota `const routes: Record<string, RouteConfig>`, o TypeScript descarta as chaves literais do objeto — a variável tem tipo `Record<string, RouteConfig>`, cujo `keyof` é `string`. Você perde toda a informação sobre quais rotas existem. Com `satisfies`, o TypeScript verifica que o objeto é compatível com `Record<string, RouteConfig>` (detecta chaves com valores incompatíveis) mas o tipo de `routes` permanece o inferido: `{ home: RouteConfig; profile: RouteConfig; admin: RouteConfig }`, cujo `keyof` é `'home' | 'profile' | 'admin'`. Isso habilita verificações de exaustividade, autocomplete de rotas válidas, e derivação de tipos de union a partir do objeto — tudo impossível com a anotação tradicional."
+    }
+  ]
+}

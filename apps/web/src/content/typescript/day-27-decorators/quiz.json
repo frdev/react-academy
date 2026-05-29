@@ -1,1 +1,97 @@
-{"lessonId": "day-27", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-27",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença entre a assinatura de um method decorator no sistema `experimentalDecorators` (legado) e no Stage 3 (TypeScript 5.0+)?",
+      "options": [
+        "No Stage 3 o decorator recebe `(value, context: ClassMethodDecoratorContext)` — o `value` é a função original e o `context` concentra nome, kind, static, private e addInitializer em vez de serem parâmetros separados",
+        "No Stage 3 o decorator recebe `(target, propertyKey, descriptor)` — igual ao legado, mas com tipagem mais forte",
+        "No Stage 3 o decorator não recebe nenhum argumento — ele é aplicado como uma marcação sem acesso ao método",
+        "No Stage 3 o decorator recebe apenas o nome do método como string, sem acesso à função original"
+      ],
+      "correctAnswer": 0,
+      "explanation": "O sistema `experimentalDecorators` usava três parâmetros separados: `target` (prototype), `propertyKey` (string/symbol) e `descriptor` (PropertyDescriptor). O Stage 3 consolidou tudo em dois: `value` (a função original, que você pode envolver ou substituir) e `context` (objeto rico com `name`, `kind`, `static`, `private`, `addInitializer` e `metadata`). Essa mudança melhora drasticamente a tipagem — é possível usar generics para garantir que o decorator só aceite métodos com assinaturas compatíveis. Além disso, Stage 3 não requer nenhum flag no tsconfig, enquanto o legado exigia `experimentalDecorators: true`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que o `value` recebido por um field decorator é sempre `undefined`, e o que o decorator deve retornar para alterar o valor inicial do campo?",
+      "options": [
+        "`value` é `undefined` porque campos privados não são acessíveis — o decorator deve retornar o valor final diretamente como primitivo",
+        "`value` é `undefined` como convenção do Stage 3 — o decorator deve retornar `void` e usar `context.addInitializer` para alterar o campo via `Object.defineProperty`",
+        "`value` é `undefined` porque os campos de instância ainda não existem quando o decorator é aplicado (definição da classe). O decorator deve retornar uma função inicializadora `(initialValue) => newValue` que será chamada durante o `new`, recebendo o valor inicial e retornando o valor efetivo",
+        "`value` é `undefined` apenas para campos opcionais. Para campos com valor inicial, `value` é o valor padrão da declaração"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Field decorators rodam em tempo de definição da classe, antes de qualquer instância ser criada — por isso `value` é `undefined` (o campo não existe ainda, ele é criado em cada `new`). Para modificar o valor inicial, o decorator retorna uma função com assinatura `(this: This, initialValue: Value) => Value`. Essa função é chamada durante a inicialização de cada instância, recebendo o valor que o campo teria (ex: `'Production'`) e retornando o valor que será efetivamente atribuído (ex: `'production'`). Se o decorator retornar `void`, o valor original é mantido. Isso permite patterns de validação, transformação e sanitização completamente transparentes para quem usa a classe."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Dado o código `function bound(value, context) { context.addInitializer(function() { this[context.name] = value.bind(this); }); }`, qual problema clássico do JavaScript este decorator resolve e por quê a solução funciona?",
+      "options": [
+        "Resolve a falta de métodos privados em JavaScript — `addInitializer` cria um closure que encapsula o método",
+        "Resolve a falta de tipagem em métodos dinâmicos — `value.bind(this)` retorna uma função com tipos inferidos automaticamente",
+        "Resolve o problema de métodos não serem herdados por subclasses — `bind` cria uma cópia do método na cadeia prototype",
+        "Resolve a perda de `this` quando métodos são extraídos da instância (ex: `const { tick } = timer; setInterval(tick, 1000)`). O `addInitializer` roda durante `new`, com `this` apontando para a instância, e sobrescreve a propriedade na instância com uma versão vinculada — `this[context.name] = value.bind(this)`. A propriedade de instância tem precedência sobre o método do prototype, então `timer.tick` retorna a versão vinculada"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Em JavaScript, quando você extrai um método de um objeto (`const { tick } = timer`), a referência ao `this` é perdida — `tick()` chamado sozinho terá `this === undefined` em strict mode. A solução clássica era fazer `this.tick = this.tick.bind(this)` no constructor. O decorator `@bound` automatiza isso: `context.addInitializer` registra um callback que roda durante o `new`, com `this` sendo a instância. Ao fazer `this[context.name] = value.bind(this)`, cria-se uma propriedade de instância que 'sombra' o método do prototype. Lookup de propriedade sempre prioriza a instância sobre o prototype — então `timer.tick` retorna a versão vinculada, e `const { tick } = timer` funciona corretamente."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como o TypeScript Stage 3 garante em tempo de compilação que um class decorator só possa ser aplicado a classes que produzem instâncias com um método `validate(): boolean`?",
+      "options": [
+        "Não é possível — class decorators no Stage 3 aceitam qualquer classe sem verificação de tipo",
+        "Usando uma constraint genérica na assinatura do decorator: `function myDec<T extends abstract new (...args: any) => Validatable>(value: T, context: ClassDecoratorContext<T>)`. O TypeScript inferirá `T` da classe decorada e verificará se ela satisfaz `abstract new (...args: any) => Validatable`. Se a classe não tiver `validate()`, o compilador emite erro",
+        "Usando `context.kind === 'class'` dentro do decorator e lançando um TypeError se `validate` não existir — mas a verificação é apenas em runtime",
+        "Usando `interface DecoratorTarget { validate(): boolean }` no arquivo `.d.ts` global — o TypeScript aplica automaticamente a todas as classes decoradas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A tipagem genérica de class decorators no Stage 3 é um dos grandes ganhos sobre o sistema legado. Ao declarar `function myDec<T extends abstract new (...args: any) => Validatable>(value: T, context: ClassDecoratorContext<T>): void`, o parâmetro `T` é inferido da classe à qual o decorator é aplicado. O TypeScript então verifica se `T` satisfaz o constraint `abstract new (...args: any) => Validatable` — ou seja, se a classe produz instâncias com `validate(): boolean`. Se não satisfizer, o erro ocorre em compilação, não em runtime. Isso transforma decorators de simples anotações em contratos tipados, evitando toda uma categoria de erros de configuração."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é `Symbol.metadata` e como ele difere do `Reflect.metadata` do sistema `experimentalDecorators`?",
+      "options": [
+        "`Symbol.metadata` é um símbolo bem-conhecido (Stage 3) acessível diretamente em `Classe[Symbol.metadata]` sem polyfill. O objeto `context.metadata` de cada decorator é automaticamente atribuído a ele ao final da definição da classe. `Reflect.metadata` do sistema legado exigia o polyfill `reflect-metadata` e emitMeta. `Symbol.metadata` usa herança de prototype normalmente, enquanto `Reflect.metadata` usava uma WeakMap separada",
+        "São equivalentes — `Symbol.metadata` é apenas o novo nome para `Reflect.metadata` no Stage 3",
+        "`Symbol.metadata` armazena apenas tipos — é voltado para reflection de tipos em runtime. `Reflect.metadata` armazenava metadados arbitrários de qualquer tipo",
+        "`Symbol.metadata` só funciona com class decorators. `Reflect.metadata` funcionava com qualquer tipo de decorator"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`Symbol.metadata` é parte da proposta 'decorator metadata' (Stage 3 separado, suportado no TS 5.2+). Cada decorator tem acesso a `context.metadata` — um objeto mutável compartilhado por todos os decorators da mesma classe. Ao terminar de aplicar todos os decorators, o runtime atribui esse objeto a `Classe[Symbol.metadata]`. A herança funciona via prototype: `Derived[Symbol.metadata]` tem `Base[Symbol.metadata]` em seu prototype chain. Isso contrasta com `Reflect.metadata`, que usava uma WeakMap interna separada e precisava do polyfill `reflect-metadata` (um pacote npm) mais `emitDecoratorMetadata: true` no tsconfig. `Symbol.metadata` é nativo, sem dependências externas, e segue o modelo padrão de herança JavaScript."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual é a ordem correta de execução dos decorators e dos `addInitializer` callbacks no código a seguir?\n\n```typescript\n@decC\nclass Foo {\n  @decF\n  name = 'x';\n\n  @decM\n  greet() {}\n}\nconst f = new Foo();\n```",
+      "options": [
+        "Definição: decC → decF → decM. Instância: callbacks de decC → decF → decM",
+        "Definição: decF → decM → decC (membros de cima para baixo, depois a classe). Instância: callbacks na mesma ordem",
+        "Definição: decF → decM → decC (membros primeiro, classe por último; membros na ordem de declaração). Instância: callbacks de `addInitializer` na ordem em que foram registrados durante a fase de definição",
+        "Definição: decC → decM → decF (classe primeiro, membros de baixo para cima). Instância: callbacks em ordem inversa"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A especificação Stage 3 define: (1) decorators de membros executam antes do decorator de classe — a classe só é 'finalizada' após todos os membros serem processados; (2) dentro dos membros, a ordem é de cima para baixo na declaração (ao contrário do sistema legado, que era de baixo para cima); (3) o decorator de classe executa por último. Assim, para o código do exemplo: `decF` → `decM` → `decC` em tempo de definição. Durante `new Foo()`, os callbacks registrados via `context.addInitializer` executam na mesma ordem em que foram registrados — o que segue a mesma sequência: callbacks de decF → decM → decC. Entender essa ordem é crítico quando decorators dependem um do outro (ex: um decorator de classe que lê metadados que foram escritos por decorators de método)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que o `accessor` keyword faz em uma declaração de campo de classe, e como um `ClassAccessorDecoratorContext` difere do `ClassFieldDecoratorContext`?",
+      "options": [
+        "`accessor` é um alias para `readonly` — ambos criam campos imutáveis. Os contextos de decorator são idênticos",
+        "`accessor` é uma syntactic sugar para `@observable` — já inclui lógica de notificação de mudanças sem decorator adicional",
+        "`accessor` é equivalente a declarar `get` e `set` manualmente, mas o decorator correspondente não pode sobrescrever o getter — apenas o setter",
+        "`accessor` gera automaticamente um backing field privado e um par getter/setter públicos no prototype. O `ClassAccessorDecoratorContext` difere do `ClassFieldDecoratorContext` porque o decorator recebe `ClassAccessorDecoratorTarget` com `{ get, set }` em vez de `undefined`, e pode retornar `ClassAccessorDecoratorResult` com `{ get?, set?, init? }` para interceptar individualmente leitura e escrita"
+      ],
+      "correctAnswer": 3,
+      "explanation": "A keyword `accessor` foi introduzida junto com o Stage 3 especificamente para suportar accessor decorators. `accessor count = 0` é equivalente a declarar um campo privado `#count`, um getter `get count() { return this.#count; }` e um setter `set count(v) { this.#count = v; }` — mas de forma compacta. Diferente de um field decorator (que recebe `value: undefined` e retorna uma função inicializadora), um accessor decorator recebe `value: ClassAccessorDecoratorTarget<This, Value>` — um objeto com os métodos `get` e `set` originais — e pode retornar um `ClassAccessorDecoratorResult` contendo `get`, `set` e `init` opcionais. Isso permite interceptar seletivamente: você pode sobrescrever só o getter para logging de leitura, só o setter para validação, ou ambos para reatividade/observability."
+    }
+  ]
+}
