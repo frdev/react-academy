@@ -1,0 +1,14 @@
+{
+  "id": "day-27",
+  "day": 27,
+  "week": 4,
+  "title": "Temporal API & Internacionalização",
+  "slug": "temporal-i18n",
+  "topics": ["Temporal.PlainDate", "Temporal.ZonedDateTime", "Temporal.Duration", "Intl.DateTimeFormat", "Intl.NumberFormat", "Intl.Collator", "pitfalls do Date", "timezones"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-07"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 120
+}

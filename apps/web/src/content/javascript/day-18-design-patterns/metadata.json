@@ -1,0 +1,14 @@
+{
+  "id": "day-18",
+  "day": 18,
+  "week": 3,
+  "title": "Padrões de Design em JS",
+  "slug": "design-patterns",
+  "topics": ["Observer/EventEmitter", "Factory", "Strategy", "Command", "Decorator pattern", "Module pattern", "Singleton", "diferenças para OOP clássico"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-10"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 110
+}

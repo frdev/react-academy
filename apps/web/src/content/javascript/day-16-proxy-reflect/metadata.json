@@ -1,0 +1,14 @@
+{
+  "id": "day-16",
+  "day": 16,
+  "week": 3,
+  "title": "Proxy & Reflect",
+  "slug": "proxy-reflect",
+  "topics": ["Proxy traps", "get/set/has/deleteProperty", "Reflect API", "invariants", "construindo reatividade", "validação de objetos", "meta-programação", "revocable proxies"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-15"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

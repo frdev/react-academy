@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-15",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `Symbol('foo') === Symbol('foo')` retorna?",
+      "options": [
+        "true — mesma descrição, mesmo símbolo",
+        "false — cada chamada de Symbol() cria um valor único",
+        "TypeError — symbols não suportam ===",
+        "true apenas se a descrição for igual"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Cada chamada de Symbol() cria um valor único, independente da descrição. A descrição é apenas um label para debugging (aparece em toString). Para compartilhar o mesmo símbolo entre módulos, use Symbol.for('foo') em vez de Symbol('foo')."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que chaves Symbol em objetos são ignoradas por `JSON.stringify()` e `Object.keys()`?",
+      "options": [
+        "É um bug histórico do JavaScript",
+        "Por design — symbols não são enumeráveis por padrão, permitindo metadados que não aparecem em serialização ou iteração padrão",
+        "Apenas symbols criados com Symbol.for() são ignorados",
+        "Symbols são ignorados apenas se criados dentro de classes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Chaves symbol não aparecem em Object.keys(), for...in, JSON.stringify() ou Object.getOwnPropertyNames(). Isso é intencional — permite adicionar metadados ou hooks de protocolo sem poluir a interface pública do objeto. Use Object.getOwnPropertySymbols() ou Reflect.ownKeys() para acessá-las."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `Symbol('app')` e `Symbol.for('app')`?",
+      "options": [
+        "Nenhuma diferença prática",
+        "Symbol() cria um símbolo único por chamada; Symbol.for() busca ou cria no registry global — o mesmo symbol para a mesma key",
+        "Symbol.for() é mais rápido que Symbol()",
+        "Symbol() funciona apenas em módulos ES, Symbol.for() funciona em qualquer contexto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Symbol() cria um novo símbolo único toda vez. Symbol.for('key') consulta o global registry: se já existe um símbolo com essa key, retorna ele; senão, cria e registra. Isso permite que módulos diferentes (ou iframes) compartilhem o mesmo símbolo via Symbol.for()."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Você implementou `[Symbol.toPrimitive](hint)` em uma classe. Em `objeto + 5`, qual hint é passado?",
+      "options": [
+        "'number'",
+        "'string'",
+        "'default'",
+        "'plus'"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O operador + (e ==) usam o hint 'default'. Apenas contextos claramente numéricos (operadores matemáticos como -, *, /; comparações numéricas) usam 'number'. Template strings `${obj}` e String() usam 'string'. O hint 'default' é um fallback para ambiguidade."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como `Symbol.hasInstance` permite customizar `instanceof`?",
+      "options": [
+        "Substituindo o prototype chain do objeto",
+        "Definindo um método estático `[Symbol.hasInstance](value)` na classe que retorna boolean",
+        "Adicionando um método de instância chamado 'instanceof'",
+        "Symbol.hasInstance não pode customizar instanceof — apenas modifica typeof"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando JavaScript avalia `x instanceof Classe`, ele chama Classe[Symbol.hasInstance](x). Se você define um static [Symbol.hasInstance](value) { return ... } na classe, pode customizar completamente o comportamento — inclusive fazer instanceof funcionar com critérios não relacionados à cadeia de protótipos."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para que serve `Symbol.toStringTag`?",
+      "options": [
+        "Para customizar o resultado de .toString() em strings",
+        "Para definir o tipo exibido em Object.prototype.toString.call(obj), como '[object MinhaClasse]'",
+        "Para renomear a classe em stack traces",
+        "Para serializar o objeto em formato customizado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Object.prototype.toString.call(obj) retorna '[object Tag]' onde Tag é o Symbol.toStringTag do objeto. Nativo: [object Array], [object Map], etc. Customizando, você pode fazer type checking cross-realm mais robusto que instanceof (que falha entre iframes com protótipos diferentes)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que usar symbols para extensão de objetos de terceiros é mais seguro que usar strings?",
+      "options": [
+        "Symbols são alocados em memória separada, sem risco de overflow",
+        "Symbols são únicos — nunca colidem com propriedades existentes nem com outras bibliotecas, mesmo usando a mesma descrição",
+        "Symbols são mais rápidos de acessar que strings como chaves",
+        "Apenas symbols escapam de Object.freeze()"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se biblioteca A adiciona obj.meta = {...} e biblioteca B também adiciona obj.meta = {...}, uma sobrescreve a outra. Com symbols: const META_A = Symbol('meta') e const META_B = Symbol('meta') são sempre diferentes — zero chance de colisão, independente do nome. É a forma segura de 'monkey-patching' sem efeitos colaterais."
+    }
+  ]
+}

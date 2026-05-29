@@ -1,0 +1,14 @@
+{
+  "id": "day-28",
+  "day": 28,
+  "week": 4,
+  "title": "Testing Avançado",
+  "slug": "advanced-testing",
+  "topics": ["property-based testing", "fast-check", "mutation testing", "fuzzing", "contract testing", "golden master testing", "snapshot vs assertion", "test isolation"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-13"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

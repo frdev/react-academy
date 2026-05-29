@@ -1,0 +1,290 @@
+# Padrões de Assincronismo Avançados
+
+Além de async/await e Promises básicas, JavaScript tem primitivas de agendamento fino que permitem controle preciso sobre quando e como tarefas executam. `queueMicrotask`, `requestAnimationFrame`, schedulers manuais e filas de concorrência são ferramentas que frameworks e bibliotecas usam por baixo dos panos.
+
+## A Hierarquia de Prioridades do Event Loop
+
+```
+Microtask queue (maior prioridade, esvazia completamente antes de qualquer macrotask):
+  ├── Promise callbacks (.then, .catch, .finally)
+  ├── queueMicrotask()
+  └── MutationObserver callbacks
+
+Macrotask queue (uma por vez, alterna com microtasks):
+  ├── setTimeout / setInterval callbacks
+  ├── I/O callbacks (Node.js)
+  ├── MessageChannel callbacks
+  └── requestAnimationFrame (especial: antes do próximo frame)
+```
+
+```javascript
+console.log('1 — sync')
+setTimeout(() => console.log('5 — setTimeout'))
+Promise.resolve().then(() => console.log('3 — microtask 1'))
+queueMicrotask(() => console.log('4 — microtask 2'))
+console.log('2 — sync')
+
+// Output: 1, 2, 3, 4, 5
+// Sync executa primeiro, depois TODAS as microtasks, depois macrotasks
+```
+
+## `queueMicrotask`: Agendamento no Microtask Queue
+
+`queueMicrotask(fn)` agenda uma função na microtask queue sem criar uma Promise:
+
+```javascript
+// Mais eficiente que Promise.resolve().then() para scheduling
+queueMicrotask(() => {
+  doSomethingAfterCurrentTask()
+})
+
+// Caso de uso: batcher de atualizações
+class UpdateBatcher {
+  #pending = new Set()
+  #scheduled = false
+
+  schedule(update) {
+    this.#pending.add(update)
+    if (!this.#scheduled) {
+      this.#scheduled = true
+      queueMicrotask(() => this.#flush())  // flush antes do próximo macrotask
+    }
+  }
+
+  #flush() {
+    this.#scheduled = false
+    const updates = [...this.#pending]
+    this.#pending.clear()
+    for (const update of updates) {
+      update()
+    }
+  }
+}
+
+// Múltiplos schedules na mesma task → apenas um flush
+const batcher = new UpdateBatcher()
+batcher.schedule(() => renderComponent('A'))  // agendado mas não executado
+batcher.schedule(() => renderComponent('B'))  // agendado mas não executado
+batcher.schedule(() => renderComponent('C'))  // agendado mas não executado
+// Todos renderizam juntos no próximo microtask — sem re-renders intermediários
+```
+
+## `requestAnimationFrame`: Sincronizado com o Display
+
+`requestAnimationFrame(callback)` executa antes do próximo repaint — ideal para animações:
+
+```javascript
+function animate(element, duration, from, to) {
+  const start = performance.now()
+
+  function step(timestamp) {
+    const elapsed = timestamp - start
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = easeInOut(progress)
+
+    element.style.transform = `translateX(${from + (to - from) * eased}px)`
+
+    if (progress < 1) {
+      requestAnimationFrame(step)  // agenda próximo frame
+    }
+  }
+
+  requestAnimationFrame(step)  // inicia
+}
+
+// cancelar
+const id = requestAnimationFrame(step)
+cancelAnimationFrame(id)
+
+// Batch de DOM mutations — todas no mesmo frame
+function batchDomUpdates(updates) {
+  requestAnimationFrame(() => {
+    for (const update of updates) {
+      update()  // todas as mutations acontecem antes do repaint
+    }
+  })
+}
+```
+
+## Scheduler Manual: Cooperative Multitasking
+
+Para trabalho longo que não pode ir para um Worker, divida em chunks e ceda controle ao event loop entre eles:
+
+```javascript
+// Sem scheduler: bloqueia a UI por segundos
+function processAll(items) {
+  return items.map(expensiveTransform)  // bloqueia!
+}
+
+// Com scheduler cooperativo
+async function processInChunks(items, chunkSize = 50) {
+  const results = []
+
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize)
+    results.push(...chunk.map(expensiveTransform))
+
+    // Cede controle ao event loop entre chunks
+    // Permite que o browser renderize frames, processe clicks, etc.
+    await new Promise(resolve => setTimeout(resolve, 0))
+  }
+
+  return results
+}
+
+// Versão mais moderna com scheduler.yield() (Chrome 115+)
+async function processWithYield(items) {
+  const results = []
+  for (const item of items) {
+    results.push(expensiveTransform(item))
+
+    // Yield apenas se o frame está demorando muito
+    if ('scheduler' in globalThis && scheduler.yield) {
+      await scheduler.yield()  // cede se necessário
+    }
+  }
+  return results
+}
+```
+
+## Fila de Concorrência Limitada
+
+Para não disparar 1000 requests ao mesmo tempo:
+
+```javascript
+class ConcurrencyQueue {
+  #running = 0
+  #queue = []
+  #maxConcurrent
+
+  constructor(maxConcurrent = 5) {
+    this.#maxConcurrent = maxConcurrent
+  }
+
+  async add(fn) {
+    return new Promise((resolve, reject) => {
+      this.#queue.push({ fn, resolve, reject })
+      this.#process()
+    })
+  }
+
+  #process() {
+    while (this.#running < this.#maxConcurrent && this.#queue.length > 0) {
+      const { fn, resolve, reject } = this.#queue.shift()
+      this.#running++
+
+      Promise.resolve(fn())
+        .then(resolve)
+        .catch(reject)
+        .finally(() => {
+          this.#running--
+          this.#process()  // processa próximo
+        })
+    }
+  }
+}
+
+const queue = new ConcurrencyQueue(3)  // max 3 simultâneos
+
+// 100 requests, no máximo 3 ao mesmo tempo
+const results = await Promise.all(
+  urls.map(url => queue.add(() => fetch(url).then(r => r.json())))
+)
+```
+
+## Debounce e Throttle com Cleanup
+
+```javascript
+// Debounce: executa apenas após N ms de inatividade
+function debounce(fn, delay) {
+  let timer = null
+  const debounced = function(...args) {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      timer = null
+      fn.apply(this, args)
+    }, delay)
+  }
+  debounced.cancel = () => clearTimeout(timer)
+  debounced.flush = (...args) => {
+    clearTimeout(timer)
+    fn.apply(this, args)
+  }
+  return debounced
+}
+
+// Throttle: executa no máximo uma vez por N ms
+function throttle(fn, limit) {
+  let lastTime = 0
+  let timer = null
+  return function(...args) {
+    const now = Date.now()
+    const remaining = limit - (now - lastTime)
+    if (remaining <= 0) {
+      clearTimeout(timer)
+      lastTime = now
+      fn.apply(this, args)
+    } else {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        lastTime = Date.now()
+        fn.apply(this, args)
+      }, remaining)
+    }
+  }
+}
+```
+
+## AbortController para Cancelamento
+
+```javascript
+class CancellableOperation {
+  #controller = new AbortController()
+
+  async run(asyncFn) {
+    try {
+      return await asyncFn(this.#controller.signal)
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        return null  // cancelado — não é um erro real
+      }
+      throw err
+    }
+  }
+
+  cancel() {
+    this.#controller.abort()
+  }
+}
+
+// Uso típico: cancelar busca anterior quando nova busca inicia
+let searchOp = null
+
+async function search(query) {
+  if (searchOp) searchOp.cancel()  // cancela a busca anterior
+
+  searchOp = new CancellableOperation()
+  return searchOp.run(async (signal) => {
+    const res = await fetch(`/api/search?q=${query}`, { signal })
+    return res.json()
+  })
+}
+```
+
+## `MessageChannel` para Macrotask Scheduling
+
+`MessageChannel` agenda macrotasks de forma mais eficiente que `setTimeout(fn, 0)` (evita o mínimo de 4ms do HTML spec):
+
+```javascript
+function scheduleAsMacrotask(fn) {
+  const channel = new MessageChannel()
+  channel.port1.onmessage = () => fn()
+  channel.port2.postMessage(null)
+}
+
+// React Scheduler usa MessageChannel por isso mesmo
+// setTimeout(fn, 0) tem delay mínimo de ~4ms no HTML spec
+// MessageChannel é mais próximo de 0ms real
+```
+
+> **Resumo:** `queueMicrotask` para batching no final da task atual (antes de macrotasks). `requestAnimationFrame` para animações e mutations DOM sincronizadas com o display. Schedulers cooperativos com `setTimeout(fn, 0)` ou `scheduler.yield()` para dividir trabalho longo sem bloquear a UI. Filas de concorrência para limitar requests paralelos. `AbortController` para cancelamento limpo de operações assíncronas.

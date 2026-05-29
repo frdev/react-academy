@@ -1,0 +1,234 @@
+# Functions em Profundidade
+
+Funções são cidadãos de primeira classe em JavaScript: podem ser passadas como argumentos, retornadas de outras funções, e armazenadas em variáveis. Entender functions profundamente desbloqueia todos os patterns funcionais.
+
+## Funções como First-Class Citizens
+
+Em JavaScript, funções são objetos. Isso significa:
+
+```javascript
+// Armazenar em variável
+const saudar = function(nome) { return `Olá, ${nome}!` }
+
+// Passar como argumento
+[1, 2, 3].map(x => x * 2)
+
+// Retornar de outra função
+function criarMultiplicador(fator) {
+  return (numero) => numero * fator
+}
+
+// Armazenar em objeto
+const utils = {
+  dobrar: x => x * 2,
+  metade: x => x / 2,
+}
+
+// Propriedades de função (são objetos!)
+function exemplo() {}
+exemplo.descricao = 'sou uma função'
+exemplo.length     // número de parâmetros declarados
+exemplo.name       // 'exemplo'
+```
+
+## Higher-Order Functions (HOF)
+
+Uma função que recebe funções como argumento ou retorna funções:
+
+```javascript
+// Recebe função
+function executarDuasVezes(fn) {
+  fn()
+  fn()
+}
+
+// Retorna função
+function logWrapper(fn) {
+  return function(...args) {
+    console.log(`Chamando ${fn.name} com`, args)
+    const resultado = fn(...args)
+    console.log(`Resultado:`, resultado)
+    return resultado
+  }
+}
+
+const somarLog = logWrapper((a, b) => a + b)
+somarLog(3, 4)
+// Chamando com [3, 4]
+// Resultado: 7
+```
+
+### Os métodos funcionais de Array
+
+```javascript
+const numeros = [1, 2, 3, 4, 5]
+
+numeros.map(x => x * 2)           // [2, 4, 6, 8, 10] — transforma
+numeros.filter(x => x % 2 === 0)  // [2, 4] — filtra
+numeros.reduce((acc, x) => acc + x, 0) // 15 — acumula
+numeros.find(x => x > 3)          // 4 — primeiro que satisfaz
+numeros.every(x => x > 0)         // true — todos satisfazem
+numeros.some(x => x > 4)          // true — pelo menos um
+numeros.flatMap(x => [x, x * 2])  // [1, 2, 2, 4, ...] — map + flatten
+```
+
+## Currying: funções de um argumento
+
+**Currying** transforma uma função de múltiplos argumentos em uma sequência de funções de um argumento:
+
+```javascript
+// Sem curry
+const adicionar = (a, b) => a + b
+adicionar(2, 3)  // 5
+
+// Com curry
+const adicionarCurried = (a) => (b) => a + b
+const adicionarDois = adicionarCurried(2)  // função esperando b
+adicionarDois(3)  // 5
+adicionarDois(10) // 12
+
+// Uso prático: configuração parcial
+const validarEmail = (regex) => (email) => regex.test(email)
+const isGmail = validarEmail(/@gmail\.com$/)
+const isCorp = validarEmail(/@empresa\.com$/)
+
+isGmail('user@gmail.com')  // true
+isCorp('user@empresa.com') // true
+```
+
+### Implementando curry automático
+
+```javascript
+function curry(fn) {
+  return function curried(...args) {
+    if (args.length >= fn.length) {
+      return fn.apply(this, args)
+    }
+    return (...moreArgs) => curried(...args, ...moreArgs)
+  }
+}
+
+const sum = curry((a, b, c) => a + b + c)
+sum(1)(2)(3)      // 6
+sum(1, 2)(3)      // 6
+sum(1)(2, 3)      // 6
+sum(1, 2, 3)      // 6
+```
+
+## Partial Application: pré-preenchendo argumentos
+
+Diferente de curry, partial application pré-preenche alguns (não todos) os argumentos:
+
+```javascript
+function partial(fn, ...presetArgs) {
+  return (...laterArgs) => fn(...presetArgs, ...laterArgs)
+}
+
+const multiply = (a, b, c) => a * b * c
+const double = partial(multiply, 2)     // fixa o primeiro argumento
+const quadruple = partial(multiply, 2, 2) // fixa dois argumentos
+
+double(5, 3)      // 30 = 2 * 5 * 3
+quadruple(5)      // 20 = 2 * 2 * 5
+
+// Com bind (nativo):
+const triple = multiply.bind(null, 3)  // 3 é o primeiro argumento fixado
+triple(4, 5)  // 60 = 3 * 4 * 5
+```
+
+## Function Composition
+
+Combinar funções onde a saída de uma é a entrada da próxima:
+
+```javascript
+// compose: da direita para esquerda (matemático)
+const compose = (...fns) => (x) => fns.reduceRight((v, f) => f(v), x)
+
+// pipe: da esquerda para direita (mais legível)
+const pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x)
+
+const double = x => x * 2
+const addOne = x => x + 1
+const square = x => x * x
+
+const transform = pipe(double, addOne, square)
+transform(3)  // square(addOne(double(3))) = square(addOne(6)) = square(7) = 49
+
+// Uso prático com strings
+const normalizeInput = pipe(
+  str => str.trim(),
+  str => str.toLowerCase(),
+  str => str.replace(/\s+/g, '-'),
+)
+normalizeInput('  Hello World  ')  // 'hello-world'
+```
+
+## Arity: o número de argumentos
+
+`fn.length` retorna o número de parâmetros **declarados** (arity):
+
+```javascript
+const fn1 = (a) => a        // arity: 1
+const fn2 = (a, b) => a + b // arity: 2
+fn1.length  // 1
+fn2.length  // 2
+
+// Rest params não contam para arity
+const fn3 = (a, ...rest) => rest  // arity: 1
+fn3.length  // 1
+
+// Default params não contam para params após eles
+const fn4 = (a, b = 0, c) => a   // arity: 1
+fn4.length  // 1 (para em b=0)
+```
+
+## IIFE: Immediately Invoked Function Expression
+
+Cria e executa uma função ao mesmo tempo, útil para criar escopo isolado:
+
+```javascript
+// Sintaxe clássica
+;(function() {
+  const privado = 'não vaza'
+  console.log('executado imediatamente')
+})()
+
+// Com arrow function
+;(() => {
+  const privado = 'também não vaza'
+})()
+
+// Returning values from IIFE
+const resultado = (() => {
+  const a = 10
+  const b = 20
+  return a + b
+})()
+// resultado = 30
+
+// Por que o ponto-e-vírgula antes? Previne bug quando arquivos são concatenados
+```
+
+## Named vs Anonymous Functions
+
+Prefira funções nomeadas para melhor stack traces:
+
+```javascript
+// Anônima — stack trace confuso
+setTimeout(function() {
+  throw new Error('bug')
+}, 0)
+// Error at <anonymous>:2:9
+
+// Nomeada — stack trace claro
+setTimeout(function processarTimeout() {
+  throw new Error('bug')
+}, 0)
+// Error at processarTimeout:2:9
+
+// Arrow functions sempre anônimas, mas podem ter nome via variável
+const calcular = () => { throw new Error('bug') }
+// Error at calcular:1:32
+```
+
+> **Regra prática:** Use `const fn = () => {}` para funções curtas e callbacks. Use `function nome() {}` para funções que serão chamadas recursivamente ou quando o nome no stack trace é importante. Prefira pipe/compose sobre aninhamento de chamadas.

@@ -1,0 +1,283 @@
+# Classes & Herança
+
+Classes em JavaScript são syntactic sugar sobre o sistema de protótipos — mas entender o que acontece por baixo e os recursos modernos (`#private`, `static`, mixins) é essencial para escrever código orientado a objetos correto e seguro.
+
+## Sintaxe Básica de Classes
+
+```javascript
+class Animal {
+  // Constructor — chamado com new Animal(...)
+  constructor(name, sound) {
+    this.name = name
+    this.sound = sound
+  }
+
+  // Método de instância — vai para Animal.prototype
+  speak() {
+    return `${this.name} faz ${this.sound}`
+  }
+
+  // Getter
+  get info() {
+    return `[${this.name}]`
+  }
+
+  // Método estático — chamado em Animal, não em instâncias
+  static create(name, sound) {
+    return new Animal(name, sound)
+  }
+}
+
+const dog = new Animal('Rex', 'au')
+dog.speak()          // "Rex faz au"
+Animal.create('Cat', 'miau')  // instância via factory estático
+```
+
+Classes são apenas funções — `typeof Animal === 'function'`. A sintaxe muda o estilo, não o mecanismo:
+
+```javascript
+// Equivalente à classe acima:
+function Animal(name, sound) {
+  this.name = name
+  this.sound = sound
+}
+Animal.prototype.speak = function() {
+  return `${this.name} faz ${this.sound}`
+}
+```
+
+## `extends` e `super`
+
+`extends` configura a cadeia de protótipos e `super` acessa o pai:
+
+```javascript
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name, 'au')  // DEVE chamar super() antes de usar this
+    this.breed = breed
+  }
+
+  // Override do método pai
+  speak() {
+    const parentSpeech = super.speak()  // acessa o método do pai
+    return `${parentSpeech}! (${this.breed})`
+  }
+
+  fetch(item) {
+    return `${this.name} busca ${item}`
+  }
+}
+
+const rex = new Dog('Rex', 'Labrador')
+rex.speak()     // "Rex faz au! (Labrador)"
+rex instanceof Dog    // true
+rex instanceof Animal // true — cadeia de protótipos
+```
+
+**Regra crítica:** em um constructor de subclasse, você **deve** chamar `super()` antes de acessar `this`. Caso contrário, `ReferenceError: Must call super constructor in derived class before accessing 'this'`.
+
+## Fields de Classe (sem constructor)
+
+A sintaxe moderna de class fields evita o constructor para campos simples:
+
+```javascript
+class Counter {
+  count = 0           // field público, inicializado em cada instância
+  #secret = 'hidden'  // field PRIVADO (veja abaixo)
+
+  increment() {
+    this.count++
+  }
+
+  getSecret() {
+    return this.#secret  // só acessível dentro da classe
+  }
+}
+
+const c = new Counter()
+c.count        // 0
+c.#secret      // SyntaxError — campo privado!
+```
+
+## `#private`: Privacidade Real
+
+`#` prefixo cria campos *verdadeiramente privados* — não é apenas convenção, é enforced pela linguagem:
+
+```javascript
+class BankAccount {
+  #balance = 0
+  #owner
+
+  constructor(owner, initialBalance) {
+    this.#owner = owner
+    this.#balance = initialBalance
+  }
+
+  deposit(amount) {
+    if (amount <= 0) throw new Error('Valor inválido')
+    this.#balance += amount
+  }
+
+  withdraw(amount) {
+    if (amount > this.#balance) throw new Error('Saldo insuficiente')
+    this.#balance -= amount
+  }
+
+  get balance() {
+    return this.#balance
+  }
+
+  // Verificação de instância com campos privados
+  static isAccount(obj) {
+    try {
+      obj.#balance  // se obj não for BankAccount, lança TypeError
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
+const acc = new BankAccount('João', 1000)
+acc.balance     // 1000 (via getter público)
+acc.#balance    // SyntaxError fora da classe
+acc['#balance'] // undefined — não é a mesma coisa!
+```
+
+Private fields são verificados em *tempo de compilação*, não runtime. Não há como acessá-los externamente, nem com Proxy ou Object.getOwnPropertyNames.
+
+## Membros Estáticos
+
+`static` define propriedades e métodos na *classe*, não nas instâncias:
+
+```javascript
+class Config {
+  static #instances = new Map()
+  static DEFAULT_TIMEOUT = 5000  // static field público
+
+  #name
+  #value
+
+  constructor(name, value) {
+    this.#name = name
+    this.#value = value
+    Config.#instances.set(name, this)  // registro estático privado
+  }
+
+  static get(name) {
+    return Config.#instances.get(name)
+  }
+
+  static count() {
+    return Config.#instances.size
+  }
+}
+
+new Config('db', 'postgres')
+new Config('cache', 'redis')
+Config.count()         // 2
+Config.get('db')       // a instância 'db'
+Config.DEFAULT_TIMEOUT // 5000
+```
+
+## Mixins: Composição sem Herança Múltipla
+
+JavaScript não tem herança múltipla, mas mixins permitem compor comportamentos de múltiplas fontes:
+
+```javascript
+// Mixin é uma função que recebe uma classe e retorna uma classe estendida
+const Serializable = (Base) => class extends Base {
+  serialize() {
+    return JSON.stringify(this)
+  }
+
+  static deserialize(json) {
+    return Object.assign(new this(), JSON.parse(json))
+  }
+}
+
+const Timestamped = (Base) => class extends Base {
+  constructor(...args) {
+    super(...args)
+    this.createdAt = new Date()
+    this.updatedAt = new Date()
+  }
+
+  touch() {
+    this.updatedAt = new Date()
+  }
+}
+
+const Validatable = (Base) => class extends Base {
+  validate() {
+    return Object.keys(this).every(key => this[key] !== null)
+  }
+}
+
+// Compor mixins
+class User extends Serializable(Timestamped(Validatable(Object))) {
+  constructor(name, email) {
+    super()
+    this.name = name
+    this.email = email
+  }
+}
+
+const user = new User('Ana', 'ana@example.com')
+user.validate()    // true
+user.touch()
+user.serialize()   // JSON string
+```
+
+## O Problema do `new` e Alternativas
+
+Chamar uma classe sem `new` lança `TypeError`. Mas há contextos onde você quer instanciar sem o caller saber o tipo exato:
+
+```javascript
+// Anti-pattern: depender do caller para sempre usar new
+class Dangerous {
+  constructor() {
+    // Se chamado sem new, this é global/undefined
+  }
+}
+
+// Pattern: factory que força new interno
+class Safe {
+  constructor(data) {
+    if (!(this instanceof Safe)) {
+      return new Safe(data)  // auto-corrige chamada sem new
+    }
+    this.data = data
+  }
+}
+
+// Melhor ainda: factory function pura
+function createSafe(data) {
+  return { data, type: 'safe' }  // sem new, sem instanceof
+}
+```
+
+## Herança de Builtins: Armadilhas
+
+Estender classes nativas funciona com sintaxe `class`, mas tem pegadinhas:
+
+```javascript
+class MyArray extends Array {
+  sum() {
+    return this.reduce((a, b) => a + b, 0)
+  }
+
+  // Garante que métodos como .map() retornem MyArray, não Array genérico
+  static get [Symbol.species]() {
+    return Array  // ou MyArray, dependendo do comportamento desejado
+  }
+}
+
+const arr = new MyArray(1, 2, 3)
+arr.sum()           // 6
+arr.push(4)
+arr.sum()           // 10
+arr.map(x => x * 2) // Array (por causa do Symbol.species acima)
+```
+
+> **Resumo:** Classes em JavaScript são protótipos com açúcar sintático. `#private` garante encapsulamento real em tempo de compilação. Use `extends` para hierarquia, mixins para composição horizontal. Evite herança profunda — prefira composição. Membros `static` pertencem à classe, não às instâncias.

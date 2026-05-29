@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-16",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que são 'traps' em um Proxy?",
+      "options": [
+        "Erros que o Proxy captura automaticamente",
+        "Métodos no handler que interceptam operações específicas no objeto alvo",
+        "Propriedades ocultas que o Proxy adiciona ao target",
+        "Callbacks de cleanup executados quando o Proxy é destruído"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Traps são métodos do handler passado ao construtor Proxy — get, set, has, deleteProperty, etc. Cada trap corresponde a uma operação fundamental do JavaScript. Se uma trap não está definida no handler, a operação passa direto para o target como se o Proxy não existisse."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que é recomendado usar `Reflect.get(target, prop, receiver)` em vez de `target[prop]` dentro da trap get?",
+      "options": [
+        "Reflect.get é mais rápido",
+        "Reflect.get preserva o receiver correto, garantindo que getters que usam `this` funcionem com o proxy como contexto",
+        "target[prop] pode causar recursão infinita",
+        "Reflect.get verifica os invariantes automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O receiver é o objeto que recebeu a operação (o proxy, ou um objeto que herda dele). Se a propriedade é um getter que usa `this`, target[prop] passaria target como this (errado). Reflect.get(target, prop, receiver) passa receiver como this — o comportamento correto."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual operação JavaScript é interceptada pela trap `has`?",
+      "options": [
+        "proxy.hasOwnProperty(prop)",
+        "prop in proxy",
+        "Object.hasOwn(proxy, prop)",
+        "proxy.includes(value)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A trap has intercepta o operador in: prop in proxy. Isso permite customizar o comportamento de verificação de existência — por exemplo, fazer um objeto 'fingir' ter ou não ter certas propriedades. Não afeta hasOwnProperty ou Object.hasOwn."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como frameworks como Vue 3 usam Proxy para implementar reatividade?",
+      "options": [
+        "Substituem o objeto por uma cópia imutável a cada mudança",
+        "Usam a trap set para detectar mutações e disparar re-renders; a trap get para rastrear dependências",
+        "Adicionam event listeners em cada propriedade do objeto",
+        "Usam Object.defineProperty com getters/setters em cada propriedade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A trap set é chamada ao fazer state.count++. O handler detecta a mudança (old !== new) e notifica os watchers. A trap get pode rastrear quem está lendo qual propriedade (dependency tracking) para saber quais watchers notificar. Proxy permite fazer isso para TODAS as propriedades, incluindo novas adicionadas depois."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que são 'invariants' de Proxy e por que existem?",
+      "options": [
+        "Traps que não podem ser sobrescritas no handler",
+        "Restrições que o runtime impõe às traps para garantir que Proxies não violem contratos fundamentais (como Object.freeze)",
+        "Propriedades fixas que o Proxy adiciona automaticamente",
+        "Métodos herdados de Object.prototype que o Proxy não pode interceptar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O ECMAScript define invariants que cada trap deve respeitar. Por exemplo: se uma propriedade é non-writable e non-configurable no target, a trap get não pode retornar valor diferente do real. Se violar, TypeError é lançado. Isso garante que Proxy não possa quebrar garantias fundamentais como Object.freeze."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `Proxy.revocable()` permite que `new Proxy()` comum não permite?",
+      "options": [
+        "Criar proxies mais rápidos (sem overhead das traps)",
+        "Desativar o proxy posteriormente — após revoke(), qualquer operação lança TypeError",
+        "Criar proxies sem especificar um handler",
+        "Proxies que funcionam em múltiplos targets simultaneamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Proxy.revocable() retorna { proxy, revoke }. Após chamar revoke(), o proxy é desativado — qualquer operação lança TypeError. Útil para capabilities temporárias: você concede acesso via proxy e pode revogá-lo quando necessário, sem precisar deletar referências ao objeto alvo."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença entre usar Proxy para validação vs. usar setters com `Object.defineProperty`?",
+      "options": [
+        "Proxy é mais lento e deve ser evitado para validação",
+        "Proxy intercepta qualquer propriedade (incluindo novas) e suporta delete; defineProperty requer setup por propriedade e não intercepta delete",
+        "defineProperty valida em runtime, Proxy valida em compile time",
+        "Não há diferença prática — são intercambiáveis"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Object.defineProperty cria getter/setter apenas para propriedades conhecidas em advance. Proxy intercepta todas as operações em todas as propriedades, inclusive propriedades adicionadas depois da criação do proxy. Também intercepta delete, in, e outras operações que defineProperty não cobre."
+    }
+  ]
+}

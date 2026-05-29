@@ -1,0 +1,24 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "this keyword",
+  "slug": "this-keyword",
+  "topics": [
+    "4 regras de binding",
+    "binding implícito",
+    "binding explícito",
+    "new binding",
+    "default binding",
+    "arrow functions",
+    "call/apply/bind"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 55,
+  "prerequisites": [
+    "day-03"
+  ],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

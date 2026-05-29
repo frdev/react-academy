@@ -1,0 +1,306 @@
+# Projeto Final: Mini Framework Reativo
+
+Você passou 29 dias aprendendo os mecanismos do JavaScript. Hoje aplica tudo: implementa um mini framework reativo do zero — signals, computed values, effects e rendering automático. Exatamente como SolidJS, Svelte 5 e Vue 3 Composition API funcionam internamente.
+
+## O que Vamos Construir
+
+Um framework com 4 primitivas:
+
+- **`signal(value)`** — valor reativo que notifica observers quando muda
+- **`computed(fn)`** — valor derivado que recalcula quando dependências mudam
+- **`effect(fn)`** — side effect que re-executa quando dependências mudam
+- **`render(template, target)`** — DOM rendering reativo
+
+## Parte 1: Signal — A Primitiva Base
+
+```javascript
+let currentObserver = null  // observer sendo executado agora
+
+function signal(initialValue) {
+  let value = initialValue
+  const subscribers = new Set()
+
+  function get() {
+    // Se há um observer rodando, ele depende deste signal
+    if (currentObserver) {
+      subscribers.add(currentObserver)
+    }
+    return value
+  }
+
+  function set(newValue) {
+    if (Object.is(newValue, value)) return  // sem mudança, sem notificação
+    value = newValue
+    // Notifica todos os subscribers (cópia para evitar modificação durante iteração)
+    for (const subscriber of [...subscribers]) {
+      subscriber()
+    }
+  }
+
+  return [get, set]
+}
+
+// Uso básico
+const [count, setCount] = signal(0)
+console.log(count())  // 0
+setCount(1)
+console.log(count())  // 1
+```
+
+## Parte 2: Effect — Rastreamento Automático de Dependências
+
+O truque central: ao executar um effect, qualquer `signal.get()` chamado dentro dele registra o effect como subscriber.
+
+```javascript
+function effect(fn) {
+  function execute() {
+    const previous = currentObserver
+    currentObserver = execute  // este effect é o observer ativo
+    try {
+      fn()
+    } finally {
+      currentObserver = previous  // restaura observer anterior
+    }
+  }
+
+  execute()  // executa imediatamente para registrar dependências
+  return execute
+}
+
+// Exemplo
+const [name, setName] = signal('Ana')
+const [age, setAge] = signal(30)
+
+effect(() => {
+  // Ao executar, chama name() e age()
+  // Ambos os signals adicionam este effect como subscriber
+  console.log(`${name()}, ${age()} anos`)
+})
+// Imprime: "Ana, 30 anos"
+
+setName('Bob')  // imprime: "Bob, 30 anos"
+setAge(25)      // imprime: "Bob, 25 anos"
+```
+
+## Parte 3: Computed — Valores Derivados
+
+`computed` é como um effect que retorna um valor e cacheia o resultado:
+
+```javascript
+function computed(fn) {
+  const [value, setValue] = signal(undefined)
+  let dirty = true  // precisa recalcular?
+
+  // Effect que atualiza o valor computado quando dependências mudam
+  effect(() => {
+    const result = fn()
+    setValue(result)
+  })
+
+  return value  // retorna o getter do signal interno
+}
+
+// Uso
+const [price, setPrice] = signal(100)
+const [quantity, setQuantity] = signal(3)
+
+const total = computed(() => price() * quantity())
+
+effect(() => console.log('Total:', total()))
+// "Total: 300"
+
+setPrice(150)   // "Total: 450"
+setQuantity(2)  // "Total: 300"
+```
+
+## Parte 4: Cleanup e Unsubscribe
+
+Effects precisam de cleanup para evitar memory leaks:
+
+```javascript
+function effect(fn) {
+  let cleanup = null
+
+  function execute() {
+    // Executar cleanup do run anterior
+    if (cleanup) {
+      cleanup()
+      cleanup = null
+    }
+
+    const previous = currentObserver
+    currentObserver = execute
+    try {
+      const result = fn()
+      if (typeof result === 'function') {
+        cleanup = result  // fn pode retornar uma função de cleanup
+      }
+    } finally {
+      currentObserver = previous
+    }
+  }
+
+  function dispose() {
+    if (cleanup) cleanup()
+    // Idealmente: remover de todos os subscribers
+  }
+
+  execute()
+  return dispose
+}
+
+// Effect com cleanup
+const dispose = effect(() => {
+  const timer = setInterval(() => console.log(count()), 1000)
+  return () => clearInterval(timer)  // cleanup ao re-executar ou dispor
+})
+
+// Quando não precisar mais:
+dispose()
+```
+
+## Parte 5: Rendering Reativo
+
+Conectar signals ao DOM:
+
+```javascript
+function render(getTemplate, container) {
+  effect(() => {
+    const html = getTemplate()
+    // Atualiza DOM apenas o necessário (diff simples)
+    if (container.innerHTML !== html) {
+      container.innerHTML = html
+    }
+  })
+}
+
+// App reativa
+const [user, setUser] = signal({ name: 'Ana', score: 0 })
+const [theme, setTheme] = signal('dark')
+
+const greeting = computed(() =>
+  `Olá, ${user().name}! Pontuação: ${user().score}`
+)
+
+render(
+  () => `
+    <div class="app ${theme()}">
+      <h1>${greeting()}</h1>
+      <button id="inc">+1 ponto</button>
+      <button id="toggle">Toggle theme</button>
+    </div>
+  `,
+  document.getElementById('root')
+)
+
+// Event delegation
+document.getElementById('root').addEventListener('click', e => {
+  if (e.target.id === 'inc') {
+    const current = user()
+    setUser({ ...current, score: current.score + 1 })
+  }
+  if (e.target.id === 'toggle') {
+    setTheme(theme() === 'dark' ? 'light' : 'dark')
+  }
+})
+```
+
+## Parte 6: Batch Updates
+
+Múltiplas mudanças devem disparar apenas um re-render:
+
+```javascript
+let batchDepth = 0
+const pendingEffects = new Set()
+
+function batch(fn) {
+  batchDepth++
+  try {
+    fn()
+  } finally {
+    batchDepth--
+    if (batchDepth === 0) {
+      // Flush pendentes
+      const effects = [...pendingEffects]
+      pendingEffects.clear()
+      for (const effect of effects) {
+        effect()
+      }
+    }
+  }
+}
+
+// Modificar signal para respeitar batch
+function signal(initialValue) {
+  // ... mesmo de antes, mas ao notificar:
+  function set(newValue) {
+    if (Object.is(newValue, value)) return
+    value = newValue
+    for (const subscriber of [...subscribers]) {
+      if (batchDepth > 0) {
+        pendingEffects.add(subscriber)  // adia para depois do batch
+      } else {
+        subscriber()
+      }
+    }
+  }
+}
+
+// Uso
+batch(() => {
+  setPrice(200)    // não dispara re-render ainda
+  setQuantity(5)   // não dispara re-render ainda
+})                 // dispara um único re-render aqui
+```
+
+## O Framework Completo
+
+```javascript
+// reactive.js — framework completo em ~80 linhas
+export { signal, computed, effect, batch, render }
+
+// app.js — usando o framework
+import { signal, computed, effect, batch, render } from './reactive.js'
+
+const [items, setItems] = signal([])
+const [filter, setFilter] = signal('all')
+
+const filtered = computed(() => {
+  if (filter() === 'all') return items()
+  return items().filter(i => i.status === filter())
+})
+
+const count = computed(() => filtered().length)
+
+effect(() => {
+  document.title = `${count()} items — My App`
+})
+
+function addItem(text) {
+  batch(() => {
+    setItems([...items(), { text, status: 'active', id: Date.now() }])
+  })
+}
+```
+
+## O que Você Implementou
+
+Com ~80 linhas de código, você criou os fundamentos de:
+
+- **SolidJS**: usa exatamente este modelo (signals + effects)
+- **Vue 3 Composition API**: `ref()` = signal, `computed()` = computed, `watchEffect()` = effect
+- **Svelte 5 Runes**: `$state`, `$derived`, `$effect` seguem o mesmo padrão
+- **MobX**: observable + computed + reaction
+- **Jotai/Zustand**: primitivas baseadas no mesmo conceito
+
+## Conceitos do Curso Usados
+
+| Primitiva | Conceitos Utilizados |
+|-----------|---------------------|
+| `signal()` | Closures, WeakMap, Symbols, protocolos de objeto |
+| `effect()` | Call stack, contexto de execução, closures aninhadas |
+| `computed()` | Lazy evaluation, caching, dependency tracking |
+| `batch()` | Microtask queue, Set para deduplicação |
+| `render()` | DOM API, template strings, reconciliação simples |
+
+> **Parabéns!** Você completou 30 dias de JavaScript avançado — dos tipos e coerção (Dia 1) aos internals do V8, meta-programação com Proxy, concorrência real com Workers, e agora implementando a fundação de frameworks modernos. Este framework reativo é a mesma abstração que move bilhões de interfaces web. Agora você entende como funciona por dentro.

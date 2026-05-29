@@ -1,0 +1,72 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `typeof null` retorna em JavaScript?",
+      "options": ["\"null\"", "\"undefined\"", "\"object\"", "\"boolean\""],
+      "correctAnswer": 2,
+      "explanation": "typeof null retorna \"object\" — é um bug histórico do JavaScript de 1995 que nunca foi corrigido por questões de compatibilidade retroativa."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual o resultado de `[] == false`?",
+      "options": ["false", "true", "TypeError", "undefined"],
+      "correctAnswer": 1,
+      "explanation": "true. O algoritmo de Abstract Equality converte [] para '' (toString), depois '' para 0, e false para 0. Então 0 == 0 é true."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual destes valores é TRUTHY em JavaScript?",
+      "options": ["0", "\"\"", "[]", "null"],
+      "correctAnswer": 2,
+      "explanation": "[] (array vazio) é truthy! Apenas 7 valores são falsy: false, 0, -0, 0n, \"\", null, undefined, NaN. Objetos (incluindo arrays e objetos vazios) são sempre truthy."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `isNaN('hello')` e `Number.isNaN('hello')`?",
+      "options": [
+        "Não há diferença — ambos retornam true",
+        "isNaN retorna true (converte primeiro), Number.isNaN retorna false (não converte)",
+        "isNaN retorna false, Number.isNaN retorna true",
+        "Ambos retornam false"
+      ],
+      "correctAnswer": 1,
+      "explanation": "isNaN() global tenta converter o argumento para Number antes de checar — Number('hello') é NaN, então retorna true. Number.isNaN() não faz coerção: só retorna true se o valor JÁ for NaN do tipo number."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `Object.is(NaN, NaN)` retorna?",
+      "options": ["false — NaN nunca é igual a nada", "true — Object.is trata NaN corretamente", "TypeError", "undefined"],
+      "correctAnswer": 1,
+      "explanation": "Object.is(NaN, NaN) retorna true. Ao contrário do ===, Object.is não tem os edge cases de NaN e -0: trata NaN como igual a si mesmo e distingue +0 de -0."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual o resultado de `'5' - 3`?",
+      "options": ["\"53\"", "\"5-3\"", "2", "NaN"],
+      "correctAnswer": 2,
+      "explanation": "2. O operador - não funciona com strings, então '5' é coercido para Number(5). Apenas o operador + mantém comportamento de string quando um dos operandos é string."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o jeito idiomático de checar se um valor é null OU undefined?",
+      "options": [
+        "value === null || value === undefined",
+        "value == null",
+        "!value",
+        "value === undefined"
+      ],
+      "correctAnswer": 1,
+      "explanation": "value == null é verdadeiro apenas quando value é null ou undefined — é o único caso onde usar == em vez de === é considerada boa prática. O !value também captura outros falsy values (0, '', false) o que raramente é o que queremos."
+    }
+  ]
+}

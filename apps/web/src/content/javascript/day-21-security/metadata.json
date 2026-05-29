@@ -1,0 +1,14 @@
+{
+  "id": "day-21",
+  "day": 21,
+  "week": 3,
+  "title": "Segurança em JavaScript",
+  "slug": "security",
+  "topics": ["prototype pollution", "XSS DOM-based", "Object.freeze/seal/preventExtensions", "sandboxing", "CSP", "eval e alternativas seguras", "supply chain attacks", "Content Security Policy"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

@@ -1,0 +1,278 @@
+# Segurança em JavaScript
+
+Segurança em JavaScript vai além de "não usar eval". Prototype pollution, XSS DOM-based, supply chain attacks e configurações incorretas de Object são vulnerabilidades reais em aplicações modernas. Entender os vetores de ataque é o primeiro passo para mitigá-los.
+
+## Prototype Pollution
+
+Prototype pollution é quando código malicioso modifica `Object.prototype` ou o prototype de uma classe, afetando todos os objetos na aplicação:
+
+```javascript
+// Ataque básico de prototype pollution
+const payload = JSON.parse('{"__proto__": {"isAdmin": true}}')
+Object.assign({}, payload)  // polui Object.prototype!
+
+const user = {}
+console.log(user.isAdmin)  // true — todos os objetos agora têm isAdmin!
+```
+
+### Por que é Perigoso
+
+```javascript
+// Código legítimo verificando permissão
+function canDelete(user) {
+  return user.isAdmin === true
+}
+
+// Sem poluição: retorna false para usuários normais
+// Com prototype pollution: retorna true para QUALQUER objeto!
+canDelete({})         // true — vulnerabilidade explorada
+canDelete({ name: 'attacker' })  // true
+```
+
+### Como Acontece
+
+```javascript
+// Merge recursivo inseguro (muito comum em bibliotecas)
+function deepMerge(target, source) {
+  for (const key in source) {
+    if (typeof source[key] === 'object') {
+      if (!target[key]) target[key] = {}
+      deepMerge(target[key], source[key])  // VULNERABLE: não bloqueia __proto__
+    } else {
+      target[key] = source[key]
+    }
+  }
+  return target
+}
+
+deepMerge({}, JSON.parse('{"__proto__": {"admin": true}}'))
+// Polui Object.prototype!
+```
+
+### Como Prevenir
+
+```javascript
+// 1. Bloquear chaves perigosas em merges
+function safeMerge(target, source) {
+  for (const key of Object.keys(source)) {  // Object.keys, não for...in
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue  // pula chaves perigosas
+    }
+    if (typeof source[key] === 'object' && source[key] !== null) {
+      target[key] = target[key] ?? {}
+      safeMerge(target[key], source[key])
+    } else {
+      target[key] = source[key]
+    }
+  }
+  return target
+}
+
+// 2. Criar objetos sem prototype
+const safeConfig = Object.create(null)
+// safeConfig não tem __proto__, constructor, nem herança de Object.prototype
+safeConfig.key = 'value'
+safeConfig.hasOwnProperty  // undefined — mas mais seguro para configs
+
+// 3. Usar Map em vez de plain objects para dados externos
+const config = new Map()
+config.set('__proto__', 'harmless')  // string, não prototype manipulation
+```
+
+## XSS DOM-Based
+
+XSS DOM-based ocorre quando JavaScript lê dados não-confiáveis e os insere no DOM sem sanitização:
+
+```javascript
+// VULNERÁVEL: inserção direta de parâmetros da URL
+const username = new URLSearchParams(location.search).get('name')
+document.getElementById('welcome').innerHTML = `Olá, ${username}!`
+
+// Ataque: ?name=<img src=x onerror="document.cookie='stolen='+document.cookie">
+// Executa JavaScript arbitrário no contexto da página
+```
+
+### Sinks Perigosos
+
+```javascript
+// NUNCA inserir dados não-sanitizados nestes:
+element.innerHTML = userInput        // executa HTML/scripts
+element.outerHTML = userInput        // mesma vulnerabilidade
+element.insertAdjacentHTML(...)      // mesma vulnerabilidade
+document.write(userInput)            // antiquado mas ainda perigoso
+document.writeln(userInput)
+eval(userInput)                      // óbvio
+new Function(userInput)()            // equivalente a eval
+setTimeout(userInput, 0)             // se userInput é string
+setInterval(userInput, 0)            // mesma vulnerabilidade
+location.href = userInput            // javascript: URLs
+element.src = userInput              // javascript: URLs em event handlers
+```
+
+### Como Prevenir
+
+```javascript
+// 1. textContent em vez de innerHTML para texto
+element.textContent = userInput  // escapa HTML automaticamente
+
+// 2. Sanitizar antes de inserir HTML (necessário para rich text)
+import DOMPurify from 'dompurify'
+element.innerHTML = DOMPurify.sanitize(userInput)
+
+// 3. Para URLs: validar o protocolo
+function safeUrl(url) {
+  try {
+    const parsed = new URL(url)
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return '#'  // bloqueia javascript:, data:, etc.
+    }
+    return url
+  } catch {
+    return '#'  // URL inválida
+  }
+}
+
+anchor.href = safeUrl(userInput)
+```
+
+## Object.freeze, seal e preventExtensions
+
+JavaScript oferece três níveis de imutabilidade:
+
+```javascript
+// Object.preventExtensions: não permite adicionar novas propriedades
+const obj1 = Object.preventExtensions({ x: 1 })
+obj1.y = 2      // falha silenciosamente (ou TypeError em strict mode)
+obj1.x = 99     // OK — pode modificar existentes
+delete obj1.x   // OK — pode deletar existentes
+
+// Object.seal: previne adicionar E deletar, mas permite modificar
+const obj2 = Object.seal({ x: 1 })
+obj2.y = 2      // falha
+delete obj2.x   // falha
+obj2.x = 99     // OK — pode modificar valores
+
+// Object.freeze: imutável completamente (shallow)
+const obj3 = Object.freeze({ x: 1, nested: { y: 2 } })
+obj3.x = 99     // falha
+obj3.z = 3      // falha
+delete obj3.x   // falha
+obj3.nested.y = 99  // OK! freeze é SHALLOW
+
+// Deep freeze
+function deepFreeze(obj) {
+  Object.getOwnPropertyNames(obj).forEach(name => {
+    const value = obj[name]
+    if (typeof value === 'object' && value !== null) {
+      deepFreeze(value)
+    }
+  })
+  return Object.freeze(obj)
+}
+
+const config = deepFreeze({ db: { host: 'localhost', port: 5432 } })
+config.db.port = 9999  // falha — deep freeze
+```
+
+## eval e Alternativas Seguras
+
+`eval` executa uma string como JavaScript — extremamente perigoso com input externo:
+
+```javascript
+// NUNCA: eval com dados do usuário
+eval(userInput)  // executa código arbitrário
+new Function(userInput)()  // equivalente
+
+// Alternativas seguras:
+
+// Para expressões matemáticas: parse manualmente
+function safeMath(expr) {
+  // Permite apenas: números, operadores, parênteses
+  if (!/^[\d\s+\-*/()\.]+$/.test(expr)) {
+    throw new Error('Expressão inválida')
+  }
+  return Function('"use strict"; return (' + expr + ')')()
+}
+
+// Para templates dinâmicos: use um template engine seguro
+import Handlebars from 'handlebars'
+const template = Handlebars.compile(userTemplate)
+template(data)  // Handlebars escapa HTML por padrão
+
+// Para JSON: JSON.parse (nunca eval)
+const data = JSON.parse(jsonString)  // correto
+// eval('(' + jsonString + ')')  — NUNCA
+```
+
+## Content Security Policy (CSP)
+
+CSP é um header HTTP que restringe o que a página pode fazer:
+
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'nonce-abc123';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: https:;
+  connect-src 'self' https://api.meusite.com;
+  frame-ancestors 'none';
+```
+
+```javascript
+// No código: usar nonces em vez de unsafe-inline
+// Script tags com nonce correspondente ao header CSP são permitidos
+// <script nonce="abc123">...</script>
+
+// Em React/frameworks: CSP via headers do servidor
+// Vite/Webpack geram hashes para inline styles automaticamente
+```
+
+CSP mitiga XSS mesmo quando ocorre: sem `unsafe-inline`, scripts injetados não executam.
+
+## Supply Chain Attacks
+
+```javascript
+// Verificar integridade de scripts externos (Subresource Integrity)
+// <script
+//   src="https://cdn.example.com/lib.js"
+//   integrity="sha384-abc123..."
+//   crossorigin="anonymous">
+// </script>
+
+// Em npm: auditar dependências regularmente
+// npm audit
+// npm audit fix
+
+// Minimizar superfície de ataque:
+// - Checar permissões de pacotes antes de instalar
+// - Usar lockfiles (package-lock.json, pnpm-lock.yaml) — builds determinísticos
+// - Nunca executar scripts npm de pacotes não confiáveis
+// - Usar --ignore-scripts para pacotes que não precisam de postinstall
+
+// Exemplo de ataque: typosquatting
+// npm install lodash   ← correto
+// npm install 1odash   ← malicioso (l substituído por 1)
+```
+
+## Sandboxing: Executar Código Não-Confiável
+
+Para casos onde você precisa executar código de usuário:
+
+```javascript
+// Worker isolado — sem acesso ao DOM ou globals da página
+const workerCode = `
+  self.onmessage = ({ data }) => {
+    // Código do usuário roda aqui, sem acesso ao DOM
+    const result = eval(data.code)  // menos perigoso em Worker
+    self.postMessage(result)
+  }
+`
+const blob = new Blob([workerCode], { type: 'text/javascript' })
+const worker = new Worker(URL.createObjectURL(blob))
+
+// iframe sandbox — máximo isolamento
+// <iframe sandbox="allow-scripts" src="sandbox.html">
+// "sandbox" sem "allow-same-origin": sem acesso a cookies, localStorage, DOM pai
+```
+
+> **Resumo:** Prototype pollution acontece em merges de objetos sem validação de chaves — use `Object.keys()` e bloqueie `__proto__`/`constructor`. XSS DOM-based vem de inserir dados externos em `innerHTML` — use `textContent` ou sanitize com DOMPurify. `Object.freeze` cria imutabilidade shallow — deep freeze para configs críticas. CSP é a última linha de defesa contra XSS. Audite dependências regularmente para supply chain attacks.

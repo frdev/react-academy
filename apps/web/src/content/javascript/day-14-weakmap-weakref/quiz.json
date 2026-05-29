@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-14",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que usar `WeakMap` em vez de `Map` para cachear resultados associados a objetos?",
+      "options": [
+        "WeakMap é mais rápido que Map para qualquer operação",
+        "WeakMap não impede o GC de liberar os objetos-chave — quando o objeto não tem mais referências, a entrada some automaticamente, evitando memory leak",
+        "WeakMap permite usar primitivos como chave, Map não",
+        "WeakMap tem O(1) de lookup, Map tem O(n)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Map mantém referência forte às chaves — objetos usados como chave nunca são coletados enquanto o Map existir. WeakMap tem referências fracas: se o único lugar que referencia um objeto é um WeakMap, o GC pode coletar esse objeto e a entrada some. Isso previne memory leaks em caches de longa duração."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que WeakMap não tem métodos `.keys()`, `.values()`, `.forEach()` ou a propriedade `.size`?",
+      "options": [
+        "Por limitação de performance",
+        "Porque objetos em WeakMap podem ser coletados pelo GC a qualquer momento — iterar seria não-determinístico e potencialmente incorreto",
+        "Esses métodos existem mas são deprecated",
+        "Para manter compatibilidade com versões antigas do JS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A não-iterabilidade é deliberada. Como o GC pode remover entradas a qualquer momento, não é possível definir um tamanho estável ou garantir que iterar produza os mesmos resultados em duas chamadas consecutivas. Isso também impede enumerar chaves para análise, preservando a privacidade."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `weakRef.deref()` retorna?",
+      "options": [
+        "Sempre o objeto original",
+        "O objeto se ele ainda não foi coletado pelo GC, ou undefined se foi",
+        "Uma Promise que resolve quando o objeto for acessado",
+        "Uma cópia do objeto no momento da criação do WeakRef"
+      ],
+      "correctAnswer": 1,
+      "explanation": "deref() retorna o objeto se ele ainda existe (tem outras referências fortes) ou undefined se o GC já o coletou. Por isso, sempre verifique: const obj = ref.deref(); if (obj) { ... }. Nunca assuma que deref() retornará o mesmo resultado em dois momentos diferentes."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual das seguintes afirmações sobre `FinalizationRegistry` é VERDADEIRA?",
+      "options": [
+        "O callback recebe o objeto coletado como argumento",
+        "O callback é garantido de rodar imediatamente após a coleta",
+        "O callback recebe o 'held value' registrado, não o objeto — e o timing é não-determinístico",
+        "FinalizationRegistry impede o GC de coletar o objeto por um tempo configurável"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O callback recebe apenas o heldValue passado no register() — nunca o objeto (que já foi coletado). O timing é totalmente dependente do GC, que pode atrasar indefinidamente. Por isso, FinalizationRegistry não deve ser usado para cleanup crítico — use finally para isso."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é um bom caso de uso para `WeakSet`?",
+      "options": [
+        "Armazenar uma lista de IDs de usuários (strings)",
+        "Rastrear quais objetos já foram processados, sem impedir que sejam coletados pelo GC",
+        "Substituir Set quando a performance é crítica",
+        "Guardar valores primitivos que precisam de garbage collection automático"
+      ],
+      "correctAnswer": 1,
+      "explanation": "WeakSet é ideal para 'seen sets' — rastrear se um objeto já foi visitado/processado (detecção de ciclos, deduplicação). Como a referência é fraca, se o objeto não tem mais uso, ele pode ser coletado automaticamente sem precisar limpar o WeakSet manualmente. WeakSet não aceita primitivos."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que usar WeakMap para dados privados de classe era o padrão antes do `#private`?",
+      "options": [
+        "WeakMap é mais performático que propriedades diretas",
+        "WeakMap permite que os dados privados coexistam com herança sem conflito",
+        "Os dados ficam em um Map externo não enumerável — inacessíveis via obj.prop ou Object.keys(), e coletados com a instância",
+        "WeakMap impede serialização JSON acidental dos dados"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Com WeakMap: os dados privados ficam em um closure de módulo, não nas instâncias. Não aparecem em Object.keys(), JSON.stringify(), nem são acessíveis externamente. Quando a instância é coletada pelo GC, os dados associados no WeakMap também somem. Era a melhor solução antes de #private ser padronizado."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Em qual situação WeakRef é mais adequado que WeakMap?",
+      "options": [
+        "Quando você precisa associar dados extras a um objeto",
+        "Quando você precisa de uma referência ao objeto em si (não a dados associados) que não impeça GC",
+        "Quando você precisa iterar sobre todos os objetos rastreados",
+        "WeakRef nunca é mais adequado — WeakMap sempre é preferível"
+      ],
+      "correctAnswer": 1,
+      "explanation": "WeakMap associa dados a um objeto (objeto → dados). WeakRef é uma referência fraca ao objeto em si — você guarda o objeto e usa .deref() para acessá-lo. Use WeakRef quando o objetivo é manter uma referência opcional ao objeto (ex: cache que pode ser invalidado pelo GC), não quando quer associar metadados."
+    }
+  ]
+}

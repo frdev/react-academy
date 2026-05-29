@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-12",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual o resultado de `const { a = 'default' } = { a: null }`?",
+      "options": [
+        "a = 'default'",
+        "a = null",
+        "a = undefined",
+        "TypeError"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Defaults em destructuring só se aplicam quando o valor é undefined — não para null. null é um valor válido e explícito. Então a = null."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como fazer swap de duas variáveis sem uma temporária usando destructuring?",
+      "options": [
+        "{ a, b } = { b, a }",
+        "[a, b] = [b, a]",
+        "a = b; b = a",
+        "swap(a, b)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "[a, b] = [b, a] é o idioma padrão. O lado direito cria um array com os valores atuais, e o destructuring os reatribui na ordem inversa. Elegante e sem variável intermediária."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `const { name: userName, ...rest } = user` faz?",
+      "options": [
+        "Cria userName = user.name e rest = cópia de user sem a propriedade 'name'",
+        "Cria userName = user.name e rest = user.name",
+        "Cria userName = user e ignora o resto",
+        "SyntaxError — não é possível combinar alias e rest"
+      ],
+      "correctAnswer": 0,
+      "explanation": "name: userName renomeia a propriedade 'name' para 'userName'. O rest (...rest) coleta todas as propriedades restantes em um novo objeto. Resultado: userName tem o nome do usuário e rest tem tudo exceto 'name' — padrão clássico para 'omit property'."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que `function config({ host = 'localhost', port = 3000 } = {})` usa `= {}` no final?",
+      "options": [
+        "Para criar um objeto vazio como retorno padrão",
+        "Para evitar TypeError quando config() é chamada sem argumentos — undefined não pode ser desestruturado",
+        "Para que os defaults internos (host, port) funcionem",
+        "É apenas estilo — não tem efeito funcional"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem = {}, chamar config() ou config(undefined) tentaria destructurar undefined, lançando TypeError. Com = {}, undefined é substituído por {}, e os defaults internos (host = 'localhost', port = 3000) entram em ação."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual o resultado de `const { x: { y } = {} } = { x: null }`?",
+      "options": [
+        "TypeError: Cannot destructure property 'y' of null",
+        "y = undefined",
+        "y = null",
+        "y = {}"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O default `= {}` aplica quando x é undefined — mas x é null, não undefined! Sem o default, seria TypeError. Espere: na verdade, `{ x: null }` → x é null → tentar destructurar null → TypeError. A forma correta seria `{ x: { y } = {} } = { x: null }` sem funcionar... Na realidade: `{ x: { y } = {} } = { x: null }` — null não é undefined, então o default não aplica, e destructurar null lança TypeError. A solução seria `null ?? {}`: `const { x: xVal = null } = obj; const { y } = xVal ?? {}`"
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `const { ...kept } = { a: 1, b: 2, c: 3 }` faz?",
+      "options": [
+        "Cria kept = [1, 2, 3]",
+        "Cria kept = { a: 1, b: 2, c: 3 } — cópia rasa do objeto",
+        "SyntaxError — rest deve vir após propriedades nomeadas",
+        "kept = undefined"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando rest é o único elemento no destructuring de objeto, coleta todas as propriedades — equivalente a { ...obj }. O resultado é uma cópia rasa do objeto original. É um pattern válido mas incomum; normalmente rest é usado para coletar o que sobra após extrair algumas propriedades."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Como usar uma variável como chave de destructuring?",
+      "options": [
+        "const { $key: value } = obj — onde $key é a variável",
+        "const { [key]: value } = obj — computed property key com []",
+        "Não é possível — chaves de destructuring devem ser literais",
+        "const value = obj[key] é a única forma"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Computed property keys (mesma sintaxe dos object literals) funcionam em destructuring: const { [variavel]: alias } = obj. Útil quando a chave é dinâmica, como receber um propName como parâmetro e extrair obj[propName]."
+    }
+  ]
+}

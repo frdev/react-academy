@@ -1,0 +1,71 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `Object.create(null)` cria?",
+      "options": [
+        "Um objeto que lança erro ao acessar qualquer propriedade",
+        "Um objeto sem prototype — sem hasOwnProperty, toString, etc.",
+        "null",
+        "Um objeto igual a {}"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Object.create(null) cria um objeto com [[Prototype]] === null — sem nenhuma herança. Não tem hasOwnProperty, toString, nada de Object.prototype. Útil para maps/dicionários puros sem risco de prototype pollution."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `in` e `hasOwnProperty`?",
+      "options": [
+        "São equivalentes",
+        "'in' checa toda a cadeia de protótipos; hasOwnProperty só checa o próprio objeto",
+        "hasOwnProperty checa a cadeia; 'in' só checa o próprio objeto",
+        "'in' só funciona em arrays"
+      ],
+      "correctAnswer": 1,
+      "explanation": "'in' percorre toda a prototype chain: 'toString' in {} retorna true (vem de Object.prototype). hasOwnProperty verifica apenas as propriedades diretas do objeto: ({}).hasOwnProperty('toString') retorna false."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que acontece quando você adiciona um método a um prototype DEPOIS de criar instâncias?",
+      "options": [
+        "As instâncias existentes não recebem o novo método",
+        "As instâncias existentes automaticamente recebem o novo método",
+        "Lança TypeError",
+        "Apenas novas instâncias recebem o método"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Como instâncias mantêm uma referência ao prototype (não uma cópia), qualquer modificação ao prototype é imediatamente visível em todas as instâncias existentes. Isso é uma característica fundamental da delegação via prototype."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "A sintaxe `class` em JavaScript é:",
+      "options": [
+        "Uma implementação de herança clássica como Java",
+        "Açúcar sintático sobre prototype delegation",
+        "Uma feature separada que não usa protótipos",
+        "Disponível apenas com TypeScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "class é açúcar sintático — por baixo ainda usa prototype delegation. class Animal {} cria uma função construtora, e os métodos vão em Animal.prototype. A herança com extends configura a cadeia de protótipos."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a cadeia de protótipos de um array `[]`?",
+      "options": [
+        "[] → Object.prototype → null",
+        "[] → Array.prototype → Object.prototype → null",
+        "[] → null",
+        "[] → Array.prototype → null"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A cadeia é: [] → Array.prototype → Object.prototype → null. Por isso arrays têm tanto métodos de Array (.push, .map, .filter) quanto métodos de Object (.hasOwnProperty, .toString)."
+    }
+  ]
+}

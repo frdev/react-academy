@@ -1,0 +1,273 @@
+# Observabilidade & Diagnóstico
+
+Observabilidade é a capacidade de entender o estado interno de um sistema a partir de suas saídas externas. Para JavaScript, isso significa: structured logging, performance timing nativo, source maps, e error reporting com contexto suficiente para diagnosticar problemas em produção.
+
+## Structured Logging
+
+Logs como texto livre são difíceis de filtrar e analisar. Structured logging usa JSON:
+
+```javascript
+// Log texto livre — difícil de consultar
+console.log(`User ${userId} failed to login: ${error.message}`)
+
+// Structured log — fácil de filtrar, indexar, alertar
+const logger = {
+  log(level, message, context = {}) {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      ...context,
+      // metadata de ambiente
+      service: process.env.SERVICE_NAME ?? 'web',
+      version: process.env.APP_VERSION,
+      env: process.env.NODE_ENV,
+    }
+    // Em produção: enviar para Datadog, Loki, CloudWatch, etc.
+    console.log(JSON.stringify(entry))
+  },
+  info: (msg, ctx) => logger.log('info', msg, ctx),
+  warn: (msg, ctx) => logger.log('warn', msg, ctx),
+  error: (msg, ctx) => logger.log('error', msg, ctx),
+}
+
+// Uso
+logger.error('Login failed', {
+  userId,
+  reason: error.message,
+  ip: request.ip,
+  attempt: loginAttempts,
+  duration_ms: Date.now() - startTime,
+})
+```
+
+Resultado em JSON pode ser indexado e consultado:
+```
+{ "level": "error", "message": "Login failed", "userId": 42, "attempt": 3, "duration_ms": 234 }
+```
+
+## `performance.mark` e `performance.measure`
+
+A Performance API nativa permite timing de alta resolução sem `Date.now()`:
+
+```javascript
+// Medir duração de uma operação
+performance.mark('render-start')
+
+renderComponent(data)
+
+performance.mark('render-end')
+performance.measure('render', 'render-start', 'render-end')
+
+const [measure] = performance.getEntriesByName('render')
+console.log(`Render took: ${measure.duration.toFixed(2)}ms`)
+
+// Versão mais limpa com wrapper
+function timed(name, fn) {
+  performance.mark(`${name}-start`)
+  const result = fn()
+  performance.mark(`${name}-end`)
+  performance.measure(name, `${name}-start`, `${name}-end`)
+
+  const [entry] = performance.getEntriesByName(name)
+  logger.info('Performance', { operation: name, duration_ms: entry.duration })
+
+  return result
+}
+
+// Versão async
+async function timedAsync(name, fn) {
+  performance.mark(`${name}-start`)
+  try {
+    return await fn()
+  } finally {
+    performance.mark(`${name}-end`)
+    performance.measure(name, `${name}-start`, `${name}-end`)
+    const [entry] = performance.getEntriesByName(name)
+    logger.info('Performance', { operation: name, duration_ms: entry.duration })
+  }
+}
+
+// Uso
+const users = await timedAsync('fetch-users', () => fetchUsers())
+```
+
+## `PerformanceObserver`: Monitoramento Contínuo
+
+```javascript
+// Observar Long Tasks (tarefas que demoram > 50ms)
+const observer = new PerformanceObserver(list => {
+  for (const entry of list.getEntries()) {
+    if (entry.duration > 100) {
+      logger.warn('Long Task detected', {
+        duration_ms: entry.duration,
+        startTime: entry.startTime,
+      })
+    }
+  }
+})
+
+observer.observe({ entryTypes: ['longtask'] })
+
+// Observar Core Web Vitals
+const vitalsObserver = new PerformanceObserver(list => {
+  for (const entry of list.getEntries()) {
+    logger.info('Web Vital', {
+      name: entry.name,
+      value: entry.value,
+      rating: entry.value < 2500 ? 'good' : entry.value < 4000 ? 'needs-improvement' : 'poor'
+    })
+  }
+})
+
+vitalsObserver.observe({ entryTypes: ['largest-contentful-paint'] })
+
+// Observar navigation timing (load time completo)
+const navObserver = new PerformanceObserver(list => {
+  for (const entry of list.getEntries()) {
+    logger.info('Navigation', {
+      dns: entry.domainLookupEnd - entry.domainLookupStart,
+      tcp: entry.connectEnd - entry.connectStart,
+      ttfb: entry.responseStart - entry.requestStart,
+      dom_interactive: entry.domInteractive - entry.fetchStart,
+      load_complete: entry.loadEventEnd - entry.fetchStart,
+    })
+  }
+})
+
+navObserver.observe({ entryTypes: ['navigation'] })
+```
+
+## Source Maps: Erros com Stack Trace Legível
+
+Em produção, código é minificado — stack traces são ilegíveis:
+
+```
+TypeError at r.n (bundle.min.js:1:4821)
+  at x (bundle.min.js:1:9234)
+```
+
+Com source maps (`.js.map`), error reporting services mapeiam de volta para o código original:
+
+```javascript
+// Configurar Vite/webpack para gerar source maps em produção
+// vite.config.ts:
+export default {
+  build: {
+    sourcemap: true  // gera .js.map
+  }
+}
+
+// Error handler que inclui stack trace para Sentry
+window.addEventListener('error', event => {
+  const errorData = {
+    message: event.message,
+    filename: event.filename,
+    line: event.lineno,
+    col: event.colno,
+    stack: event.error?.stack,  // Sentry/Datadog fazem o unmangle com source map
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    url: window.location.href,
+    // contexto adicional
+    userId: getCurrentUserId(),
+    sessionId: getSessionId(),
+  }
+
+  sendToErrorService(errorData)
+})
+```
+
+## Tracing Distribuído com IDs de Correlação
+
+Para rastrear uma operação através de múltiplos serviços:
+
+```javascript
+// Gerar um trace ID que atravessa toda a request
+function generateTraceId() {
+  return crypto.randomUUID()
+}
+
+// Middleware (Express/Fastify)
+function tracingMiddleware(req, res, next) {
+  req.traceId = req.headers['x-trace-id'] ?? generateTraceId()
+  res.setHeader('x-trace-id', req.traceId)
+
+  // Disponível em todos os logs desta request
+  req.logger = logger.child({ traceId: req.traceId })
+  next()
+}
+
+// Nos serviços downstream: propagar o trace ID
+async function callDownstream(url, traceId) {
+  return fetch(url, {
+    headers: { 'x-trace-id': traceId }
+  })
+}
+
+// Log com trace ID — permite reconstruir toda a cadeia
+req.logger.info('Processing order', { orderId, step: 'validation' })
+req.logger.info('Payment processed', { orderId, amount, step: 'payment' })
+// Ambos têm o mesmo traceId — fácil de filtrar
+```
+
+## Breadcrumbs: Contexto Antes do Erro
+
+Sentry e similares usam "breadcrumbs" — um log circular das últimas N ações antes de um erro:
+
+```javascript
+class BreadcrumbTrail {
+  #trail = []
+  #maxSize = 20
+
+  add(crumb) {
+    this.#trail.push({
+      ...crumb,
+      timestamp: Date.now()
+    })
+    if (this.#trail.length > this.#maxSize) {
+      this.#trail.shift()
+    }
+  }
+
+  getAll() {
+    return [...this.#trail]
+  }
+}
+
+const breadcrumbs = new BreadcrumbTrail()
+
+// Registrar ações do usuário
+document.addEventListener('click', e => {
+  breadcrumbs.add({ type: 'click', target: e.target.tagName + '#' + e.target.id })
+})
+
+// Incluir no error report
+window.addEventListener('error', event => {
+  sendToErrorService({
+    error: event.error,
+    breadcrumbs: breadcrumbs.getAll(),  // contexto dos últimos 20 eventos
+  })
+})
+```
+
+## Node.js: Diagnósticos Nativos
+
+```bash
+# Heap snapshot para análise de memory leak
+node --heap-prof server.js
+
+# CPU profile
+node --cpu-prof server.js
+
+# Diagnóstico em processo rodando (sem reiniciar)
+kill -USR1 <pid>  # habilita Node.js Inspector
+# Conectar Chrome DevTools em chrome://inspect
+
+# clinic.js: profiling de alto nível
+npx clinic doctor -- node server.js
+npx clinic flame -- node server.js   # flame graph CPU
+npx clinic bubbleprof -- node server.js  # async profiling
+```
+
+> **Resumo:** Structured logging (JSON) permite filtrar, alertar e analisar logs em produção. `performance.mark/measure` oferece timing de alta resolução. `PerformanceObserver` monitora Long Tasks e Core Web Vitals continuamente. Source maps traduzem stack traces minificados para código legível. Trace IDs correlacionam logs através de múltiplos serviços. Breadcrumbs fornecem contexto das ações antes de um erro.

@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-30",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o mecanismo central que permite ao `effect` rastrear automaticamente suas dependências?",
+      "options": [
+        "O effect usa Proxy para interceptar todas as leituras de variáveis",
+        "Uma variável global `currentObserver` aponta para o effect em execução — quando um signal é lido, ele se registra como subscriber desse observer",
+        "O effect recebe explicitamente uma lista de dependências como segundo argumento",
+        "O effect usa AST parsing para analisar quais signals são lidos no corpo da função"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O padrão é: ao executar um effect, currentObserver = execute. Quando signal.get() é chamado, ele faz 'if (currentObserver) subscribers.add(currentObserver)'. Assim qualquer signal lido durante a execução do effect registra o effect automaticamente. É o mesmo mecanismo usado por Vue 3, SolidJS e MobX."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `computed` retorna um getter (signal) em vez do valor diretamente?",
+      "options": [
+        "Para economizar memória",
+        "Para ser lazy — o valor só é calculado quando lido, e qualquer effect que ler o computed se torna seu subscriber, propagando reatividade em cadeia",
+        "Para compatibilidade com frameworks de terceiros",
+        "Porque computed sempre retorna uma Promise"
+      ],
+      "correctAnswer": 1,
+      "explanation": "computed retorna um getter: const total = computed(() => price() * quantity()). Quando você lê total() dentro de um effect, o computed propaga: total() chama o signal interno, que adiciona o effect externo como subscriber. Assim effects que dependem de computeds são notificados quando as dependências do computed mudam."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que acontece quando `Object.is(newValue, value)` retorna `true` no setter de um signal?",
+      "options": [
+        "O signal lança um erro — valores idênticos não devem ser atribuídos",
+        "O signal não notifica os subscribers — evita re-renders e re-execuções desnecessárias quando o valor não mudou de fato",
+        "O signal faz uma cópia profunda para garantir imutabilidade",
+        "O signal aguarda a próxima microtask antes de verificar novamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Object.is(a, b) é como === mas trata NaN e -0 corretamente. Se o valor novo é idêntico ao atual, não há mudança real — notificar subscribers causaria re-renders desnecessários. Todos os frameworks reativos implementam esta otimização: 'only notify when actually changed'."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que a função de cleanup retornada por um effect é importante?",
+      "options": [
+        "Para liberar a memória ocupada pelo closure do effect",
+        "Para executar limpeza (remover event listeners, cancelar timers, etc.) antes de re-executar ou quando o effect é descartado, evitando memory leaks e comportamentos duplicados",
+        "Para registrar o effect no garbage collector",
+        "Para impedir que o effect seja executado mais de uma vez"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem cleanup: cada vez que o effect re-executa (porque um signal mudou), ele cria um novo setInterval — acumulando timers. Com cleanup: antes de re-executar, chama clearInterval(timer) do run anterior. O padrão é retornar uma função de cleanup: effect(() => { const id = setInterval(...); return () => clearInterval(id) })."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `batch()` resolve em sistemas reativos?",
+      "options": [
+        "Permite executar effects em paralelo via Web Workers",
+        "Agrupa múltiplas mutações de signal para que effects/renders sejam executados apenas uma vez ao final, em vez de uma vez para cada mudança",
+        "Cria uma transação que pode ser revertida (rollback) se algo falhar",
+        "Limita o número de subscribers por signal"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem batch: setPrice(200) dispara render, setQuantity(5) dispara outro render — 2 renders. Com batch: ambas as mudanças ocorrem, effects ficam 'pendentes', e ao final do batch apenas 1 render acontece com o estado final. React chama isso de automatic batching (React 18+). Fundamental para performance."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual framework moderno usa um modelo de reatividade mais próximo ao que implementamos neste projeto?",
+      "options": [
+        "React — useState e useEffect são baseados em signals",
+        "SolidJS — usa exatamente signals, computed (createMemo) e effects (createEffect) como primitivas",
+        "Angular — usa RxJS Observables que são análogos a signals",
+        "Next.js — usa Server Components baseados em signals"
+      ],
+      "correctAnswer": 1,
+      "explanation": "SolidJS é o framework mais próximo: createSignal() = signal(), createMemo() = computed(), createEffect() = effect(). Vue 3 Composition API também usa o mesmo modelo: ref() = signal, computed() = computed, watchEffect() = effect. React é diferente — usa uma árvore virtual (VDOM) e não dependency tracking automático."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Quais conceitos do curso de 30 dias foram combinados para implementar o mini framework?",
+      "options": [
+        "Apenas closures e prototype chain",
+        "Closures (estado privado dos signals), Set (subscribers sem duplicatas), variáveis globais de contexto (currentObserver), Object.is (comparação correta), e microtask queue (batch scheduling)",
+        "Apenas Proxy e Reflect",
+        "Apenas async/await e Promises"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O framework sintetiza múltiplos conceitos: Closures encapsulam o valor e subscribers de cada signal. Set garante que o mesmo effect não é registrado duas vezes. currentObserver é o mecanismo de contexto implícito. Object.is para comparação correta de valores. Batch usa Sets e depth counting. É JavaScript avançado aplicado de forma elegante."
+    }
+  ]
+}

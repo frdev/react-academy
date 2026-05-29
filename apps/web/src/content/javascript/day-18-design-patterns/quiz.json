@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-18",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a principal vantagem de usar factory functions em vez de classes em JavaScript?",
+      "options": [
+        "Factory functions são sempre mais rápidas que classes",
+        "Factory functions não precisam de new, não têm problemas com this binding, e podem encapsular estado via closure sem #private",
+        "Factory functions suportam herança múltipla nativa",
+        "Classes não funcionam em Node.js, apenas no browser"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Factory functions retornam objetos simples — sem new, sem this context problems, sem prototype chain. Estado privado é simplesmente uma variável no closure. Ideal quando você não precisa de instanceof ou herança. Classes são melhores quando herança e instanceof importam."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "No padrão Observer, o que é o 'subject' e o que são os 'observers'?",
+      "options": [
+        "Subject é o observador, observers são os eventos",
+        "Subject é o objeto que emite eventos; observers são os listeners que reagem às mudanças",
+        "Subject é a fila de eventos; observers são os processos que consomem",
+        "Subject é o erro; observers são os catch handlers"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O subject (EventEmitter, store, DOM element) mantém uma lista de observers (listeners, callbacks) e os notifica quando seu estado muda. É a base de toda programação event-driven: React's useState dispara re-renders (observers), Redux store notifica componentes, addEventListener registra observers em eventos do DOM."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que módulos ES são o jeito idiomático de implementar Singleton em JavaScript?",
+      "options": [
+        "Módulos ES têm sintaxe especial para singletons",
+        "O código de um módulo executa uma única vez e a mesma instância é compartilhada por todos os importadores",
+        "Módulos ES previnem a criação de múltiplas instâncias da mesma classe",
+        "Módulos ES usam Object.freeze() automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Módulos são singletons por design: o runtime executa o código do módulo uma vez na primeira importação, e guarda o resultado. Importações subsequentes recebem o mesmo módulo em cache. Isso significa que export const db = new Database() cria exatamente uma instância, compartilhada globalmente."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual o benefício central do padrão Command com undo/redo?",
+      "options": [
+        "Executa comandos em paralelo automaticamente",
+        "Encapsula operações como objetos com execute() e undo(), permitindo histórico de ações reversíveis",
+        "Previne que o mesmo comando seja executado duas vezes",
+        "Garante que comandos falhos sejam retentados automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Command encapsula uma operação como um objeto que sabe como se executar E como se desfazer. Mantendo uma stack de commands executados, undo() é trivial: pop o último e chama .undo(). Redo() reexecuta commands desfeitos. Base de editores de texto, IDEs, e qualquer UI com undo."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "No Strategy Pattern em JavaScript, qual é a forma mais simples de implementar estratégias intercambiáveis?",
+      "options": [
+        "Herança — cada estratégia é uma subclasse",
+        "Funções passadas como argumento ou armazenadas em um objeto/Map de estratégias",
+        "Symbols que representam cada estratégia",
+        "Promises que resolvem com a estratégia correta"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em JavaScript, funções são cidadãos de primeira classe — são a forma mais natural de Strategy. Um objeto { byName: (a,b) => ..., byAge: (a,b) => ... } é um registro de estratégias. Passar sortFn como parâmetro é Strategy sem cerimônia. Classes só são necessárias quando as estratégias têm estado próprio."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como o Decorator Pattern com Higher-Order Functions difere do Decorator Pattern clássico do GoF?",
+      "options": [
+        "A versão funcional só funciona com funções, não com objetos",
+        "A versão funcional é mais simples: wrap a função diretamente sem criar classes, usando closures para adicionar comportamento",
+        "A versão funcional usa Proxy internamente",
+        "Não há diferença — são implementações idênticas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O Decorator GoF cria classes que envolvem outras classes. Em JS, memoize(fn) e withRetry(fn) fazem o mesmo: retornam uma nova função que adiciona comportamento (cache, retry) sem modificar a original. Mais simples, mais composável, sem herança. O resultado é o mesmo: comportamento adicional transparente."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual problema o Module Pattern com IIFE resolve que simples objetos literais não resolvem?",
+      "options": [
+        "IIFE permite criar múltiplas instâncias; objetos literais não",
+        "IIFE cria um closure privado — variáveis internas são inacessíveis de fora, criando encapsulamento real",
+        "IIFE é executado assincronamente; objetos literais são síncronos",
+        "Objetos literais não suportam métodos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um objeto literal { count: 0, increment() { this.count++ } } expõe count publicamente. Com IIFE: (() => { let count = 0; return { increment() { count++ }, get value() { return count } } })() — count é uma variável de closure, completamente inacessível externamente. Encapsulamento real sem #private."
+    }
+  ]
+}

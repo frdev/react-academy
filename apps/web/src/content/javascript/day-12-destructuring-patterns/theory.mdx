@@ -1,0 +1,242 @@
+# Destructuring & Patterns
+
+Destructuring é uma das features mais usadas do JavaScript moderno — mas a maioria usa apenas a superfície. Entender defaults, aliases, rest/spread, destructuring aninhado e computed keys abre um nível inteiramente novo de expressividade.
+
+## Destructuring de Array
+
+```javascript
+const coords = [10, 20, 30]
+
+// Básico
+const [x, y, z] = coords
+
+// Ignorar elementos
+const [,, terceiro] = coords  // terceiro = 30
+
+// Com default
+const [a = 0, b = 0, c = 0, d = 0] = [1, 2]
+// a=1, b=2, c=0, d=0
+
+// Rest element — coleta o restante
+const [head, ...tail] = [1, 2, 3, 4, 5]
+// head=1, tail=[2, 3, 4, 5]
+
+// Swap idiomático — sem variável temporária
+let left = 'esquerda', right = 'direita'
+;[left, right] = [right, left]
+```
+
+## Destructuring de Objeto
+
+```javascript
+const user = { name: 'Ana', age: 30, role: 'admin' }
+
+// Básico
+const { name, age } = user
+
+// Alias: renomear a variável
+const { name: userName, role: userRole } = user
+// userName = 'Ana', userRole = 'admin'
+
+// Default values
+const { name: n = 'Anônimo', score = 0 } = user
+// n = 'Ana' (existe), score = 0 (não existe em user)
+
+// Rest em objeto — coleta propriedades restantes
+const { name: nome, ...rest } = user
+// nome = 'Ana', rest = { age: 30, role: 'admin' }
+```
+
+## Computed Property Keys em Destructuring
+
+Você pode usar expressões como chave de destructuring com `[]`:
+
+```javascript
+const key = 'name'
+const { [key]: value } = { name: 'Ana' }
+// value = 'Ana'
+
+// Útil com variáveis dinâmicas
+function getProp(obj, propName) {
+  const { [propName]: value } = obj
+  return value
+}
+
+getProp({ x: 42 }, 'x')  // 42
+```
+
+## Destructuring Aninhado
+
+```javascript
+const response = {
+  data: {
+    user: {
+      name: 'Ana',
+      address: {
+        city: 'São Paulo',
+        country: 'BR'
+      }
+    }
+  },
+  status: 200
+}
+
+// Aninhado com aliases
+const {
+  data: {
+    user: {
+      name,
+      address: { city, country = 'US' }
+    }
+  },
+  status
+} = response
+
+// name='Ana', city='São Paulo', country='BR', status=200
+
+// Arrays dentro de objetos
+const { scores: [first, second] } = { scores: [98, 95, 88] }
+// first=98, second=95
+```
+
+## Destructuring em Parâmetros de Função
+
+```javascript
+// Sem destructuring — verboso
+function greet(options) {
+  const name = options.name
+  const greeting = options.greeting || 'Olá'
+  return `${greeting}, ${name}!`
+}
+
+// Com destructuring nos parâmetros
+function greet({ name, greeting = 'Olá' }) {
+  return `${greeting}, ${name}!`
+}
+
+greet({ name: 'Ana' })              // "Olá, Ana!"
+greet({ name: 'Bob', greeting: 'Hey' }) // "Hey, Bob!"
+
+// Default para o objeto inteiro (evita TypeError se undefined)
+function config({ host = 'localhost', port = 3000 } = {}) {
+  return `${host}:${port}`
+}
+
+config()          // "localhost:3000" — sem erro!
+config(undefined) // "localhost:3000" — sem erro!
+```
+
+## Spread Operator (`...`)
+
+Spread *expande* um iterável em posições individuais:
+
+```javascript
+// Arrays
+const a = [1, 2, 3]
+const b = [4, 5, 6]
+const combined = [...a, ...b]        // [1, 2, 3, 4, 5, 6]
+const copy = [...a]                   // cópia rasa
+const prepend = [0, ...a]            // [0, 1, 2, 3]
+
+// Objetos (ES2018+)
+const base = { x: 1, y: 2 }
+const extended = { ...base, z: 3 }   // { x: 1, y: 2, z: 3 }
+const override = { ...base, x: 99 }  // { x: 99, y: 2 } — última vence
+
+// Merge com override de defaults
+const defaults = { timeout: 5000, retries: 3, verbose: false }
+const userConfig = { timeout: 1000, verbose: true }
+const config = { ...defaults, ...userConfig }
+// { timeout: 1000, retries: 3, verbose: true }
+
+// Passar array como argumentos
+Math.max(...[1, 5, 3, 9, 2])  // 9
+```
+
+## Rest Parameters (`...`)
+
+Rest *coleta* múltiplos argumentos em um array:
+
+```javascript
+// Último parâmetro pode ser rest
+function sum(...numbers) {
+  return numbers.reduce((a, b) => a + b, 0)
+}
+sum(1, 2, 3, 4, 5)  // 15
+
+// Primeiros parâmetros nomeados, resto coletado
+function log(level, ...messages) {
+  console.log(`[${level}]`, ...messages)
+}
+log('INFO', 'server', 'started', 'on port 3000')
+
+// Rest em destructuring de array
+const [first, second, ...remaining] = [1, 2, 3, 4, 5]
+// first=1, second=2, remaining=[3, 4, 5]
+
+// Rest em destructuring de objeto
+const { a: removed, ...kept } = { a: 1, b: 2, c: 3 }
+// removed=1, kept={ b: 2, c: 3 } — padrão "omit property"
+```
+
+## Patterns Avançados: Combinando Tudo
+
+```javascript
+// Normalizar dados de API com destructuring
+function normalizeUser({
+  id,
+  name: { first, last } = {},
+  email,
+  roles: [primaryRole = 'user', ...otherRoles] = [],
+  metadata: { createdAt = new Date().toISOString() } = {}
+}) {
+  return {
+    id,
+    fullName: `${first} ${last}`,
+    email,
+    primaryRole,
+    otherRoles,
+    createdAt
+  }
+}
+
+// Iterator destructuring — qualquer iterável
+const set = new Set([1, 2, 3])
+const [first] = set  // 1
+
+const map = new Map([['a', 1], ['b', 2]])
+const [[key, val]] = map  // key='a', val=1
+
+// Generator + destructuring
+function* fibonacci() {
+  let [a, b] = [0, 1]
+  while (true) {
+    yield a;
+    [a, b] = [b, a + b]
+  }
+}
+
+const [f0, f1, f2, f3, f4] = fibonacci()
+// 0, 1, 1, 2, 3
+```
+
+## Pegadinhas Comuns
+
+```javascript
+// 1. Default só aplica para undefined, NÃO para null
+const { a = 'default' } = { a: null }
+// a = null — null não é undefined!
+
+// 2. Destructuring não cria binding se a propriedade não existe
+const { x: { y } } = { x: null }  // TypeError: Cannot destructure null
+
+// Solução: default para o objeto intermediário
+const { x: { y } = {} } = { x: null }  // y = undefined (sem erro)
+
+// 3. Declaração de objeto no início de linha precisa de parênteses
+let obj = {}
+let a2, b2
+;({ a2, b2 } = { a2: 1, b2: 2 })  // { ... } sem declaração precisa de ()
+```
+
+> **Resumo:** Destructuring é uma forma declarativa de extrair dados de estruturas complexas. Combine com defaults para APIs resilientes, rest para coletar excedentes, e spread para imutabilidade. Parâmetros com destructuring + defaults eliminam `options.foo || default` e tornam a assinatura das funções auto-documentada.

@@ -1,0 +1,307 @@
+# Padrões de Design em JavaScript
+
+Padrões de design são soluções comprovadas para problemas recorrentes. Em JavaScript, muitos padrões clássicos do GoF têm variações idiomáticas que aproveitam closures, protótipos e funções de primeira classe.
+
+## Observer / EventEmitter
+
+O padrão Observer define uma dependência um-para-muitos: quando o subject muda, todos os observers são notificados.
+
+```javascript
+class EventEmitter {
+  #listeners = new Map()
+
+  on(event, listener) {
+    if (!this.#listeners.has(event)) {
+      this.#listeners.set(event, new Set())
+    }
+    this.#listeners.get(event).add(listener)
+    // Retorna unsubscribe function
+    return () => this.off(event, listener)
+  }
+
+  off(event, listener) {
+    this.#listeners.get(event)?.delete(listener)
+  }
+
+  emit(event, ...args) {
+    this.#listeners.get(event)?.forEach(listener => listener(...args))
+  }
+
+  once(event, listener) {
+    const wrapper = (...args) => {
+      listener(...args)
+      this.off(event, wrapper)
+    }
+    return this.on(event, wrapper)
+  }
+}
+
+// Uso
+const bus = new EventEmitter()
+
+const unsub = bus.on('userCreated', user => console.log('Novo usuário:', user.name))
+
+bus.emit('userCreated', { name: 'Ana', id: 1 })  // "Novo usuário: Ana"
+
+unsub()  // cancela a subscription
+
+bus.emit('userCreated', { name: 'Bob', id: 2 })  // silencioso
+```
+
+## Factory Pattern
+
+Factory cria objetos sem expor a lógica de criação. Em JavaScript, factory functions são preferíveis a construtores para muitos casos:
+
+```javascript
+// Factory Function — sem new, sem this, sem prototype
+function createUser(name, role) {
+  const createdAt = new Date()
+
+  return {
+    name,
+    role,
+    createdAt,
+    greet() {
+      return `Olá, sou ${this.name} (${this.role})`
+    },
+    hasPermission(permission) {
+      const perms = {
+        admin: ['read', 'write', 'delete'],
+        editor: ['read', 'write'],
+        viewer: ['read']
+      }
+      return perms[role]?.includes(permission) ?? false
+    }
+  }
+}
+
+const user = createUser('Ana', 'admin')
+user.greet()                  // "Olá, sou Ana (admin)"
+user.hasPermission('delete')  // true
+
+// Abstract Factory — família de objetos relacionados
+function createLogger(level) {
+  const prefix = `[${level.toUpperCase()}]`
+  return {
+    log: msg => console.log(prefix, msg),
+    warn: msg => console.warn(prefix, msg),
+    error: msg => console.error(prefix, msg)
+  }
+}
+
+const devLogger = createLogger('dev')
+const prodLogger = createLogger('prod')
+```
+
+## Singleton
+
+Em JavaScript, módulos já são singletons naturalmente — um módulo é executado uma vez e a instância é compartilhada:
+
+```javascript
+// singleton via módulo (o jeito idiomático)
+// config.js
+const _config = {
+  apiUrl: process.env.API_URL,
+  timeout: 5000
+}
+
+export const config = Object.freeze(_config)
+
+// Em qualquer arquivo que importar, é a mesma instância
+
+// Singleton via classe (quando necessário)
+class Database {
+  static #instance = null
+
+  #connection
+
+  constructor() {
+    if (Database.#instance) return Database.#instance
+    this.#connection = createConnection()
+    Database.#instance = this
+  }
+
+  static getInstance() {
+    if (!Database.#instance) new Database()
+    return Database.#instance
+  }
+}
+
+Database.getInstance() === Database.getInstance()  // true
+```
+
+## Strategy Pattern
+
+Define uma família de algoritmos intercambiáveis. Em JS, funções como estratégias são a forma mais simples:
+
+```javascript
+// Funções como estratégias — sem classes necessárias
+const sortStrategies = {
+  byName: (a, b) => a.name.localeCompare(b.name),
+  byAge: (a, b) => a.age - b.age,
+  byScore: (a, b) => b.score - a.score,  // descrescente
+}
+
+function sortUsers(users, strategy = 'byName') {
+  return [...users].sort(sortStrategies[strategy])
+}
+
+// Strategy com objeto (para estratégias com estado)
+class Validator {
+  #strategies = []
+
+  add(strategy) {
+    this.#strategies.push(strategy)
+    return this  // fluent interface
+  }
+
+  validate(value) {
+    const errors = []
+    for (const strategy of this.#strategies) {
+      const error = strategy(value)
+      if (error) errors.push(error)
+    }
+    return errors
+  }
+}
+
+const emailValidator = new Validator()
+  .add(v => !v ? 'Email obrigatório' : null)
+  .add(v => !v.includes('@') ? 'Email inválido' : null)
+  .add(v => v.length > 255 ? 'Email muito longo' : null)
+
+emailValidator.validate('')               // ['Email obrigatório']
+emailValidator.validate('invalido')       // ['Email inválido']
+emailValidator.validate('ana@email.com')  // []
+```
+
+## Command Pattern
+
+Encapsula uma operação como objeto — permite desfazer, enfileirar e logar ações:
+
+```javascript
+class CommandHistory {
+  #history = []
+  #undoStack = []
+
+  execute(command) {
+    command.execute()
+    this.#history.push(command)
+    this.#undoStack.length = 0  // limpa redo ao executar novo comando
+  }
+
+  undo() {
+    const command = this.#history.pop()
+    if (command) {
+      command.undo()
+      this.#undoStack.push(command)
+    }
+  }
+
+  redo() {
+    const command = this.#undoStack.pop()
+    if (command) {
+      command.execute()
+      this.#history.push(command)
+    }
+  }
+}
+
+// Comandos específicos
+function createSetValueCommand(obj, key, value) {
+  const previousValue = obj[key]
+  return {
+    execute() { obj[key] = value },
+    undo() { obj[key] = previousValue }
+  }
+}
+
+const state = { count: 0 }
+const history = new CommandHistory()
+
+history.execute(createSetValueCommand(state, 'count', 1))
+history.execute(createSetValueCommand(state, 'count', 5))
+console.log(state.count)  // 5
+
+history.undo()
+console.log(state.count)  // 1
+
+history.redo()
+console.log(state.count)  // 5
+```
+
+## Decorator Pattern
+
+Adiciona comportamento a objetos/funções sem modificá-los — composição sobre herança:
+
+```javascript
+// Function decorator — mais simples e flexível
+function memoize(fn) {
+  const cache = new Map()
+  return function(...args) {
+    const key = JSON.stringify(args)
+    if (cache.has(key)) return cache.get(key)
+    const result = fn.apply(this, args)
+    cache.set(key, result)
+    return result
+  }
+}
+
+function withRetry(fn, maxRetries = 3) {
+  return async function(...args) {
+    let lastError
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        return await fn.apply(this, args)
+      } catch (err) {
+        lastError = err
+        if (i < maxRetries) {
+          await new Promise(r => setTimeout(r, 2 ** i * 100))  // backoff
+        }
+      }
+    }
+    throw lastError
+  }
+}
+
+function withLogging(fn, name = fn.name) {
+  return function(...args) {
+    console.log(`→ ${name}(${args.map(JSON.stringify)})`)
+    const result = fn.apply(this, args)
+    console.log(`← ${name} =`, result)
+    return result
+  }
+}
+
+// Compor decorators
+const safeExpensiveFetch = withRetry(
+  withLogging(
+    memoize(expensiveFetch),
+    'expensiveFetch'
+  )
+)
+```
+
+## Module Pattern (IIFE)
+
+Encapsulamento via closure — padrão pré-ES Modules, mas ainda relevante:
+
+```javascript
+const counter = (() => {
+  let _count = 0  // privado via closure
+
+  return {
+    increment() { _count++ },
+    decrement() { _count-- },
+    get value() { return _count },
+    reset() { _count = 0 }
+  }
+})()
+
+counter.increment()
+counter.increment()
+counter.value   // 2
+counter._count  // undefined — verdadeiramente privado
+```
+
+> **Resumo:** JavaScript favorece variações funcionais dos padrões clássicos — factory functions em vez de construtores, funções como estratégias em vez de classes, decorators como HOF em vez de herança. Observer/EventEmitter é a base de toda arquitetura event-driven. Command habilita undo/redo. Decorator permite composição de comportamento sem herança profunda.

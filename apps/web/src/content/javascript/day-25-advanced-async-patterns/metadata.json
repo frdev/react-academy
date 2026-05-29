@@ -1,0 +1,14 @@
+{
+  "id": "day-25",
+  "day": 25,
+  "week": 4,
+  "title": "Padrões de Assincronismo Avançados",
+  "slug": "advanced-async-patterns",
+  "topics": ["queueMicrotask", "requestAnimationFrame", "requestIdleCallback", "scheduler manual", "cooperative multitasking", "async queues", "debounce/throttle internals", "rate limiting"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-09"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 140
+}

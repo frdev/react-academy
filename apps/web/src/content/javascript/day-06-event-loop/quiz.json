@@ -1,0 +1,66 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a ordem de output?\n```js\nconsole.log('A')\nsetTimeout(() => console.log('B'), 0)\nPromise.resolve().then(() => console.log('C'))\nconsole.log('D')\n```",
+      "options": ["A, B, C, D", "A, D, B, C", "A, D, C, B", "A, C, D, B"],
+      "correctAnswer": 2,
+      "explanation": "A, D, C, B. Síncrono executa primeiro (A, D). Depois microtasks (Promise.then = C). Depois macrotasks (setTimeout = B). Microtasks sempre têm prioridade sobre macrotasks."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `Promise.resolve().then(() => Promise.resolve().then(loop))` pode causar starvation?",
+      "options": [
+        "Porque Promises têm limite de recursão",
+        "Porque cada microtask pode criar novas microtasks que são processadas antes de qualquer macrotask, travando o loop",
+        "Porque setTimeout não executa com microtasks pendentes",
+        "Isso não causa problema nenhum"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Microtasks são processadas COMPLETAMENTE (incluindo novas microtasks criadas durante o processamento) antes de qualquer macrotask. Se microtasks continuam criando novas microtasks infinitamente, o browser nunca processa macrotasks, eventos, ou renderiza a tela."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quais são exemplos de MACROTASKS?",
+      "options": [
+        "Promise.then, queueMicrotask, MutationObserver",
+        "setTimeout, setInterval, eventos DOM (click, keydown)",
+        "async/await, Promise.all, fetch",
+        "requestAnimationFrame, Promise.resolve"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Macrotasks (Task Queue): setTimeout, setInterval, eventos DOM, setImmediate (Node), I/O callbacks. Microtasks: Promise.then/catch/finally, async/await internamente, queueMicrotask, MutationObserver."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que `requestAnimationFrame` é melhor que `setInterval` para animações?",
+      "options": [
+        "requestAnimationFrame é mais rápido",
+        "requestAnimationFrame sincroniza com o refresh rate do browser, evitando frames perdidos",
+        "setInterval não funciona em animações",
+        "requestAnimationFrame executa como microtask"
+      ],
+      "correctAnswer": 1,
+      "explanation": "requestAnimationFrame é chamado pelo browser imediatamente antes do próximo frame de renderização, sincronizado com o refresh rate (geralmente 60fps/16.7ms). setInterval com 16ms não é sincronizado com o display, causando frames perdidos ou dobrados (tearing)."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O Event Loop pode pegar um item da Task Queue quando:",
+      "options": [
+        "A qualquer momento, intercalado com o código síncrono",
+        "Apenas quando a Microtask Queue está vazia E o Call Stack está vazio",
+        "Quando o Call Stack está vazio (independente da Microtask Queue)",
+        "Apenas após um setTimeout com delay 0"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O Event Loop pega macrotasks da Task Queue apenas quando: (1) o Call Stack está completamente vazio E (2) a Microtask Queue está completamente vazia. Isso garante que todas as microtasks (Promises) são processadas antes de qualquer macrotask."
+    }
+  ]
+}

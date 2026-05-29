@@ -1,0 +1,22 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Types & Coercion",
+  "slug": "types-coercion",
+  "topics": [
+    "primitivos vs objetos",
+    "typeof",
+    "coerção implícita e explícita",
+    "== vs ===",
+    "Object.is",
+    "falsy/truthy",
+    "+\"\" e !!"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

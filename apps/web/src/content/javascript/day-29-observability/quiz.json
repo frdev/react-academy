@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-29",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que structured logging (JSON) é preferível a logs de texto livre em produção?",
+      "options": [
+        "JSON é mais rápido de serializar que strings",
+        "Logs JSON podem ser indexados, filtrados por campo e usados em alertas automáticos — 'nível de erro > 10 por minuto com userId=X' é fácil em JSON, impossível em texto livre",
+        "JSON usa menos espaço em disco que texto livre",
+        "Apenas JSON é suportado por serviços de log como Datadog"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Texto livre: 'User 42 failed to login: invalid password'. Consulta: grep, regex. Estruturado: { level: 'error', userId: 42, reason: 'invalid_password', attempt: 3 }. Consulta: WHERE userId = 42 AND attempt > 2 AND level = 'error'. Alertas, dashboards e análise de padrões dependem de campos bem definidos."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `performance.mark()` + `performance.measure()` é melhor que `Date.now()` para timing?",
+      "options": [
+        "performance.mark é assíncrono e não bloqueia a thread",
+        "performance.now() oferece resolução sub-milissegundo (microseconds); Date.now() tem resolução de apenas 1ms. Além disso, entradas ficam no Performance Timeline, visíveis no DevTools",
+        "Date.now() não funciona em Node.js",
+        "performance.mark é protegido contra ataques de timing side-channel"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Date.now() retorna timestamp em ms inteiros. performance.now() retorna um DOMHighResTimeStamp em frações de milissegundo (ex: 123.456789ms). Para medir operações rápidas (microssegundos), Date.now() seria sempre 0ms. Além disso, marks/measures aparecem no DevTools Performance tab — visíveis visualmente no timeline."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que um `PerformanceObserver` com `entryTypes: ['longtask']` detecta?",
+      "options": [
+        "Funções que foram chamadas mais de 1000 vezes",
+        "Tarefas que bloquearam a thread principal por mais de 50ms — indicando potencial janking/freeze da UI",
+        "Imports dinâmicos que demoraram mais de 1 segundo",
+        "Fetch requests que levaram mais de 50ms"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Long Tasks são tarefas que monopolizam a thread principal por mais de 50ms. O browser não pode renderizar um frame ou processar eventos durante uma Long Task, causando janking (travamentos). O PerformanceObserver para longtask permite detectar e logar essas ocorrências automaticamente, correlacionando com a funcionalidade que causou."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Para que servem source maps e como resolvem stack traces ilegíveis em produção?",
+      "options": [
+        "Source maps descrevem os módulos importados pelo bundle",
+        "Source maps mapeiam posições no código minificado de volta para o código original — error reporting services usam isso para mostrar 'linha 42 em UserService.ts' em vez de 'bundle.min.js:1:4821'",
+        "Source maps permitem que o browser carregue código não-minificado em desenvolvimento",
+        "Source maps são usados apenas para debugging local, não em produção"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Código minificado: r.n (bundle.min.js:1:4821) é ilegível. Com source maps (.js.map), Sentry/Datadog fazem o mapeamento inverso para 'validateUser (UserService.ts:42:10)'. Você pode configurar upload de source maps para serviços de monitoramento sem expô-los publicamente no servidor."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é um 'trace ID' e por que é importante em arquiteturas de microsserviços?",
+      "options": [
+        "Um identificador único de cada usuário para personalização",
+        "Um ID gerado no início de uma request e propagado em headers para todos os serviços envolvidos — permite filtrar todos os logs de uma operação através de múltiplos serviços",
+        "Um hash do código JavaScript para verificar integridade",
+        "Um contador de requests por segundo para rate limiting"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem trace ID: para investigar um erro, você vê logs de 10 serviços diferentes sem saber quais pertencem à mesma request. Com trace ID propagado em x-trace-id header: filtre por traceId = 'abc-123' e veja todos os logs, de todos os serviços, daquela request específica em ordem cronológica. É a base do distributed tracing."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que são 'breadcrumbs' em error monitoring e qual informação valiosa fornecem?",
+      "options": [
+        "Links de navegação da página (UI breadcrumbs) capturados pelo Sentry",
+        "Um buffer circular das últimas N ações (clicks, navegações, chamadas de API) antes de um erro — permitem reconstruir 'o que o usuário fez que levou ao crash'",
+        "Logs de console capturados antes do erro",
+        "Métricas de performance antes do crash"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Saber que um erro ocorreu em linha 42 não é suficiente para reproduzir. Breadcrumbs fornecem contexto: 'clicou em #checkout-btn, fetch /api/cart falhou com 404, clicou em #retry, TypeError em CartService'. A sequência de eventos torna o bug reproduzível. Sentry coleta breadcrumbs automaticamente; você pode adicionar custom breadcrumbs para ações importantes."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a utilidade de `kill -USR1 <pid>` em Node.js para observabilidade?",
+      "options": [
+        "Encerra o processo gracefully, aguardando requests em andamento",
+        "Habilita o Node.js Inspector no processo em execução sem reiniciá-lo — permite conectar Chrome DevTools para heap snapshots, CPU profiling e debugging ao vivo",
+        "Força garbage collection imediato no processo",
+        "Recarrega configuração sem downtime (hot reload)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "USR1 (SIGUSR1) é o sinal que Node.js usa para habilitar o inspector. Em vez de reiniciar com --inspect (que pode perder o estado que está causando o problema), você envia o sinal para o processo em execução — incluindo em produção. Depois conecta com Chrome DevTools para tirar heap snapshots ou CPU profiles ao vivo."
+    }
+  ]
+}

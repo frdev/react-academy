@@ -1,0 +1,24 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Prototype Chain",
+  "slug": "prototype-chain",
+  "topics": [
+    "[[Prototype]]",
+    "Object.create",
+    "__proto__",
+    "prototype delegation",
+    "hasOwnProperty",
+    "herança vs delegação",
+    "Object.getPrototypeOf"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": [
+    "day-04"
+  ],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

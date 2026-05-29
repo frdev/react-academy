@@ -1,0 +1,24 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Functions em Profundidade",
+  "slug": "functions",
+  "topics": [
+    "first-class functions",
+    "higher-order functions",
+    "currying",
+    "partial application",
+    "function composition",
+    "arity",
+    "IIFE"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": [
+    "day-02"
+  ],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,227 @@
+# Temporal API & Internacionalização
+
+`Date` é um dos maiores erros de design do JavaScript. A Temporal API (Stage 3) foi criada para substituí-la. E `Intl` é a API nativa de internacionalização — mais poderosa que qualquer biblioteca de terceiros.
+
+## Por que `Date` é Problemático
+
+```javascript
+// Problemas clássicos com Date:
+
+// 1. Mutável — métodos como setMonth mudam o objeto
+const d = new Date('2024-01-31')
+d.setMonth(1)  // fevereiro — muda o objeto original!
+console.log(d) // Sat Mar 02 2024 — não é fevereiro! (overflow)
+
+// 2. Meses são 0-indexed (janeiro = 0, dezembro = 11)
+new Date(2024, 0, 1)   // 1 de janeiro
+new Date(2024, 12, 1)  // OVERFLOW para janeiro de 2025!
+
+// 3. Sem timezone explícita — depende do ambiente
+new Date('2024-01-15')        // UTC midnight (ISO format)
+new Date('01/15/2024')        // local timezone! (non-ISO format)
+
+// 4. Sem tipos distintos para data, hora, datetime
+// Tudo é Date, que sempre inclui timestamp Unix
+
+// 5. Parsing não-confiável
+new Date('Feb 30 2024')  // inválido mas em alguns engines silenciosamente ajusta
+```
+
+## Temporal API: Tipos Imutáveis e Explícitos
+
+Temporal tem tipos distintos para cada caso de uso:
+
+```javascript
+import { Temporal } from '@js-temporal/polyfill'
+
+// Data sem hora
+const date = Temporal.PlainDate.from('2024-03-15')
+date.year    // 2024
+date.month   // 3 (março — 1-indexed!)
+date.day     // 15
+
+// Hora sem data
+const time = Temporal.PlainTime.from('14:30:00')
+time.hour    // 14
+time.minute  // 30
+
+// Data e hora sem timezone
+const dt = Temporal.PlainDateTime.from('2024-03-15T14:30:00')
+
+// Data e hora COM timezone — o tipo mais importante para produção
+const zdt = Temporal.ZonedDateTime.from(
+  '2024-03-15T14:30:00[America/Sao_Paulo]'
+)
+zdt.timeZoneId          // 'America/Sao_Paulo'
+zdt.offsetNanoseconds   // offset em nanoseconds
+```
+
+## Operações com Temporal
+
+```javascript
+// Aritmética imutável — sempre retorna novo objeto
+const today = Temporal.Now.plainDateISO()
+const nextWeek = today.add({ days: 7 })       // novo objeto
+const lastMonth = today.subtract({ months: 1 })
+
+today.toString()     // inalterado
+
+// Duration — período de tempo com todas as unidades
+const dur = Temporal.Duration.from({ days: 2, hours: 3, minutes: 30 })
+dur.total({ unit: 'hours' })  // 51.5 horas totais
+
+// Diferença entre datas
+const start = Temporal.PlainDate.from('2024-01-01')
+const end = Temporal.PlainDate.from('2024-12-31')
+const diff = start.until(end)
+diff.days  // 365
+
+// Comparação
+Temporal.PlainDate.compare(start, end)  // -1, 0, ou 1
+
+// Converter para/de Date para interop
+const legacyDate = new Date()
+const temporal = Temporal.Instant.fromEpochMilliseconds(legacyDate.getTime())
+const backToDate = new Date(temporal.epochMilliseconds)
+```
+
+## `Intl`: Internacionalização Nativa
+
+`Intl` é a API de i18n nativa do browser/Node.js — sem dependências externas:
+
+### `Intl.DateTimeFormat`
+
+```javascript
+const date = new Date('2024-03-15T14:30:00Z')
+
+// Formato por locale
+new Intl.DateTimeFormat('pt-BR').format(date)
+// "15/03/2024"
+
+new Intl.DateTimeFormat('en-US').format(date)
+// "3/15/2024"
+
+new Intl.DateTimeFormat('de-DE').format(date)
+// "15.3.2024"
+
+// Com opções detalhadas
+new Intl.DateTimeFormat('pt-BR', {
+  weekday: 'long',    // "sexta-feira"
+  year: 'numeric',    // "2024"
+  month: 'long',      // "março"
+  day: 'numeric',     // "15"
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Sao_Paulo',
+  timeZoneName: 'short'
+}).format(date)
+// "sexta-feira, 15 de março de 2024 às 11:30 BRT"
+
+// formatToParts — para customizar a saída
+const parts = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' })
+  .formatToParts(date)
+// [{ type: 'weekday', value: 'sexta-feira' }, { type: 'literal', value: ', ' }, ...]
+```
+
+### `Intl.NumberFormat`
+
+```javascript
+// Moeda
+new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL'
+}).format(1234567.89)
+// "R$ 1.234.567,89"
+
+new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD'
+}).format(1234567.89)
+// "$1,234,567.89"
+
+// Percentual
+new Intl.NumberFormat('pt-BR', {
+  style: 'percent',
+  minimumFractionDigits: 2
+}).format(0.1567)
+// "15,67%"
+
+// Unidades
+new Intl.NumberFormat('pt-BR', {
+  style: 'unit',
+  unit: 'kilometer-per-hour'
+}).format(120)
+// "120 km/h"
+
+// Compact notation
+new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(1234567)
+// "1,2 mi"
+
+new Intl.NumberFormat('en-US', { notation: 'compact' }).format(1234567)
+// "1.2M"
+```
+
+### `Intl.RelativeTimeFormat`
+
+```javascript
+const rtf = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' })
+
+rtf.format(-1, 'day')    // "ontem"
+rtf.format(-3, 'day')    // "há 3 dias"
+rtf.format(1, 'week')    // "próxima semana"
+rtf.format(-2, 'month')  // "há 2 meses"
+rtf.format(1, 'year')    // "ano que vem"
+
+// Função utilitária para calcular automaticamente
+function timeAgo(date, locale = 'pt-BR') {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const diff = date - new Date()
+  const seconds = Math.round(diff / 1000)
+  const minutes = Math.round(seconds / 60)
+  const hours = Math.round(minutes / 60)
+  const days = Math.round(hours / 24)
+
+  if (Math.abs(seconds) < 60) return rtf.format(seconds, 'second')
+  if (Math.abs(minutes) < 60) return rtf.format(minutes, 'minute')
+  if (Math.abs(hours) < 24) return rtf.format(hours, 'hour')
+  return rtf.format(days, 'day')
+}
+
+timeAgo(new Date(Date.now() - 3600000))  // "há 1 hora"
+```
+
+### `Intl.Collator`: Ordenação de Strings
+
+```javascript
+// Ordenação locale-aware
+const names = ['Ângela', 'Ana', 'álvaro', 'Bruno']
+
+// Sort errado — usa code point Unicode
+names.sort()
+// ["Ana", "Bruno", "Ângela", "álvaro"] — incorreto para pt-BR
+
+// Sort correto com Collator
+const collator = new Intl.Collator('pt-BR', { sensitivity: 'base' })
+names.sort((a, b) => collator.compare(a, b))
+// ["álvaro", "Ana", "Ângela", "Bruno"] — correto!
+```
+
+### `Intl.PluralRules`: Pluralização
+
+```javascript
+const pr = new Intl.PluralRules('pt-BR')
+
+pr.select(0)   // "other" → "0 itens"
+pr.select(1)   // "one"   → "1 item"
+pr.select(2)   // "other" → "2 itens"
+
+function pluralize(n, one, other) {
+  const rule = new Intl.PluralRules('pt-BR').select(n)
+  return `${n} ${rule === 'one' ? one : other}`
+}
+
+pluralize(1, 'item', 'itens')   // "1 item"
+pluralize(5, 'item', 'itens')   // "5 itens"
+```
+
+> **Resumo:** `Date` tem problemas sérios de design — meses 0-indexed, mutabilidade, parsing inconsistente. Temporal resolve com tipos imutáveis, distintos e timezone-aware. `Intl` é mais poderosa que moment.js ou date-fns para formatação — zero KB extra, suporte nativo para datas, números, moedas, ordenação e pluralização em qualquer locale.

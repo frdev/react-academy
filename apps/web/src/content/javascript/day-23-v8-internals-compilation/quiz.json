@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-23",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a responsabilidade do Ignition no pipeline do V8?",
+      "options": [
+        "Compilar JavaScript diretamente para código nativo otimizado",
+        "Interpretar bytecode e coletar profiling data sobre tipos e frequência de execução",
+        "Parsear código fonte em AST",
+        "Gerenciar a memória heap e o garbage collector"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Ignition compila JavaScript para bytecode e o interpreta. Simultaneamente coleta feedback: quais tipos de argumento uma função recebe, quantas vezes é chamada. Esses dados alimentam o TurboFan para otimizações especulativas."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que são 'otimizações especulativas' no TurboFan?",
+      "options": [
+        "Otimizações aplicadas apenas em modo de desenvolvimento",
+        "Otimizações baseadas em suposições sobre tipos — TurboFan assume que os tipos observados no passado continuarão iguais e gera código sem verificações de tipo",
+        "Técnicas de cache que guardam resultados de funções puras",
+        "Compressão de código para reduzir o tamanho do bundle"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Otimizações especulativas: TurboFan viu que add(a,b) sempre recebeu numbers → gera código nativo com multiplicação de inteiros, sem boxing nem verificação de tipo. É 'especulativa' porque assume que isso continuará — se uma string aparecer, a suposição falha e ocorre deoptimização."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que é deoptimização e quando ocorre?",
+      "options": [
+        "Quando o código é minificado para produção",
+        "Quando uma suposição especulativa do TurboFan é violada — o código nativo é descartado e a execução volta para o bytecode do Ignition",
+        "Quando o GC pausa a execução para coletar memória",
+        "Quando Node.js detecta um memory leak e libera memória alocada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TurboFan gerou código nativo assumindo que add() sempre recebe numbers. Alguém chama add('hello', 3) — a suposição é falsa. O engine desotimiza: descarta o código nativo, marca a função, e continua executando via bytecode. Deoptimizações frequentes degradam performance significativamente."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que é 'lazy parsing' no V8 e qual benefício traz?",
+      "options": [
+        "Parsear apenas as funções que serão exportadas do módulo",
+        "Pré-parsear funções não executadas imediatamente (apenas verificação de sintaxe), reduzindo o tempo de startup — o parse completo ocorre na primeira chamada",
+        "Dividir o código em chunks e parsear em background",
+        "Cachear o resultado do parse entre reloads da página"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Lazy parsing adia o parse completo de funções que não são executadas no startup. Um módulo com 100 funções reutilizáveis só precisa parsear as que são chamadas imediatamente. Isso reduz drasticamente o tempo até a primeira interação. O custo: a primeira chamada de uma função lazy tem latência extra do parse."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é um Inline Cache (IC) e como ele otimiza acesso a propriedades?",
+      "options": [
+        "Um cache de resultados de funções puras em memória compartilhada",
+        "V8 memoriza o 'shape' (hidden class) do objeto e o offset da propriedade — nas próximas chamadas, verifica apenas o shape e acessa diretamente sem busca",
+        "Um cache de módulos importados para evitar re-execução",
+        "Uma estrutura que guarda os últimos 100 valores lidos de uma propriedade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Para obj.x, V8 descobre onde 'x' está no objeto (offset 8 bytes, por exemplo) e memoriza o hidden class do objeto. Próximas leituras de obj.x em objetos com o mesmo hidden class: apenas um check + leitura direta no offset. Sem busca por nome. Isso torna acesso a propriedades quase tão rápido quanto acesso a array por índice."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que significa uma função ser 'megamorphic' e qual o impacto?",
+      "options": [
+        "A função é muito grande e não pode ser compilada pelo TurboFan",
+        "A função recebeu 5+ shapes diferentes de objetos — V8 desabilita o Inline Cache e não otimiza, resultando em acesso lento a propriedades",
+        "A função foi otimizada com o nível máximo de TurboFan",
+        "A função usa muita memória heap"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Monomorphic (1 shape): mais rápido — IC direto. Polymorphic (2-4 shapes): aceitável — IC com pequena tabela de lookup. Megamorphic (5+ shapes): V8 desiste de cachear — cada acesso a propriedade é uma busca completa. Funções megamorphic são lentas e difíceis de otimizar pelo TurboFan."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que misturar tipos de argumentos em funções quentes prejudica performance?",
+      "options": [
+        "JavaScript não suporta múltiplos tipos no mesmo parâmetro",
+        "TurboFan compila código especializado para os tipos observados — quando tipos diferentes aparecem, deoptimização ocorre, descartando o código otimizado e voltando para bytecode",
+        "Apenas afeta performance em Node.js, não no browser",
+        "Tipos mistos causam alocações extras no heap"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TurboFan investiu em compilar código nativo para number + number. Uma chamada com string deotimiza, descartando esse trabalho. Se isso acontece frequentemente, a função nunca se beneficia da otimização. Para funções quentes (chamadas muitas vezes), consistência de tipos é fundamental."
+    }
+  ]
+}

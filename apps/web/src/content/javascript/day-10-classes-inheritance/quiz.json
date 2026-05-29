@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-10",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `typeof Animal` retorna quando `Animal` é declarada com `class Animal {}`?",
+      "options": [
+        "\"class\"",
+        "\"object\"",
+        "\"function\"",
+        "\"constructor\""
+      ],
+      "correctAnswer": 2,
+      "explanation": "Classes são apenas funções com sintaxe especial — typeof Animal === 'function'. A classe é uma função construtora com um prototype configurado. Não há tipo 'class' no JavaScript."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que acontece se você esquecer de chamar `super()` no constructor de uma subclasse antes de usar `this`?",
+      "options": [
+        "this é undefined",
+        "this aponta para a classe pai",
+        "ReferenceError: Must call super constructor before accessing 'this'",
+        "TypeError: super is not a function"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Em subclasses, this não existe até super() ser chamado. A engine precisa que o construtor pai inicialize o objeto antes de a subclasse poder modificá-lo. Acessar this antes de super() lança ReferenceError."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre um campo `_privado` (convenção underscore) e um campo `#privado` (hash)?",
+      "options": [
+        "Nenhuma diferença prática — ambos são igualmente privados",
+        "_privado é uma convenção, acessível de fora; #privado é enforced pela linguagem e inacessível externamente",
+        "#privado é mais lento que _privado porque requer verificação extra",
+        "_privado é a sintaxe moderna, #privado é legada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "_privado é apenas uma convenção — qualquer código pode acessar obj._privado. #privado é privacidade real: a engine verifica em tempo de compilação, e acc['#privado'] retorna undefined (não é a mesma propriedade). Não há forma de acessar campos # de fora da classe."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Métodos de instância em uma classe ficam em qual lugar na memória?",
+      "options": [
+        "Copiados para cada instância no constructor",
+        "No prototype da classe (compartilhado entre todas as instâncias)",
+        "Na própria classe como propriedades estáticas",
+        "Em um closure separado para cada instância"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Métodos declarados no corpo da classe vão para ClassName.prototype e são compartilhados entre todas as instâncias via prototype chain. Apenas as propriedades definidas no constructor (com this.x = ...) ou class fields ficam em cada instância individualmente."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é um mixin em JavaScript e por que é útil?",
+      "options": [
+        "Um decorator que modifica a classe em tempo de compilação",
+        "Uma função que recebe uma classe e retorna uma classe estendida — permite composição de comportamentos sem herança múltipla",
+        "Um padrão para criar múltiplas instâncias da mesma classe",
+        "Um método estático que inicializa a classe com valores padrão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Mixins são funções da forma `(Base) => class extends Base { ... }`. Como JavaScript não tem herança múltipla, mixins permitem compor comportamentos de múltiplas fontes: class C extends Mixin2(Mixin1(Base)). Cada mixin adiciona suas funcionalidades na cadeia."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual das seguintes afirmações sobre `static` é FALSA?",
+      "options": [
+        "Membros static pertencem à classe, não às instâncias",
+        "Fields static são acessíveis via this dentro de métodos de instância",
+        "Métodos static não têm acesso ao this das instâncias",
+        "Static fields privados (#) são possíveis"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Fields static NÃO são acessíveis via this dentro de métodos de instância — this se refere à instância, que não tem a propriedade static. Você acessa via NomeDaClasse.campo ou this.constructor.campo. As outras afirmações são verdadeiras."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `super.method()` funciona em arrow functions dentro de métodos de classe?",
+      "options": [
+        "Arrow functions têm acesso especial a super automaticamente",
+        "super é resolvido lexicamente — a arrow function herda o super do método envolvente",
+        "Arrow functions em classes sempre acessam o prototype pai",
+        "Não funciona — super lança ReferenceError em arrow functions"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Assim como this, super é resolvido lexicamente em arrow functions. Uma arrow function dentro de um método captura o super do método que a contém — por isso callbacks como setTimeout(() => super.init()) funcionam corretamente."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "day-10",
+  "day": 10,
+  "week": 2,
+  "title": "Classes & Herança",
+  "slug": "classes-inheritance",
+  "topics": ["class syntax", "extends", "super", "#private fields", "static", "mixins", "problemas do new", "class fields", "instanceof"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,14 @@
+{
+  "id": "day-30",
+  "day": 30,
+  "week": 4,
+  "title": "Projeto Final: Mini Framework Reativo",
+  "slug": "projeto-final-framework",
+  "topics": ["signals", "dependency tracking", "computed values", "effects", "reactivity primitives", "similar ao SolidJS", "scheduler", "batch updates"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 90,
+  "prerequisites": ["day-16", "day-25"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 200
+}

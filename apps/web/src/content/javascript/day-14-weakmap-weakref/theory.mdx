@@ -1,0 +1,217 @@
+# WeakMap, WeakSet & WeakRef
+
+WeakMap, WeakSet e WeakRef são estruturas de dados que mantêm referências *fracas* — não impedem o garbage collector de liberar os objetos. São a ferramenta certa para caches, metadados privados e tracking de objetos sem causar memory leaks.
+
+## O Problema: Memory Leaks com Referências Fortes
+
+Antes de entender WeakMap, entenda o problema que ele resolve:
+
+```javascript
+// Sem WeakMap: cache que causa memory leak
+const cache = new Map()
+
+function processUser(user) {
+  if (cache.has(user)) return cache.get(user)
+  const result = expensiveComputation(user)
+  cache.set(user, result)  // A Map mantém referência FORTE para user
+  return result
+}
+
+// Mesmo que todos os outros lugares soltem user,
+// cache ainda segura a referência — user NUNCA é coletado pelo GC!
+```
+
+Se você processar 10.000 usuários, todos ficarão na memória enquanto `cache` existir.
+
+## WeakMap: Map com Chaves Coletáveis
+
+WeakMap mantém referências *fracas* às chaves — se um objeto chave não tem mais referências fortes em nenhum lugar, ele pode ser coletado pelo GC, e a entrada no WeakMap desaparece automaticamente:
+
+```javascript
+const cache = new WeakMap()
+
+function processUser(user) {
+  if (cache.has(user)) return cache.get(user)
+  const result = expensiveComputation(user)
+  cache.set(user, result)
+  return result
+}
+
+// Quando user não tem mais referências fora, GC libera user
+// A entrada em cache desaparece automaticamente — sem leak!
+```
+
+**Restrições do WeakMap:**
+- Chaves devem ser objetos (não primitivos)
+- Não é iterável — não tem `forEach`, `keys()`, `values()`, `size`
+- Apenas: `get(key)`, `set(key, value)`, `has(key)`, `delete(key)`
+
+A não-iterabilidade é intencional: você não pode saber quais chaves existem porque qualquer uma pode ter sido coletada pelo GC a qualquer momento.
+
+## Casos de Uso do WeakMap
+
+**1. Dados privados por instância (antes de `#private`)**
+
+```javascript
+const _private = new WeakMap()
+
+class SecureConfig {
+  constructor(data) {
+    _private.set(this, {
+      apiKey: data.apiKey,
+      secret: data.secret
+    })
+    this.name = data.name  // público
+  }
+
+  getApiKey() {
+    return _private.get(this).apiKey
+  }
+
+  // Quando a instância é coletada pelo GC,
+  // os dados privados em _private também somem
+}
+
+const config = new SecureConfig({ name: 'prod', apiKey: 'abc', secret: 'xyz' })
+config.name        // 'prod' — público
+config.apiKey      // undefined — não existe na instância
+config.getApiKey() // 'abc' — via WeakMap
+```
+
+**2. Cache de resultados computados**
+
+```javascript
+const computedResults = new WeakMap()
+
+function memoize(obj, computeFn) {
+  if (computedResults.has(obj)) {
+    return computedResults.get(obj)
+  }
+  const result = computeFn(obj)
+  computedResults.set(obj, result)
+  return result
+}
+```
+
+**3. Metadados sem modificar objetos externos**
+
+```javascript
+// Sem WeakMap: você precisa modificar o objeto
+user._metadata = { visitCount: 0 }  // polui o objeto
+
+// Com WeakMap: metadados externos sem poluir
+const metadata = new WeakMap()
+metadata.set(user, { visitCount: 0 })
+
+function trackVisit(user) {
+  const meta = metadata.get(user) ?? { visitCount: 0 }
+  meta.visitCount++
+  metadata.set(user, meta)
+}
+```
+
+## WeakSet: Set com Elementos Coletáveis
+
+WeakSet é análogo ao WeakMap, mas para conjuntos de objetos:
+
+```javascript
+const seen = new WeakSet()
+
+function processOnce(obj) {
+  if (seen.has(obj)) return
+  seen.add(obj)
+  doWork(obj)
+  // Quando obj é coletado pelo GC, sai do WeakSet automaticamente
+}
+
+// Caso de uso: detectar ciclos em estruturas de dados
+function deepClone(obj, visited = new WeakSet()) {
+  if (typeof obj !== 'object' || obj === null) return obj
+  if (visited.has(obj)) return '[Circular]'
+  visited.add(obj)
+
+  const clone = Array.isArray(obj) ? [] : {}
+  for (const key of Object.keys(obj)) {
+    clone[key] = deepClone(obj[key], visited)
+  }
+  return clone
+}
+```
+
+## WeakRef: Referências Fracas Explícitas
+
+`WeakRef` cria uma referência fraca a um objeto. Você pode checar se o objeto ainda existe via `.deref()` — se foi coletado, retorna `undefined`:
+
+```javascript
+let user = { name: 'Ana', data: bigData }
+const weakUser = new WeakRef(user)
+
+// Mais tarde...
+const ref = weakUser.deref()
+if (ref) {
+  console.log(ref.name)  // objeto ainda existe
+} else {
+  console.log('usuário foi coletado pelo GC')
+}
+
+// user pode ser coletado se não tiver outras referências fortes
+user = null  // agora GC pode coletar
+
+// AVISO: deref() pode retornar undefined a QUALQUER momento após
+// a última referência forte ser removida. Nunca assuma que dois
+// deref() consecutivos retornam o mesmo resultado.
+```
+
+## FinalizationRegistry: Executar Código Após Coleta
+
+`FinalizationRegistry` permite registrar um callback que roda *depois* que um objeto é coletado pelo GC:
+
+```javascript
+const registry = new FinalizationRegistry((heldValue) => {
+  console.log(`Objeto com id=${heldValue} foi coletado`)
+  // Cleanup: remover da lista, fechar conexão, etc.
+})
+
+let obj = { id: 42, data: bigData }
+registry.register(obj, obj.id)  // registra; heldValue = obj.id
+
+// Quando obj é coletado, o callback recebe heldValue (42)
+// IMPORTANTE: o callback NÃO recebe o objeto — ele já foi coletado!
+```
+
+**Cuidados com FinalizationRegistry:**
+- O timing é *não determinístico* — GC decide quando coletar
+- Não dependa de cleanup crítico via FinalizationRegistry
+- Use para debugging, logging, cleanup de recursos secundários
+- Para cleanup garantido, use `finally` ou o padrão de `dispose`
+
+## Quando NÃO Usar WeakRef/FinalizationRegistry
+
+```javascript
+// ERRADO: tentar usar como cache confiável
+const cache = new Map()
+const weakRefs = new Map()
+
+function cacheValue(key, value) {
+  const ref = new WeakRef(value)
+  weakRefs.set(key, ref)
+}
+
+function getCached(key) {
+  return weakRefs.get(key)?.deref()  // pode ser undefined a qualquer momento!
+}
+
+// O GC pode coletar entre um deref() e o próximo uso —
+// código que assume que deref() não-null permanece válido pode ter race condition
+```
+
+## Resumo: Qual Usar?
+
+| Estrutura | Use quando |
+|-----------|-----------|
+| `WeakMap` | Associar dados a objetos sem impedir GC (cache, metadados, dados privados) |
+| `WeakSet` | Rastrear se um objeto foi processado (seen set, cycle detection) |
+| `WeakRef` | Cache com fallback explícito, onde perder o valor é aceitável |
+| `FinalizationRegistry` | Logging/debugging de memory, cleanup de recursos secundários |
+
+> **Resumo:** Referências fracas não impedem o GC — o objeto pode desaparecer a qualquer momento após a última referência forte. Use WeakMap para dados auxiliares associados a objetos externos (a forma mais segura e comum). WeakRef e FinalizationRegistry são para casos avançados onde você precisa reagir à coleta, mas nunca para lógica crítica.

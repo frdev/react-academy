@@ -1,0 +1,14 @@
+{
+  "id": "day-17",
+  "day": 17,
+  "week": 3,
+  "title": "Programação Funcional",
+  "slug": "functional-programming",
+  "topics": ["imutabilidade", "funções puras", "side effects", "function composition", "pipe/compose", "Maybe monad", "Result/Either monad", "transducers"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-03"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

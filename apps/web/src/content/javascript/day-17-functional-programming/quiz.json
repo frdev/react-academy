@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-17",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual das seguintes funções é considerada 'pura'?",
+      "options": [
+        "function addToCart(cart, item) { cart.push(item); return cart }",
+        "function total(items) { return items.reduce((s, i) => s + i.price, 0) }",
+        "function getTimestamp() { return Date.now() }",
+        "function logAndReturn(x) { console.log(x); return x }"
+      ],
+      "correctAnswer": 1,
+      "explanation": "total() é pura: dado o mesmo array de items, sempre retorna o mesmo total, sem side effects. addToCart() muta o argumento (side effect). getTimestamp() retorna valores diferentes a cada chamada (não determinística). logAndReturn() tem side effect (console.log)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `compose(f, g, h)(x)` e `pipe(f, g, h)(x)`?",
+      "options": [
+        "Não há diferença — são aliases um do outro",
+        "compose executa da direita para a esquerda: f(g(h(x))); pipe executa da esquerda para a direita: h(g(f(x))) ... na verdade pipe(f,g,h) = f→g→h",
+        "compose só funciona com funções síncronas; pipe funciona com async",
+        "compose retorna um array de resultados; pipe retorna apenas o valor final"
+      ],
+      "correctAnswer": 1,
+      "explanation": "compose(f, g, h)(x) = f(g(h(x))) — aplica h primeiro, depois g, depois f (ordem matemática, da direita para a esquerda). pipe(f, g, h)(x) = h(g(f(x))) — aplica f primeiro, depois g, depois h (ordem de leitura, da esquerda para a direita). pipe é geralmente mais legível."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que o monad `Maybe` resolve em programação funcional?",
+      "options": [
+        "Permite executar funções assíncronas em sequência",
+        "Encapsula valores que podem ser null/undefined, permitindo pipelines sem null checks a cada etapa",
+        "Garante que funções sejam executadas apenas uma vez",
+        "Converte código imperativo em estilo funcional automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Maybe encapsula um valor que pode ser Nothing (null/undefined). .map() em um Nothing retorna Nothing — operações subsequentes são ignoradas. Elimina a necessidade de if (!value) return em cada etapa, tornando pipelines de transformação mais limpos."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como `Result.err(error)` se propaga em uma chain de `.map()` calls?",
+      "options": [
+        "Cada .map() tenta executar e pode falhar independentemente",
+        "O primeiro erro para a propagação — calls subsequentes de .map() passam o erro adiante sem executar a função",
+        "Result.err() lança o erro como uma exceção JavaScript",
+        "O erro é acumulado em um array junto com eventuais valores"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Result implementa 'railroad programming': quando o estado é Err, .map() retorna o mesmo Err sem executar a função. O erro 'viaja' pela chain sem processamento. Só o .match() ou .getOrElse() no final lida com o resultado — erro ou sucesso."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que transducers são mais eficientes que `.filter().map().filter()`?",
+      "options": [
+        "Transducers usam Web Workers para processar em paralelo",
+        "Transducers compõem as transformações em um único reduce, sem criar arrays intermediários entre cada etapa",
+        "Transducers são compilados para código nativo pelo V8",
+        "Transducers processam os elementos em ordem reversa, sendo mais rápido"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Cada .filter() e .map() cria um novo array — com 1000 elementos e 3 transformações, você cria 2 arrays extras. Transducers compõem as funções transformadoras ANTES de iterar: um único reduce processa cada elemento passando por todas as transformações, sem alocar arrays intermediários."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que é 'point-free style' em programação funcional?",
+      "options": [
+        "Escrever funções sem usar pontos (.) para acessar propriedades",
+        "Definir funções sem mencionar explicitamente os argumentos — usando composição direta de funções",
+        "Funções que não têm ponto de entrada (entrada via closure)",
+        "Código sem ponto e vírgula (estilo minimalista)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Point-free (ou tacit programming) define funções pela composição de outras, sem nomear os argumentos. Em vez de users => users.map(u => u.name), você usa map(prop('name')). O 'ponto' refere-se ao argumento (data point). Torna o código mais declarativo mas pode dificultar a leitura se exagerado."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a vantagem de usar imutabilidade para gerenciar estado?",
+      "options": [
+        "Objetos imutáveis consomem menos memória que objetos mutáveis",
+        "Versões anteriores do estado são preservadas, facilitando debugging, undo/redo e comparações por referência para otimização",
+        "Imutabilidade garante que o código JavaScript rode mais rápido no V8",
+        "Objetos imutáveis não precisam ser declarados com const"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com imutabilidade: cada mudança cria um novo objeto, mantendo o anterior intacto. Isso permite time-travel debugging (Redux DevTools), undo/redo trivial (guardar versões anteriores), e otimizações de re-render por comparação de referência (React.memo — se a referência não mudou, o estado não mudou). O custo extra de memória geralmente é aceitável com structural sharing."
+    }
+  ]
+}

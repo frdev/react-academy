@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-26",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que são decoradores em JavaScript e quando são executados?",
+      "options": [
+        "Funções especiais que executam em runtime durante cada chamada de método",
+        "Funções que recebem o alvo (classe/método/campo) e um context object, executando em tempo de definição da classe — não em cada chamada",
+        "Anotações de tipo estático verificadas pelo TypeScript",
+        "Macros que expandem código em tempo de build pelo Babel"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Decoradores executam quando a classe é definida — uma vez, não a cada chamada. Eles recebem o alvo (a função do método, por exemplo) e podem retornar um substituto. O uso mais comum é retornar uma nova função que adiciona comportamento (logging, cache, validação) em torno do método original."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Para que serve `context.addInitializer(fn)` em um decorador?",
+      "options": [
+        "Para adicionar um método ao prototype da classe",
+        "Para registrar código que executa quando cada instância da classe é criada (no constructor), com 'this' sendo a nova instância",
+        "Para inicializar valores padrão de parâmetros de métodos",
+        "Para configurar o decorador antes de ele ser aplicado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "addInitializer(fn) registra um callback que roda no momento da construção (após o super() e antes do constructor retornar). 'this' é a instância sendo criada. O @bound decorator usa isso para fazer this[methodName] = method.bind(this) em cada instância — garantindo que o método sempre tenha o this correto."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `context.kind` pode ser em um decorador?",
+      "options": [
+        "'function', 'object', 'class', 'primitive'",
+        "'class', 'method', 'field', 'accessor', 'getter', 'setter'",
+        "'public', 'private', 'static', 'instance'",
+        "'sync', 'async', 'generator', 'arrow'"
+      ],
+      "correctAnswer": 1,
+      "explanation": "context.kind identifica o tipo de alvo: 'class' (decorador de classe), 'method' (método de instância ou estático), 'field' (field de classe), 'accessor' (auto-accessor com get/set), 'getter' (apenas getter), 'setter' (apenas setter). Permite ao decorador adaptar seu comportamento baseado no que está decorando."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre a nova spec de decoradores (TypeScript 5.0 / 2023-11) e a antiga `experimentalDecorators`?",
+      "options": [
+        "A nova spec usa @ minúsculo, a antiga usa @ maiúsculo",
+        "São especificações completamente diferentes — não compatíveis. A nova tem assinatura diferente (sem descriptor), não usa Reflect.metadata, e é a proposta TC39 oficial",
+        "A diferença é apenas de performance — a nova é mais rápida",
+        "A nova spec só funciona com TypeScript, a antiga com JavaScript puro"
+      ],
+      "correctAnswer": 1,
+      "explanation": "experimentalDecorators é a spec antiga, não-padrão, baseada em uma proposta descartada. A nova spec (2023-11 / Stage 3) tem assinatura completamente diferente: (value, context) em vez de (target, key, descriptor). Código usando experimentalDecorators não funciona com a nova spec sem migração."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Um decorador `@memoize` num método usa WeakMap com `this` como chave. Por que WeakMap e não Map?",
+      "options": [
+        "WeakMap é mais rápido para lookups frequentes",
+        "WeakMap usa a instância como chave com referência fraca — quando a instância é coletada pelo GC, o cache dela some automaticamente, evitando memory leak",
+        "Map não aceita objetos como chave",
+        "WeakMap permite chaves nulas que Map não permite"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com Map, cada instância usada como chave ficaria na memória enquanto o Map existir (que é toda a vida do módulo). Com WeakMap, a instância pode ser coletada pelo GC quando não há mais referências externas, e o cache dela some automaticamente. Perfeito para decoradores que operam em instâncias."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que é `auto-accessor` e qual o papel do decorador `@observable` nele?",
+      "options": [
+        "auto-accessor é um array com getter e setter automáticos",
+        "accessor word-chave cria automaticamente um campo privado com get e set públicos; @observable pode envolver o setter para notificar mudanças",
+        "auto-accessor é um método que detecta automaticamente o tipo de retorno",
+        "accessor é equivalente a @property do Python"
+      ],
+      "correctAnswer": 1,
+      "explanation": "accessor count = 0 cria automaticamente um campo privado #count com get count() e set count(v). Um decorador de accessor recebe { get, set } e pode retornar novos get/set — o @observable adiciona lógica de notificação no setter sem que a classe precise implementar manualmente."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o principal benefício de decoradores em relação a Higher-Order Functions para adicionar comportamento cross-cutting?",
+      "options": [
+        "Decoradores são mais rápidos que HOF em runtime",
+        "Decoradores têm sintaxe declarativa no ponto de definição — mais legível e próximo do comportamento como anotação, sem modificar a estrutura da classe",
+        "Decoradores permitem modificar código de bibliotecas externas",
+        "HOF não funcionam com métodos assíncronos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com HOF: this.method = memoize(this.method.bind(this)) — imperativo, fora da definição. Com decorador: @memoize acima do método — declarativo, no lugar da definição. A intenção fica óbvia ao ler a classe. Para cross-cutting concerns (logging, cache, validação, binding), decoradores tornam o código significativamente mais legível."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-22",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é uma AST (Abstract Syntax Tree)?",
+      "options": [
+        "Uma árvore binária de busca otimizada para código JavaScript",
+        "A representação estruturada do código fonte como uma árvore de nós, onde cada nó representa uma construção da linguagem",
+        "Um formato de compressão de código para bundling",
+        "Um grafo de dependências entre módulos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma AST representa o código como uma árvore de nós tipados. 'const x = 1 + 2' vira um VariableDeclaration com um Declarator que tem um BinaryExpression como inicializador. É a forma que compiladores, linters e formatters entendem código — não como texto, mas como estrutura."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Quais são as três etapas do pipeline de transformação do Babel?",
+      "options": [
+        "Lint → Transform → Bundle",
+        "Parse → Transform → Generate",
+        "Tokenize → Optimize → Emit",
+        "Read → Analyze → Write"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Parse: código fonte → AST. Transform: plugins visitam e modificam a AST. Generate: AST modificada → código fonte. Cada plugin Babel opera no estágio Transform, recebendo a AST e podendo modificar nós via o padrão Visitor."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que é o padrão Visitor no contexto de traversal de AST?",
+      "options": [
+        "Um objeto que define callbacks para cada tipo de nó que você quer visitar durante o traversal",
+        "Uma classe que herda de AST e implementa métodos de visita",
+        "Um algoritmo de busca em profundidade que visita todos os nós",
+        "Uma função que gera código a partir de um nó AST"
+      ],
+      "correctAnswer": 0,
+      "explanation": "O padrão Visitor define um objeto com chaves sendo tipos de nó (VariableDeclaration, CallExpression, etc.) e valores sendo callbacks chamados quando aquele tipo de nó é encontrado durante o traversal. Babel, acorn-walk e ESTree-compatible parsers usam este padrão."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que são Tagged Template Literals e como permitem criar DSLs?",
+      "options": [
+        "Templates com tipos estáticos verificados em compile time",
+        "Uma função prefixada a uma template string — recebe os fragmentos estáticos e valores interpolados separados, permitindo processamento customizado",
+        "Templates que geram documentação automaticamente",
+        "Strings com parsing automático de variáveis de ambiente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "tag`texto ${valor} mais texto` chama tag(strings, ...values) onde strings é array dos fragmentos literais e values são os valores interpolados. Isso permite sql`SELECT WHERE id = ${id}` (SQL injection-safe), html`<p>${userInput}</p>` (escape automático), ou gql`{ user { name } }` (parse de GraphQL)."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é um codemod e qual problema resolve?",
+      "options": [
+        "Um plugin de compressão de código para produção",
+        "Uma transformação AST automatizada para fazer refactorings em grande escala — centenas de arquivos de uma vez",
+        "Um sistema de verificação de tipos mais rápido que TypeScript",
+        "Uma forma de minificar código sem mudar a semântica"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Codemods usam jscodeshift ou similar para parsear, transformar e regenerar código em múltiplos arquivos. Por exemplo: renomear uma prop em todos os componentes, migrar de uma API para outra, ou atualizar imports. O que levaria dias de busca-e-substitui manual é feito em segundos com garantias de corretude semântica."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que o objeto `path` no Babel é mais útil que acessar `node` diretamente?",
+      "options": [
+        "path é mais rápido de acessar que node",
+        "path inclui o nó atual E contexto: referência ao pai, escopo, e métodos para manipular a árvore (replaceWith, remove, insertBefore, etc.)",
+        "path funciona com TypeScript, node é apenas para JavaScript",
+        "path é imutável, garantindo transformações seguras"
+      ],
+      "correctAnswer": 1,
+      "explanation": "node é apenas o nó AST cru. path envolve o nó com contexto: path.parent (nó pai), path.scope (variáveis em escopo), path.parentPath (path do pai). E métodos: path.replaceWith(newNode), path.remove(), path.insertBefore(), path.skip(), path.stop(). Isso torna transformações de AST muito mais expressivas."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre Lexing e Parsing no processo de compilação?",
+      "options": [
+        "Lexing é mais lento que Parsing",
+        "Lexing transforma texto em tokens (unidades léxicas); Parsing transforma tokens em AST seguindo a gramática da linguagem",
+        "Lexing verifica tipos; Parsing verifica sintaxe",
+        "São sinônimos — descrevem o mesmo processo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Lexing (tokenização): 'const x = 1' → [{type: 'keyword', value: 'const'}, {type: 'identifier', value: 'x'}, ...]. Parsing: tokens → árvore hierárquica seguindo a gramática (VariableDeclaration contém VariableDeclarator que contém Identifier e inicializador). São estágios separados — o lexer não entende estrutura, o parser não entende texto."
+    }
+  ]
+}

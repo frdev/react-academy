@@ -1,0 +1,191 @@
+# Prototype Chain
+
+JavaScript não tem "classes" de verdade — tem **prototype delegation**. Entender protótipos é entender a base de toda herança e do próprio sistema de objetos da linguagem.
+
+## O que é o Prototype?
+
+Todo objeto em JavaScript tem um slot interno `[[Prototype]]` que aponta para outro objeto (ou `null`). Quando você acessa uma propriedade que não existe no objeto, o JS sobe essa cadeia automaticamente.
+
+```javascript
+const animal = {
+  respirar() { return 'respirando...' }
+}
+
+const cachorro = {
+  latir() { return 'Au au!' }
+}
+
+// Setar prototype manualmente
+Object.setPrototypeOf(cachorro, animal)
+
+cachorro.latir()    // 'Au au!' — própria do objeto
+cachorro.respirar() // 'respirando...' — encontrado no prototype!
+cachorro.voar       // undefined — não encontrado em nenhum lugar
+```
+
+## A busca na cadeia
+
+Quando você acessa `obj.prop`, o JavaScript:
+
+1. Procura `prop` no próprio objeto
+2. Se não acha, procura em `obj[[Prototype]]`
+3. Se não acha, procura em `obj[[Prototype]][[Prototype]]`
+4. Continua até chegar em `null` → retorna `undefined`
+
+```javascript
+const a = { x: 1 }
+const b = Object.create(a)  // b[[Prototype]] === a
+const c = Object.create(b)  // c[[Prototype]] === b
+
+c.x  // 1 — encontrado em 'a' após subir a cadeia
+c.hasOwnProperty('x')  // false — x não é própria de c
+```
+
+## `Object.create`: herança sem `new`
+
+`Object.create(proto)` cria um objeto com `[[Prototype]]` apontando para `proto`:
+
+```javascript
+const veiculo = {
+  tipo: 'veículo',
+  mover() { return `${this.tipo} movendo-se` }
+}
+
+const carro = Object.create(veiculo)
+carro.tipo = 'carro'
+carro.acelerar = function() { return 'vroooom' }
+
+carro.mover()     // 'carro movendo-se' — this é carro
+veiculo.mover()   // 'veículo movendo-se'
+```
+
+## `__proto__` vs `Object.getPrototypeOf`
+
+`__proto__` é legado — use as APIs modernas:
+
+```javascript
+// Legado (evitar)
+obj.__proto__
+
+// Moderno
+Object.getPrototypeOf(obj)     // leitura
+Object.setPrototypeOf(obj, proto) // escrita (evitar — lento!)
+Object.create(proto)           // criação com prototype
+
+// Verificar se proto está na cadeia
+Object.prototype.isPrototypeOf(obj)  // true para qualquer objeto
+```
+
+## `hasOwnProperty`: própria vs herdada
+
+```javascript
+const obj = Object.create({ herdada: true })
+obj.propria = true
+
+obj.hasOwnProperty('propria')   // true
+obj.hasOwnProperty('herdada')   // false
+'herdada' in obj                // true (checa toda a cadeia)
+'propria' in obj                // true
+
+// Iterar apenas propriedades próprias
+Object.keys(obj)                // ['propria'] — só próprias enumeráveis
+for (const key in obj) { ... } // itera herdadas também!
+
+// Seguro (protege contra prototype pollution):
+Object.hasOwn(obj, 'propria')  // true — ES2022, melhor que hasOwnProperty
+```
+
+## Como `new` usa protótipos
+
+```javascript
+function Animal(nome) {
+  this.nome = nome
+}
+
+Animal.prototype.falar = function() {
+  return `${this.nome} faz um som`
+}
+
+const gato = new Animal('Bichano')
+gato.nome    // 'Bichano' — própria
+gato.falar() // 'Bichano faz um som' — do prototype
+
+// O que new faz:
+// 1. const obj = {}
+// 2. obj.__proto__ = Animal.prototype
+// 3. Animal.call(obj, 'Bichano')
+// 4. return obj
+
+Object.getPrototypeOf(gato) === Animal.prototype  // true
+gato instanceof Animal                             // true
+```
+
+## A cadeia de protótipos até Object.prototype
+
+Quase todo objeto JavaScript herda de `Object.prototype`:
+
+```javascript
+const obj = {}
+// obj → Object.prototype → null
+
+Object.getPrototypeOf(obj) === Object.prototype  // true
+Object.getPrototypeOf(Object.prototype)          // null — fim da cadeia
+
+// É por isso que todo objeto tem toString, hasOwnProperty, etc.
+({}).toString()         // '[object Object]'
+({}).hasOwnProperty     // existe — vem de Object.prototype
+```
+
+```javascript
+// Cadeia de um array:
+const arr = []
+// arr → Array.prototype → Object.prototype → null
+
+Object.getPrototypeOf(arr) === Array.prototype  // true
+arr.push        // de Array.prototype
+arr.hasOwnProperty // de Object.prototype
+```
+
+## Prototype vs Classe Clássica
+
+JavaScript não tem "classes" no sentido clássico (mesmo com a sintaxe `class`). O que existe é **delegação via prototype**:
+
+| Herança Clássica (Java/C++) | Prototype Delegation (JS) |
+|---|---|
+| Cópia — instância tem cópia dos métodos | Referência — instância acessa pelo prototype |
+| Estático — definido em tempo de compilação | Dinâmico — prototype pode ser mudado em runtime |
+| "É um" (is-a) | "Delega para" |
+| Instâncias são independentes | Instâncias compartilham o prototype |
+
+```javascript
+// Mutabilidade do prototype em runtime:
+function Dog() {}
+Dog.prototype.bark = () => 'Woof!'
+
+const dog = new Dog()
+dog.bark()  // 'Woof!'
+
+// Adicionar método ao prototype DEPOIS de criar instâncias
+Dog.prototype.sit = () => 'Sit!'
+dog.sit()   // 'Sit!' — dog automaticamente acessa o novo método!
+```
+
+## Prototype Pollution: o risco de segurança
+
+Modificar `Object.prototype` afeta **todos os objetos** na aplicação:
+
+```javascript
+// NUNCA faça isso:
+Object.prototype.malicioso = true
+
+const obj = {}
+obj.malicioso  // true — todos os objetos foram afetados!
+
+// Verificação segura contra prototype pollution:
+const dados = JSON.parse(userInput)
+if (Object.hasOwn(dados, '__proto__') || Object.hasOwn(dados, 'constructor')) {
+  throw new Error('Prototype pollution attempt detected')
+}
+```
+
+> **Ponto chave:** `class` em JavaScript é açúcar sintático sobre protótipos, não herança clássica. O `instanceof` verifica a cadeia de protótipos. Prefira `Object.create()` para herança simples e `Object.hasOwn()` para checar propriedades de forma segura.

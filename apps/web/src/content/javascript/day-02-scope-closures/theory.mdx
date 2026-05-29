@@ -1,0 +1,260 @@
+# Scope & Closures
+
+Scope determina onde variáveis são visíveis. Closures permitem que funções "lembrem" do escopo onde foram criadas. Juntos, eles definem como dados fluem pelo seu código.
+
+## Os tipos de escopo em JavaScript
+
+### Global Scope
+
+Declarações no nível mais alto ficam no escopo global. No browser, ficam em `window`; no Node, em `global`.
+
+```javascript
+var globalVar = 'global' // em window no browser
+let notWindow = 'também global, mas não em window'
+```
+
+### Function Scope
+
+Variáveis com `var` têm escopo de função — são visíveis em toda a função, independente de blocos.
+
+```javascript
+function exemplo() {
+  if (true) {
+    var x = 10  // escopo: toda a função
+    let y = 20  // escopo: apenas o bloco if
+  }
+  console.log(x)  // 10 — var vaza do bloco
+  console.log(y)  // ReferenceError — let não vaza
+}
+```
+
+### Block Scope (ES6+)
+
+`let` e `const` têm escopo de bloco — `{}` cria um novo escopo.
+
+```javascript
+{
+  let block = 'visível apenas aqui'
+  const also = 'aqui também'
+}
+console.log(block)  // ReferenceError
+```
+
+## `var` vs `let` vs `const`
+
+| Característica | `var` | `let` | `const` |
+|---|---|---|---|
+| Escopo | Função | Bloco | Bloco |
+| Hoisting | Sim (valor `undefined`) | Sim (TDZ) | Sim (TDZ) |
+| Re-declaração | Sim | Não | Não |
+| Re-atribuição | Sim | Sim | Não |
+| Propriedade global | Sim | Não | Não |
+
+## Hoisting: o que realmente acontece
+
+JavaScript processa declarações antes de executar o código. **Hoisting move as declarações para o topo do escopo**, mas não as inicializações.
+
+```javascript
+// Como você escreveu:
+console.log(x)  // undefined (não ReferenceError)
+var x = 5
+
+// Como o JS processa:
+var x           // declaração hoistada
+console.log(x)  // undefined — ainda não foi inicializado
+x = 5           // inicialização fica no lugar
+```
+
+**Funções declaradas** são hoistadas completamente (declaração + corpo):
+
+```javascript
+greet()  // "Olá!" — funciona antes da declaração
+
+function greet() {
+  console.log('Olá!')
+}
+```
+
+**Function expressions não são hoistadas** (só a variável `var` é):
+
+```javascript
+greet()  // TypeError: greet is not a function
+
+var greet = function() {
+  console.log('Olá!')
+}
+```
+
+## Temporal Dead Zone (TDZ)
+
+`let` e `const` são hoistadas mas entram na **Temporal Dead Zone** — uma zona onde a variável existe mas não pode ser acessada até a declaração ser executada.
+
+```javascript
+console.log(x)  // ReferenceError: Cannot access 'x' before initialization
+let x = 5
+
+// Por que é útil? Evita bugs silenciosos com var
+function bugComVar() {
+  console.log(name)  // undefined — silencioso, perigoso
+  var name = 'Felipe'
+}
+
+function bomComLet() {
+  console.log(name)  // ReferenceError — claro e explícito
+  let name = 'Felipe'
+}
+```
+
+## Scope Chain: a busca por variáveis
+
+Quando o JavaScript procura uma variável, sobe pela cadeia de escopos até encontrar ou chegar ao global:
+
+```javascript
+const outer = 'externo'
+
+function pai() {
+  const meio = 'meio'
+  
+  function filho() {
+    const inner = 'interno'
+    console.log(inner)  // 'interno' — encontrado aqui
+    console.log(meio)   // 'meio' — encontrado no pai
+    console.log(outer)  // 'externo' — encontrado no global
+  }
+  
+  filho()
+}
+```
+
+## Closures: o coração do JavaScript
+
+Uma **closure** é criada quando uma função **lembra do escopo onde foi definida**, mesmo após esse escopo ter "fechado" (terminado de executar).
+
+```javascript
+function criarContador() {
+  let count = 0  // esta variável fica "viva" pela closure
+  
+  return {
+    increment: () => ++count,
+    decrement: () => --count,
+    value: () => count,
+  }
+}
+
+const counter = criarContador()
+counter.increment()  // 1
+counter.increment()  // 2
+counter.decrement()  // 1
+counter.value()      // 1
+
+// Cada chamada cria uma closure independente
+const counter2 = criarContador()
+counter2.value()  // 0 — começa do zero
+```
+
+### O clássico bug de closure em loops
+
+```javascript
+// Bug: todos os callbacks capturam a mesma variável i
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100)
+}
+// Imprime: 3, 3, 3 (var tem escopo de função, não de bloco)
+
+// Solução 1: usar let (escopo de bloco cria nova variável por iteração)
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100)
+}
+// Imprime: 0, 1, 2
+
+// Solução 2: IIFE para criar escopo
+for (var i = 0; i < 3; i++) {
+  ;((j) => {
+    setTimeout(() => console.log(j), 100)
+  })(i)
+}
+// Imprime: 0, 1, 2
+```
+
+### Casos de uso reais de closures
+
+**1. Encapsulamento / dados privados:**
+
+```javascript
+function criarBancoConta(saldoInicial) {
+  let saldo = saldoInicial  // privado — inacessível de fora
+  
+  return {
+    depositar: (valor) => { saldo += valor },
+    sacar: (valor) => { 
+      if (valor > saldo) throw new Error('Saldo insuficiente')
+      saldo -= valor 
+    },
+    verSaldo: () => saldo,
+  }
+}
+
+const conta = criarBancoConta(1000)
+conta.depositar(500)
+conta.verSaldo()  // 1500
+// conta.saldo — undefined, inacessível!
+```
+
+**2. Memoização:**
+
+```javascript
+function memoize(fn) {
+  const cache = new Map()  // cache privado via closure
+  
+  return (...args) => {
+    const key = JSON.stringify(args)
+    if (cache.has(key)) return cache.get(key)
+    const result = fn(...args)
+    cache.set(key, result)
+    return result
+  }
+}
+
+const fibonacci = memoize((n) => {
+  if (n <= 1) return n
+  return fibonacci(n - 1) + fibonacci(n - 2)
+})
+```
+
+**3. Partial application / currying:**
+
+```javascript
+function multiplicar(a) {
+  return (b) => a * b  // 'a' fica na closure
+}
+
+const dobrar = multiplicar(2)
+const triplicar = multiplicar(3)
+
+dobrar(5)    // 10
+triplicar(5) // 15
+```
+
+## Memória e closures
+
+Closures mantêm referências aos escopos externos — cuidado com memory leaks:
+
+```javascript
+function criarLeak() {
+  const dadosGigantes = new Array(1_000_000).fill('data')
+  
+  return () => console.log(dadosGigantes.length)
+  // dadosGigantes fica vivo enquanto a função retornada existir
+}
+
+// Boa prática: só capture o que precisa
+function criarEficiente() {
+  const dadosGigantes = new Array(1_000_000).fill('data')
+  const tamanho = dadosGigantes.length  // captura apenas o necessário
+  
+  return () => console.log(tamanho)
+  // dadosGigantes pode ser coletado pelo GC
+}
+```
+
+> **Resumo:** `let`/`const` sempre. Entenda que closures são a base de módulos, encapsulamento, e praticamente todos os patterns de JavaScript moderno. O "bug do var em loop" é uma das entrevistas mais comuns — saiba explicar e resolver.

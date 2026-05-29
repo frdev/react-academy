@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-19",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Como o algoritmo Mark-and-Sweep determina se um objeto pode ser coletado?",
+      "options": [
+        "Conta o número de referências ao objeto (reference counting)",
+        "Marca como coletável qualquer objeto que não seja alcançável a partir das GC roots (variáveis globais, call stack)",
+        "Monitora o tempo desde a última vez que o objeto foi acessado",
+        "Coleta objetos quando a memória está acima de 80% de capacidade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Mark-and-Sweep começa nas GC roots e segue todas as referências, marcando cada objeto alcançável. Tudo não marcado é inacessível — nunca mais será usado — e pode ser coletado. Um objeto pode ter 100 referências internas e ainda ser coletado se o grafo inteiro não é alcançável das roots."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que o V8 divide a heap em Young Generation e Old Generation?",
+      "options": [
+        "Para separar código JavaScript de código nativo",
+        "A maioria dos objetos morre jovem — coletar o Young frequentemente (Scavenger) é barato; objetos que sobrevivem vão para o Old que tem coleta menos frequente mas mais cara",
+        "Para garantir que objetos grandes tenham mais memória disponível",
+        "Por razões históricas — não tem impacto de performance real"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A hipótese geracional: a maioria dos objetos tem vida curta (variáveis locais, objetos temporários em loops). O Scavenger limpa o Young Generation em microssegundos. Objetos que 'sobrevivem' múltiplos scavenges são promovidos para o Old Generation, coletado menos frequentemente com um Major GC mais caro."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que event listeners podem causar memory leaks?",
+      "options": [
+        "Event listeners nunca são coletados pelo GC por design",
+        "O listener mantém uma referência ao closure, que por sua vez pode segurar referências a objetos grandes — e enquanto o elemento existir, nada nessa cadeia é coletado",
+        "addEventListener aloca memória que não pode ser liberada sem removeEventListener",
+        "Event listeners só causam leak se adicionados com { once: false }"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O elemento DOM segura o listener. O listener (closure) segura todas as variáveis no seu escopo léxico. Se o escopo inclui referências a componentes, dados grandes, ou o próprio objeto this, esses ficam na memória enquanto o listener existir. Sem removeEventListener, o listener vive enquanto o elemento existir."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a solução idiomática para remover múltiplos event listeners de uma vez sem guardar referências individuais?",
+      "options": [
+        "Clonar o elemento DOM (cloneNode) — remove todos os listeners",
+        "Usar AbortController: passar o signal como opção e chamar abort() para remover todos os listeners registrados com esse signal",
+        "Usar { once: true } em todos os listeners",
+        "Substituir innerHTML = innerHTML (re-parse remove listeners)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "AbortController.signal pode ser passado como terceiro argumento em addEventListener: element.on('click', fn, { signal }). Uma chamada controller.abort() remove todos os listeners registrados com esse signal simultaneamente — mais limpo que guardar referências individuais para removeEventListener."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é um 'detached DOM node' no contexto de memory leaks?",
+      "options": [
+        "Um elemento que nunca foi adicionado ao DOM",
+        "Um nó DOM que foi removido do documento mas ainda é referenciado por variável JavaScript — mantendo toda a sua subárvore na memória",
+        "Um elemento com display: none ou visibility: hidden",
+        "Um nó que perdeu seus event listeners"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando você faz container.remove() e depois container = null, mas ainda tem button = container.querySelector('button') guardado, button mantém uma referência ao nó. Como nós têm referências ao seu parentElement, o container inteiro (e tudo que ele contenha) fica na memória. DevTools mostra como '(detached DOM tree)'."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para que serve a ferramenta 'Allocation Timeline' no Chrome DevTools Memory tab?",
+      "options": [
+        "Para ver quanto tempo cada função leva para executar",
+        "Para mostrar onde (em qual código) memória está sendo alocada ao longo do tempo, identificando o source de alocações que não são coletadas",
+        "Para medir o tempo de garbage collection",
+        "Para comparar uso de memória entre duas versões do código"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Allocation Timeline registra onde cada alocação ocorreu (stack trace) e colore em azul alocações que foram coletadas e em cinza as que ficaram. Barras que não ficam cinza = objetos que continuam vivos. Ideal para rastrear a fonte de um leak — você vê exatamente qual linha de código está alocando objetos que ficam na memória."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que usar WeakMap em vez de Map para caches associados a objetos externos previne memory leaks?",
+      "options": [
+        "WeakMap tem limite de tamanho automático",
+        "WeakMap não impede o GC de coletar os objetos-chave — quando o objeto não tem mais referências externas, a entrada no WeakMap some, liberando tanto o objeto quanto o valor associado",
+        "WeakMap compacta os dados automaticamente para usar menos memória",
+        "Apenas WeakMap suporta objetos como chaves"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Map mantém referência forte às chaves — objetos usados como chaves nunca são coletados enquanto o Map existir. WeakMap usa referências fracas: se o único caminho para o objeto é via WeakMap, o GC pode coletá-lo. A entrada desaparece automaticamente. Perfeito para caches onde a vida do dado deve seguir a vida do objeto."
+    }
+  ]
+}

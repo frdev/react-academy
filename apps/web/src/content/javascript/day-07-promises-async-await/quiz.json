@@ -1,0 +1,84 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o comportamento de `Promise.all` quando uma das Promises rejeita?",
+      "options": [
+        "Ignora o erro e resolve com os valores que tiveram sucesso",
+        "Rejeita imediatamente com o primeiro erro, descartando as outras",
+        "Espera todas terminarem e então rejeita com todos os erros",
+        "Lança um SyntaxError"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Promise.all tem semântica 'fail-fast': se qualquer Promise rejeitar, toda a Promise.all rejeita imediatamente com esse erro. As outras Promises ainda executam (não são canceladas), mas seus resultados são descartados. Use Promise.allSettled se precisar de todos os resultados."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual o problema deste código?\n```js\nasync function getData() {\n  const a = await fetch('/api/a')\n  const b = await fetch('/api/b')\n  return [a, b]\n}\n```",
+      "options": [
+        "await não funciona com fetch",
+        "fetch('/api/b') só começa após fetch('/api/a') terminar — sequencial desnecessário",
+        "async functions não podem retornar arrays",
+        "Não há problema — está correto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "fetch('/api/b') só começa após fetch('/api/a') terminar completamente. Se cada request leva 1 segundo, o total é 2 segundos. Com Promise.all([fetch('/api/a'), fetch('/api/b')]), ambos executam em paralelo e o total seria ~1 segundo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `Promise.allSettled` garante que `Promise.all` não garante?",
+      "options": [
+        "Execução mais rápida",
+        "Que sempre resolve (nunca rejeita), com o resultado de cada Promise — sucesso ou falha",
+        "Que resolve na ordem original dos itens",
+        "Que trata erros automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Promise.allSettled sempre resolve (nunca rejeita) com um array descrevendo cada resultado: {status: 'fulfilled', value} ou {status: 'rejected', reason}. Ideal quando você precisa processar todos os resultados independente de falhas."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Uma função `async` sempre retorna:",
+      "options": [
+        "O valor retornado diretamente",
+        "Uma Promise que resolve com o valor retornado",
+        "undefined",
+        "Pode retornar qualquer coisa dependendo do await"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Funções async SEMPRE retornam uma Promise. Se você retornar 42, a função retorna Promise.resolve(42). Se lançar um erro, retorna Promise.reject(error). Isso permite que async functions sejam consumidas com .then()/.catch() ou await."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual das abordagens para error handling em async/await está CORRETA?",
+      "options": [
+        "try/catch apenas fora da função async",
+        "try/catch dentro da função async para capturar erros de await",
+        "Usar .catch() em vez de try/catch — await não pode ser usado com try/catch",
+        "Async functions nunca lançam erros"
+      ],
+      "correctAnswer": 1,
+      "explanation": "try/catch funciona normalmente com await dentro de funções async. O await 'desempacota' a Promise, então erros de rejections aparecem como exceções síncronas dentro do try. Você também pode usar .catch() na Promise retornada pela async function, ou uma combinação dos dois."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `Promise.race` e `Promise.any`?",
+      "options": [
+        "São idênticos",
+        "race resolve/rejeita com o PRIMEIRO que terminar (sucesso OU falha); any espera o primeiro com SUCESSO",
+        "any é mais rápido que race",
+        "race só funciona com 2 Promises; any com qualquer quantidade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Promise.race resolve ou rejeita com o resultado da primeira Promise que terminar, seja sucesso ou falha. Promise.any (ES2021) resolve com o primeiro SUCESSO e só rejeita se TODAS falharem (lança AggregateError). any é ideal para tentar múltiplos recursos e usar o mais rápido."
+    }
+  ]
+}

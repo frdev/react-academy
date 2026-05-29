@@ -1,0 +1,251 @@
+# Async Generators & Streams
+
+Async generators combinam o poder dos generators (lazy, pausável) com o mundo assíncrono das Promises. São a ferramenta nativa para processar dados que chegam ao longo do tempo — paginação de APIs, streams de arquivos, eventos do servidor.
+
+## Async Iterators: o protocolo assíncrono
+
+O protocolo assíncrono de iteração é idêntico ao síncrono, mas com Promises:
+
+- `[Symbol.asyncIterator]()` — retorna um *async iterator*
+- `.next()` — retorna uma **Promise** que resolve para `{ value, done }`
+
+```javascript
+// Async iterator manual: simula dados chegando em delay
+const delayedNumbers = {
+  [Symbol.asyncIterator]() {
+    let n = 0
+    return {
+      async next() {
+        await new Promise(r => setTimeout(r, 100))
+        if (n < 3) {
+          return { value: n++, done: false }
+        }
+        return { value: undefined, done: true }
+      }
+    }
+  }
+}
+
+// for await...of consome async iterables
+for await (const num of delayedNumbers) {
+  console.log(num) // 0, 1, 2 (com 100ms de intervalo)
+}
+```
+
+## `async function*`: Async Generator Functions
+
+A sintaxe `async function*` combina generators com async/await. Você pode `yield` valores e usar `await` dentro da mesma função:
+
+```javascript
+async function* ticker(interval, count) {
+  for (let i = 0; i < count; i++) {
+    await new Promise(r => setTimeout(r, interval))
+    yield { tick: i, time: Date.now() }
+  }
+}
+
+for await (const tick of ticker(500, 5)) {
+  console.log(tick) // um objeto a cada 500ms
+}
+```
+
+O padrão mais útil: paginar uma API sem acumular todos os resultados em memória:
+
+```javascript
+async function* paginate(fetchPage) {
+  let page = 1
+  while (true) {
+    const data = await fetchPage(page)
+    if (!data || data.items.length === 0) break
+    yield* data.items  // produz cada item individualmente
+    if (!data.hasMore) break
+    page++
+  }
+}
+
+// Uso: processa cada usuário à medida que a API responde
+for await (const user of paginate(fetchUsersPage)) {
+  await processUser(user)  // processa um de cada vez, sem acumular todos
+}
+```
+
+## `for await...of` em Profundidade
+
+`for await...of` funciona tanto com iteráveis *síncronos* quanto *assíncronos*:
+
+```javascript
+// Funciona com array síncrono (converte para async implicitamente)
+for await (const item of [1, 2, 3]) {
+  await doSomethingAsync(item)
+}
+
+// Funciona com array de Promises
+const promises = [fetch('/a'), fetch('/b'), fetch('/c')]
+for await (const response of promises) {
+  console.log(await response.json())
+  // processa em ordem, mas cada await espera a Promise resolver
+}
+```
+
+A diferença crítica entre `for await...of` e `Promise.all`:
+
+```javascript
+// Promise.all: todas em paralelo, espera todas terminarem, aloca todas em memória
+const all = await Promise.all(promises)
+
+// for await...of: em ordem, processa uma de cada vez
+// ideal quando: a ordem importa, o processamento é pesado, ou há muitos itens
+for await (const result of promises) { ... }
+```
+
+## Pipelines Assíncronos
+
+Async generators compõem perfeitamente em pipelines — cada estágio transforma o fluxo sem acumular dados:
+
+```javascript
+// Fonte: lê linhas de um arquivo simulado
+async function* readLines(filename) {
+  const content = await readFile(filename, 'utf8')
+  for (const line of content.split('\n')) {
+    if (line.trim()) yield line
+  }
+}
+
+// Transformação: filtra e parseia
+async function* parseJSON(lines) {
+  for await (const line of lines) {
+    try {
+      yield JSON.parse(line)
+    } catch {
+      // pula linhas inválidas
+    }
+  }
+}
+
+// Transformação: enriche com dados externos
+async function* enrich(records) {
+  for await (const record of records) {
+    const extra = await fetchDetails(record.id)
+    yield { ...record, ...extra }
+  }
+}
+
+// Consumidor: processa o resultado final
+async function processFile(filename) {
+  const pipeline = enrich(parseJSON(readLines(filename)))
+  for await (const record of pipeline) {
+    await saveToDatabase(record)
+  }
+}
+```
+
+## Backpressure: Controlando o Fluxo
+
+Backpressure é quando o consumidor processa mais devagar que o produtor. Async generators lidam com isso naturalmente — o produtor só avança quando o consumidor pede o próximo valor:
+
+```javascript
+async function* producer() {
+  for (let i = 0; i < 1000; i++) {
+    const data = await fetchData(i)  // 10ms
+    yield data
+  }
+}
+
+async function* consumer(source) {
+  for await (const item of source) {
+    await heavyProcessing(item)  // 100ms — 10x mais lento que o produtor
+    yield item
+  }
+}
+
+// O backpressure é automático:
+// consumer pede o próximo item apenas após terminar de processar o atual.
+// producer só chama fetchData quando consumer solicitar.
+// Máximo de 1 item em "buffer" por vez — independente das velocidades.
+for await (const result of consumer(producer())) {
+  save(result)
+}
+```
+
+Compare com callbacks/streams manuais onde você precisa implementar pausa/retomada explicitamente.
+
+## ReadableStream e Async Iterators
+
+Em ambientes modernos (Node.js 16+, browsers modernos), `ReadableStream` é um async iterable:
+
+```javascript
+// Node.js: ler arquivo como stream
+import { createReadStream } from 'fs'
+import { Readable } from 'stream'
+
+async function* processFile(path) {
+  const stream = createReadStream(path, { encoding: 'utf8' })
+  for await (const chunk of stream) {
+    yield chunk.toUpperCase()
+  }
+}
+
+// Fetch response body é um ReadableStream
+const response = await fetch('https://api.example.com/large-data')
+for await (const chunk of response.body) {
+  process(chunk)  // processa à medida que os bytes chegam
+}
+```
+
+## Server-Sent Events com Async Generators
+
+Um padrão elegante para SSE:
+
+```javascript
+async function* streamFromServer(url) {
+  const response = await fetch(url, {
+    headers: { 'Accept': 'text/event-stream' }
+  })
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      const text = decoder.decode(value)
+      for (const line of text.split('\n')) {
+        if (line.startsWith('data: ')) {
+          yield JSON.parse(line.slice(6))
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+// Uso limpo
+for await (const event of streamFromServer('/api/events')) {
+  updateUI(event)
+}
+```
+
+## Cancelamento com AbortController
+
+Para cancelar um async iterator em andamento:
+
+```javascript
+async function* cancellable(iterable, signal) {
+  for await (const item of iterable) {
+    if (signal.aborted) return  // para o generator
+    yield item
+  }
+}
+
+const controller = new AbortController()
+
+setTimeout(() => controller.abort(), 5000) // cancela após 5s
+
+for await (const item of cancellable(infiniteSource(), controller.signal)) {
+  process(item)
+}
+```
+
+> **Resumo:** Async generators são a primitiva nativa para streams em JavaScript puro — sem dependências externas. Eles implementam backpressure automaticamente, compõem em pipelines lineares e se integram com qualquer fonte assíncrona. Sempre que você precisar processar dados que chegam ao longo do tempo, prefira `async function*` + `for await...of` a acumular tudo em arrays.

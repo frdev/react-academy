@@ -1,0 +1,229 @@
+# this keyword
+
+`this` é um dos aspectos mais incompreendidos do JavaScript. Não é definido onde a função é **escrita**, mas como a função é **chamada**. Existem 4 regras que determinam o valor de `this`.
+
+## A regra fundamental
+
+`this` não é léxico (exceto em arrow functions) — é determinado **dinamicamente no momento da chamada**.
+
+```javascript
+function mostrarThis() {
+  console.log(this)
+}
+
+mostrarThis()              // window (global) ou undefined em strict mode
+const obj = { mostrarThis }
+obj.mostrarThis()          // obj { mostrarThis: f }
+new mostrarThis()          // instância criada pelo new
+mostrarThis.call({ x: 1 }) // { x: 1 }
+```
+
+## As 4 Regras de Binding
+
+### Regra 1: Default Binding
+
+Chamada simples (sem context) → `this` é `globalThis` (ou `undefined` em strict mode):
+
+```javascript
+function fn() {
+  return this
+}
+
+fn()  // window (browser) / global (node) / undefined (strict mode)
+
+// Strict mode previne this acidental
+'use strict'
+function strictFn() {
+  return this  // undefined
+}
+```
+
+### Regra 2: Implicit Binding
+
+Chamada como método de objeto → `this` é o objeto **imediatamente** à esquerda do ponto:
+
+```javascript
+const pessoa = {
+  nome: 'Ana',
+  saudar() {
+    return `Olá, sou ${this.nome}`
+  }
+}
+
+pessoa.saudar()  // 'Olá, sou Ana' — this é pessoa
+
+// Atenção: referência à função PERDE o binding
+const fn = pessoa.saudar
+fn()  // 'Olá, sou undefined' — this é global!
+
+// Outro armadilha: callbacks perdem o binding
+setTimeout(pessoa.saudar, 100)  // 'Olá, sou undefined'
+```
+
+### Regra 3: Explicit Binding
+
+Use `call`, `apply`, ou `bind` para definir `this` explicitamente:
+
+```javascript
+function saudar(cumprimento) {
+  return `${cumprimento}, ${this.nome}!`
+}
+
+const pessoa = { nome: 'Carlos' }
+
+// call: chama imediatamente, args separados por vírgula
+saudar.call(pessoa, 'Olá')      // 'Olá, Carlos!'
+
+// apply: chama imediatamente, args como array
+saudar.apply(pessoa, ['Oi'])    // 'Oi, Carlos!'
+
+// bind: retorna NOVA função com this fixo (não chama)
+const saudarCarlos = saudar.bind(pessoa)
+saudarCarlos('Hey')  // 'Hey, Carlos!'
+
+// bind também pode fixar argumentos (partial application)
+const olaPessoa = saudar.bind(pessoa, 'Olá')
+olaPessoa()  // 'Olá, Carlos!'
+```
+
+### Regra 4: New Binding
+
+Chamar função com `new` cria um novo objeto e `this` aponta para ele:
+
+```javascript
+function Pessoa(nome) {
+  this.nome = nome     // this é o novo objeto
+  this.saudar = () => `Olá, ${this.nome}`
+  // retorno implícito do novo objeto (sem return explícito de objeto)
+}
+
+const ana = new Pessoa('Ana')
+ana.nome    // 'Ana'
+ana.saudar() // 'Olá, Ana'
+
+// O que new faz internamente:
+// 1. Cria {} novo
+// 2. Seta __proto__ para Pessoa.prototype
+// 3. Chama Pessoa com this = {}
+// 4. Retorna o novo objeto (a menos que a função retorne outro objeto)
+```
+
+## Ordem de precedência das regras
+
+**`new` > `bind/call/apply` > implicit (método) > default**
+
+```javascript
+function fn() { return this.x }
+const obj = { x: 1, fn }
+const bound = fn.bind({ x: 2 })
+
+obj.fn()          // 1 (implicit)
+bound()           // 2 (explicit via bind)
+bound.call(obj)   // 2 (bind ganha sobre call!)
+new bound()       // undefined (new ignora bind!)
+```
+
+## Arrow Functions: this léxico
+
+Arrow functions **não têm próprio `this`** — capturam o `this` do escopo onde foram **definidas** (léxico):
+
+```javascript
+const obj = {
+  nome: 'Felipe',
+  
+  // Regular function — this dinâmico
+  saudarRegular: function() {
+    return this.nome  // 'Felipe' quando chamado como obj.saudarRegular()
+  },
+  
+  // Arrow function — this léxico
+  saudarArrow: () => {
+    return this.nome  // undefined! this é o escopo de fora (global)
+  },
+  
+  // Caso de uso correto: arrow em callback
+  saudarComDelay() {
+    setTimeout(() => {
+      console.log(this.nome)  // 'Felipe' — captura o this do método
+    }, 100)
+  },
+  
+  // Bug comum: arrow em callback que precisaria de regular
+  criarBotoesBugado() {
+    const items = ['a', 'b', 'c']
+    items.forEach(function(item) {
+      console.log(this)  // undefined em strict mode (perdeu binding)
+    })
+  },
+}
+```
+
+## O problema do callback e as soluções
+
+```javascript
+class Timer {
+  constructor() {
+    this.segundos = 0
+  }
+  
+  // Problema: this perdido no callback
+  iniciarBugado() {
+    setInterval(function() {
+      this.segundos++  // TypeError: Cannot read 'segundos' of undefined
+    }, 1000)
+  }
+  
+  // Solução 1: arrow function (mais moderna)
+  iniciarArrow() {
+    setInterval(() => {
+      this.segundos++  // funciona — arrow captura this do constructor
+    }, 1000)
+  }
+  
+  // Solução 2: bind
+  iniciarBind() {
+    setInterval(function() {
+      this.segundos++
+    }.bind(this), 1000)
+  }
+  
+  // Solução 3: salvar referência (legado)
+  iniciarSelf() {
+    const self = this
+    setInterval(function() {
+      self.segundos++  // usa self em vez de this
+    }, 1000)
+  }
+}
+```
+
+## call vs apply vs bind: quando usar cada um
+
+```javascript
+const numeros = [1, 2, 3, 4, 5]
+
+// Spread + call para varargs
+Math.max.apply(null, numeros)  // 5 (pré-ES6)
+Math.max(...numeros)           // 5 (ES6+, preferível)
+
+// bind para event listeners que precisam de contexto
+class ComponenteUI {
+  constructor() {
+    this.handleClick = this.handleClick.bind(this)
+    // ou: handleClick = () => { ... } como class field
+  }
+  
+  handleClick(event) {
+    this.atualizar()  // this correto
+  }
+  
+  atualizar() { /* ... */ }
+}
+
+// call para "borrow" de métodos
+const arrayLike = { 0: 'a', 1: 'b', length: 2 }
+Array.prototype.slice.call(arrayLike)  // ['a', 'b']
+Array.from(arrayLike)                  // ['a', 'b'] — forma moderna
+```
+
+> **Resumo das regras:** Default → global/undefined. Método → objeto da esquerda. call/apply/bind → explícito. new → novo objeto. Arrow → léxico (herda). Se tiver dúvida, adicione um `console.log(this)` antes de chamar a função.

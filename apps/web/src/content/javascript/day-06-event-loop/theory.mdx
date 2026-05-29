@@ -1,0 +1,203 @@
+# Event Loop
+
+JavaScript é single-threaded — executa uma coisa por vez. O Event Loop é o mecanismo que coordena a execução de código síncrono, callbacks assíncronos e microtasks. Entender isso explica por que `setTimeout(fn, 0)` não executa imediatamente.
+
+## O modelo de execução
+
+JavaScript tem:
+
+- **Call Stack**: onde funções executam (LIFO — Last In, First Out)
+- **Heap**: memória onde objetos são armazenados
+- **Task Queue** (Macrotask Queue): fila de callbacks de Web APIs
+- **Microtask Queue**: fila de alta prioridade para Promises
+- **Event Loop**: loop que monitora o stack e as filas
+
+```
+   Call Stack          Microtask Queue      Task Queue
+   ─────────           ───────────────      ──────────
+   │ main()  │         │ .then cb    │      │ setTimeout │
+   │ fn()    │    ←────│ .then cb    │  ←───│ setInterval│
+   └─────────┘         └─────────────┘      │ click evt  │
+        ↑                                   └────────────┘
+   Event Loop
+```
+
+## A regra fundamental do Event Loop
+
+> O Event Loop só pega um item da fila quando o **Call Stack está completamente vazio**.
+> **Microtasks são esvaziadas COMPLETAMENTE antes de qualquer macrotask.**
+
+```javascript
+console.log('1')        // síncrono
+
+setTimeout(() => {
+  console.log('2')      // macrotask — após microtasks
+}, 0)
+
+Promise.resolve().then(() => {
+  console.log('3')      // microtask — antes de macrotasks
+})
+
+console.log('4')        // síncrono
+
+// Output: 1, 4, 3, 2
+```
+
+## Call Stack em ação
+
+```javascript
+function c() {
+  console.log(new Error().stack)
+}
+function b() { c() }
+function a() { b() }
+a()
+
+// Call stack em c():
+// at c (script.js:2)
+// at b (script.js:5)
+// at a (script.js:6)
+// at script.js:7
+
+// Stack Overflow:
+function infinita() { infinita() }
+infinita()  // RangeError: Maximum call stack size exceeded
+```
+
+## Web APIs: onde o assíncrono acontece
+
+O browser (ou Node) fornece Web APIs que executam **fora** do Call Stack:
+
+```javascript
+// setTimeout registra o callback nas Web APIs
+// Após o delay, move o callback para a Task Queue
+setTimeout(callback, 1000)
+
+// fetch faz a requisição HTTP nas Web APIs
+// Após a resposta, resolve/rejeita a Promise
+fetch(url).then(callback)
+
+// addEventListener registra o handler
+// Eventos movem callbacks para a Task Queue
+element.addEventListener('click', callback)
+```
+
+## Macrotasks vs Microtasks
+
+**Macrotasks** (Task Queue):
+- `setTimeout`, `setInterval`, `setImmediate` (Node)
+- Eventos DOM (`click`, `keydown`, etc.)
+- I/O callbacks
+- `MessageChannel`
+
+**Microtasks** (Microtask Queue — alta prioridade):
+- `.then()`, `.catch()`, `.finally()` de Promises
+- `async/await` (internamente usa Promises)
+- `queueMicrotask(fn)`
+- `MutationObserver`
+
+```javascript
+// Sequência exata de execução:
+console.log('script start')              // 1
+
+setTimeout(() => console.log('timeout'), 0)  // macrotask
+
+Promise.resolve()
+  .then(() => console.log('promise 1'))  // microtask
+  .then(() => console.log('promise 2'))  // microtask (criada após promise 1)
+
+console.log('script end')               // 2
+
+// Output: script start → script end → promise 1 → promise 2 → timeout
+```
+
+## Microtasks se encadeiam antes das macrotasks
+
+Cada microtask pode criar novas microtasks, que são executadas **antes** de qualquer macrotask:
+
+```javascript
+// Microtask starvation — cuidado!
+function loopMicrotask() {
+  Promise.resolve().then(loopMicrotask)  // cria microtask infinita!
+}
+loopMicrotask()
+// Isso TRAVA o browser — macrotasks nunca executam
+// Rendering também nunca acontece!
+```
+
+## Por que `setTimeout(fn, 0)` não é imediato?
+
+```javascript
+// Mito: setTimeout(fn, 0) executa imediatamente após o código atual
+// Realidade: executa após o stack vazar + microtasks esvaziar
+
+const start = Date.now()
+setTimeout(() => {
+  console.log(`Delay real: ${Date.now() - start}ms`)
+}, 0)
+
+// Em browsers, o delay mínimo é ~4ms (especificado no HTML spec)
+// Em Node, é ~1ms
+// Qualquer Promises .then() vai executar ANTES
+```
+
+## O loop de renderização
+
+Browsers inserem um passo de renderização entre macrotasks (quando necessário):
+
+```
+macrotask → microtasks → [render: style, layout, paint] → macrotask → ...
+```
+
+```javascript
+// Por que animações com setTimeout ficam "choppy":
+setInterval(() => {
+  element.style.left = `${++pos}px`
+}, 16)  // 16ms ≈ 60fps, mas não sincronizado com o refresh do browser
+
+// Solução correta: requestAnimationFrame
+function animar() {
+  element.style.left = `${++pos}px`
+  requestAnimationFrame(animar)  // sincronizado com o próximo frame
+}
+requestAnimationFrame(animar)
+```
+
+## `queueMicrotask`: inserindo na fila de microtasks
+
+```javascript
+queueMicrotask(() => {
+  console.log('isso executa antes do próximo macrotask')
+})
+
+// Útil para garantir execução após o código síncrono atual
+// mas antes de qualquer setTimeout
+```
+
+## Visualizando a execução completa
+
+```javascript
+console.log('1 — síncrono')
+
+setTimeout(() => console.log('2 — macrotask 1'), 0)
+setTimeout(() => console.log('3 — macrotask 2'), 0)
+
+Promise.resolve()
+  .then(() => {
+    console.log('4 — microtask 1')
+    Promise.resolve().then(() => console.log('5 — microtask nested'))
+  })
+  .then(() => console.log('6 — microtask 2'))
+
+queueMicrotask(() => console.log('7 — microtask queueMicrotask'))
+
+console.log('8 — síncrono')
+
+// Ordem: 1, 8, 4, 7, 5, 6, 2, 3
+// Por quê?
+// Stack: 1, 8
+// Microtasks: 4 (cria nested e chain) → 7 → 5 (nested de 4) → 6 (chain de 4)
+// Macrotasks: 2, 3
+```
+
+> **Para memorizar:** Síncrono primeiro → Microtasks completamente esvaziadas (incluindo novos) → 1 Macrotask → Microtasks novamente → render → próxima macrotask. Promises são microtasks, setTimeout é macrotask.

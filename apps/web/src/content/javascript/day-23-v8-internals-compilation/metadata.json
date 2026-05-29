@@ -1,0 +1,14 @@
+{
+  "id": "day-23",
+  "day": 23,
+  "week": 4,
+  "title": "V8 Internals I — Compilação",
+  "slug": "v8-internals-compilation",
+  "topics": ["pipeline de compilação", "parser e AST", "Ignition bytecode", "TurboFan JIT", "speculative optimization", "deoptimização", "inlining"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 70,
+  "prerequisites": ["day-22"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

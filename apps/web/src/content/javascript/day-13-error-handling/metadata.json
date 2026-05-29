@@ -1,0 +1,14 @@
+{
+  "id": "day-13",
+  "day": 13,
+  "week": 2,
+  "title": "Error Handling Avançado",
+  "slug": "error-handling",
+  "topics": ["tipos de Error nativos", "custom errors", "error cause", "async errors", "unhandledRejection", "error reporting", "try/catch/finally em async"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-07"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

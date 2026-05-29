@@ -1,0 +1,71 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `this` vale dentro de uma arrow function?",
+      "options": [
+        "O objeto global (window)",
+        "undefined sempre",
+        "O this do escopo léxico onde a arrow foi definida",
+        "O objeto imediatamente à esquerda do ponto"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Arrow functions não possuem seu próprio this. Elas capturam o this do escopo léxico onde foram DEFINIDAS (não onde foram chamadas). Isso as torna ideais para callbacks que precisam manter o this do método pai."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a ordem de precedência correta para as regras de binding de this?",
+      "options": [
+        "default > implicit > explicit > new",
+        "new > explicit (bind/call/apply) > implicit (método) > default",
+        "explicit > new > implicit > default",
+        "implicit > explicit > new > default"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A ordem é: new (maior prioridade) > explicit (bind/call/apply) > implicit (método) > default (menor prioridade). Vale notar que bind ganha sobre call/apply, e new ganha sobre bind."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que acontece com this quando você extrai um método de um objeto?\n```js\nconst obj = { x: 1, fn() { return this.x } }\nconst extracted = obj.fn\nextracted()\n```",
+      "options": [
+        "Retorna 1 — mantém binding do objeto original",
+        "Retorna undefined — this é o global (ou undefined em strict mode)",
+        "Lança TypeError",
+        "Retorna null"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando você extrai uma referência ao método (const extracted = obj.fn), perde o binding implícito. A chamada extracted() usa default binding, então this é global (window) ou undefined em strict mode. Para preservar o binding, use obj.fn() diretamente ou extracted.bind(obj)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre call() e bind()?",
+      "options": [
+        "Não há diferença funcional",
+        "call chama a função imediatamente; bind retorna uma nova função com this fixo",
+        "bind só funciona com objetos; call funciona com qualquer valor",
+        "call aceita array de argumentos; bind aceita argumentos separados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "call(thisArg, arg1, arg2) chama a função imediatamente com o this especificado. bind(thisArg, arg1) retorna uma NOVA função com this permanentemente fixado (e opcionalmente argumentos pré-preenchidos). apply é como call mas aceita argumentos como array."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que não usar arrow function como método de objeto?\n```js\nconst obj = {\n  nome: 'Ana',\n  saudar: () => `Olá ${this.nome}`\n}\n```",
+      "options": [
+        "Arrow functions não podem ser métodos",
+        "this dentro da arrow captura o escopo de fora (global), não o objeto",
+        "Sintaxe inválida",
+        "Arrow functions não têm acesso a propriedades do objeto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Arrow functions capturam o this léxico do escopo onde foram DEFINIDAS. Como obj é um literal criado no escopo global, this dentro da arrow é global (window/undefined), não obj. Para métodos que precisam de this, use function keyword ou sintaxe de método shorthand: saudar() { ... }."
+    }
+  ]
+}

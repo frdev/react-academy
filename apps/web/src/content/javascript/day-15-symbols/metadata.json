@@ -1,0 +1,14 @@
+{
+  "id": "day-15",
+  "day": 15,
+  "week": 3,
+  "title": "Symbols & Well-Known Symbols",
+  "slug": "symbols",
+  "topics": ["Symbol()", "Symbol.iterator", "Symbol.toPrimitive", "Symbol.hasInstance", "Symbol.species", "Symbol.toStringTag", "uso como chaves privadas", "global Symbol registry"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-08"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 110
+}

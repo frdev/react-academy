@@ -1,0 +1,217 @@
+# Modules em Profundidade
+
+Modules são a base do JavaScript moderno — mas entender o que diferencia ES Modules de CommonJS, como funcionam os live bindings, e como o import dinâmico viabiliza code splitting é essencial para qualquer projeto sério.
+
+## ES Modules vs CommonJS
+
+Dois sistemas de módulos convivem no ecossistema JavaScript:
+
+| Característica | ES Modules (ESM) | CommonJS (CJS) |
+|---|---|---|
+| Sintaxe | `import/export` | `require/module.exports` |
+| Resolução | Estática (parse time) | Dinâmica (runtime) |
+| Bindings | Live bindings | Cópia do valor |
+| Top-level await | Sim | Não |
+| Padrão para | Browser, Node.js moderno | Node.js legado |
+
+```javascript
+// ES Module
+export const PI = 3.14159
+export function circle(r) { return PI * r * r }
+export default class Calculator { ... }
+
+// CommonJS
+const PI = 3.14159
+function circle(r) { return PI * r * r }
+module.exports = { PI, circle }
+module.exports.default = class Calculator { ... }
+```
+
+## Live Bindings: a Diferença Fundamental
+
+ESM exporta **live bindings** — referências à variável original, não cópias. Quando o módulo exportador atualiza o valor, todos os importadores veem a mudança:
+
+```javascript
+// counter.js
+export let count = 0
+export function increment() { count++ }
+
+// app.js
+import { count, increment } from './counter.js'
+
+console.log(count)  // 0
+increment()
+console.log(count)  // 1 — live binding!
+
+// CommonJS NÃO faz isso:
+const { count: cjsCount, increment: cjsIncrement } = require('./counter.cjs')
+cjsIncrement()
+console.log(cjsCount)  // 0 — cópia, não live binding
+```
+
+Live bindings são por isso que React's `useState` pattern não precisaria funcionar diferente se fosse um módulo — a binding atualiza todos os leitores.
+
+## Named vs Default Exports
+
+```javascript
+// named exports — múltiplos por módulo
+export const add = (a, b) => a + b
+export const sub = (a, b) => a - b
+export function multiply(a, b) { return a * b }
+
+// importar named
+import { add, sub } from './math.js'
+import { add as soma } from './math.js'  // alias
+import * as math from './math.js'        // namespace import
+
+// default export — apenas um por módulo
+export default function formatDate(date) { ... }
+
+// importar default
+import formatDate from './date.js'          // qualquer nome
+import minhaFuncao from './date.js'         // funciona também
+import formatDate, { parseDate } from './date.js'  // default + named
+```
+
+**Boas práticas:**
+- Prefira named exports — são mais refactorable (IDEs encontram e renomeiam)
+- Use default export para o "principal" do módulo (componente, classe principal)
+- Evite `export default` para objetos — perde tree shaking
+
+## Resolução de Módulos Estática
+
+A resolução estática é o que permite *tree shaking* (remover código não usado):
+
+```javascript
+// O bundler sabe em tempo de build EXATAMENTE o que é importado
+import { add } from './math.js'  // apenas 'add' é incluído no bundle
+
+// CommonJS é dinâmico — não é possível saber estaticamente
+const fn = condition ? 'add' : 'sub'
+const math = require('./math.cjs')
+math[fn](1, 2)  // bundler não pode eliminar 'sub' — pode ser usada
+```
+
+O motor JavaScript analisa os imports/exports **antes de executar qualquer código** — por isso imports ficam no topo e não podem estar dentro de `if` ou funções.
+
+## `import()` Dinâmico: Lazy Loading
+
+`import()` é uma função que retorna uma Promise — útil para carregar módulos sob demanda:
+
+```javascript
+// Carrega o módulo apenas quando necessário
+async function loadEditor() {
+  const { Editor } = await import('./editor.js')
+  return new Editor()
+}
+
+// Code splitting em React
+const HeavyComponent = React.lazy(() => import('./HeavyComponent'))
+
+// Condicional
+async function loadPolyfill() {
+  if (!window.IntersectionObserver) {
+    await import('intersection-observer')  // polyfill sob demanda
+  }
+}
+
+// Carregar baseado em variável (bundler inclui todos os possíveis)
+async function loadLocale(locale) {
+  const messages = await import(`./locales/${locale}.json`)
+  return messages.default
+}
+```
+
+`import()` funciona dentro de funções, condicionais, e loops — diferente dos imports estáticos no topo do arquivo.
+
+## Circular Dependencies: a Armadilha
+
+Módulos podem importar uns aos outros circularmente, mas isso causa problemas sutis:
+
+```javascript
+// a.js
+import { b } from './b.js'
+export const a = `a uses ${b}`
+
+// b.js
+import { a } from './a.js'
+export const b = `b uses ${a}`
+```
+
+Quando `a.js` é carregado, ele importa `b.js`. `b.js` importa `a.js` — mas `a.js` ainda não terminou de executar, então `a` é `undefined` no momento que `b.js` o lê!
+
+```javascript
+// Resultado:
+// b = "b uses undefined"
+// a = "a uses b uses undefined"
+```
+
+**Solução:** quebrar a dependência circular extraindo para um terceiro módulo, ou garantir que a dependência circular usa funções (lazy) em vez de valores (eager):
+
+```javascript
+// Funciona porque funções são chamadas depois de tudo carregar
+export function getA() { return a.value }  // lazy — seguro
+export const a = 'valor'                    // eager — pode ser undefined
+```
+
+## Module Scope e Singleton Pattern
+
+Módulos em ES são singletons — o código de um módulo executa apenas uma vez, independente de quantas vezes é importado:
+
+```javascript
+// store.js
+const state = { count: 0 }  // executado UMA VEZ, compartilhado por todos
+
+export function increment() { state.count++ }
+export function getCount() { return state.count }
+
+// a.js
+import { increment } from './store.js'
+increment()
+
+// b.js
+import { getCount } from './store.js'
+getCount()  // 1 — vê a mudança de a.js!
+```
+
+Isso torna módulos naturalmente adequados para state global e singletons.
+
+## Top-Level Await
+
+ES2022 permite `await` no nível do módulo (fora de funções async):
+
+```javascript
+// config.js
+const response = await fetch('/api/config')
+export const config = await response.json()
+
+// db.js
+export const db = await connectToDatabase()
+
+// app.js
+import { config } from './config.js'  // aguarda config.js resolver
+import { db } from './db.js'
+// garantido: config e db estão prontos
+```
+
+Módulos que usam top-level await bloqueiam seus importadores até resolver — funciona como `await` normal, mas no grafo de dependências.
+
+## Tree Shaking e Side Effects
+
+Tree shaking remove exports não usados. Para funcionar, o bundler precisa saber se um módulo tem *side effects* (código que roda mesmo sem ser importado):
+
+```javascript
+// package.json do módulo
+{
+  "sideEffects": false  // nenhum módulo tem side effects — seguro para tree shake
+}
+
+// Ou lista específica
+{
+  "sideEffects": ["./src/polyfills.js", "*.css"]
+}
+```
+
+Módulos com side effects (que modificam globals, adicionam event listeners ao carregar, etc.) não devem ser marcados como `sideEffects: false`.
+
+> **Resumo:** ESM tem resolução estática (tree shaking), live bindings (exports atualizam todos os importadores) e é o padrão do ecossistema moderno. Use `import()` dinâmico para code splitting e lazy loading. Evite dependências circulares. Módulos são singletons — ótimos para state compartilhado.

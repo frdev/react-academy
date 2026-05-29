@@ -1,0 +1,25 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "Event Loop",
+  "slug": "event-loop",
+  "topics": [
+    "call stack",
+    "Web APIs",
+    "task queue (macrotask)",
+    "microtask queue",
+    "Promise microtasks",
+    "setTimeout(0) vs Promise",
+    "starvation",
+    "renderização entre tasks"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": [
+    "day-05"
+  ],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

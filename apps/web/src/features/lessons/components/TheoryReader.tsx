@@ -1,0 +1,157 @@
+import { useParams, useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useLesson, getLessonSteps } from '../hooks/useLesson'
+import { useLessonActions } from '../hooks/useLessonProgress'
+import { Button, cn } from '@academy/ui'
+
+// Vite requires static import() paths — enumerate per stack
+const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.ComponentType }>>> = {
+  react: {
+    'day-01': () => import('@/content/react/day-01-render-cycle/theory.mdx'),
+    'day-02': () => import('@/content/react/day-02-reconciliation/theory.mdx'),
+    'day-03': () => import('@/content/react/day-03-virtual-dom/theory.mdx'),
+    'day-04': () => import('@/content/react/day-04-state-vs-ref/theory.mdx'),
+    'day-05': () => import('@/content/react/day-05-controlled-uncontrolled/theory.mdx'),
+    'day-06': () => import('@/content/react/day-06-composition-pattern/theory.mdx'),
+    'day-07': () => import('@/content/react/day-07-render-props-hoc/theory.mdx'),
+    'day-08': () => import('@/content/react/day-08-usememo/theory.mdx'),
+    'day-09': () => import('@/content/react/day-09-usecallback/theory.mdx'),
+    'day-10': () => import('@/content/react/day-10-useref-profundidade/theory.mdx'),
+    'day-11': () => import('@/content/react/day-11-custom-hooks/theory.mdx'),
+    'day-12': () => import('@/content/react/day-12-usereducer/theory.mdx'),
+    'day-13': () => import('@/content/react/day-13-context-performance/theory.mdx'),
+    'day-14': () => import('@/content/react/day-14-uselayouteffect-vs-useeffect/theory.mdx'),
+    'day-15': () => import('@/content/react/day-15-feature-based-architecture/theory.mdx'),
+    'day-16': () => import('@/content/react/day-16-compound-components/theory.mdx'),
+    'day-17': () => import('@/content/react/day-17-headless-components/theory.mdx'),
+    'day-18': () => import('@/content/react/day-18-state-machines/theory.mdx'),
+    'day-19': () => import('@/content/react/day-19-global-state/theory.mdx'),
+    'day-20': () => import('@/content/react/day-20-server-state/theory.mdx'),
+    'day-21': () => import('@/content/react/day-21-error-boundaries/theory.mdx'),
+    'day-22': () => import('@/content/react/day-22-react-memo/theory.mdx'),
+    'day-23': () => import('@/content/react/day-23-lazy-loading/theory.mdx'),
+    'day-24': () => import('@/content/react/day-24-suspense/theory.mdx'),
+    'day-25': () => import('@/content/react/day-25-concurrent-features/theory.mdx'),
+    'day-26': () => import('@/content/react/day-26-tanstack-query/theory.mdx'),
+    'day-27': () => import('@/content/react/day-27-testing/theory.mdx'),
+    'day-28': () => import('@/content/react/day-28-accessibility/theory.mdx'),
+    'day-29': () => import('@/content/react/day-29-design-patterns/theory.mdx'),
+    'day-30': () => import('@/content/react/day-30-projeto-final/theory.mdx'),
+  },
+  javascript: {
+    'day-01': () => import('@/content/javascript/day-01-types-coercion/theory.mdx'),
+    'day-02': () => import('@/content/javascript/day-02-scope-closures/theory.mdx'),
+    'day-03': () => import('@/content/javascript/day-03-functions/theory.mdx'),
+    'day-04': () => import('@/content/javascript/day-04-this-keyword/theory.mdx'),
+    'day-05': () => import('@/content/javascript/day-05-prototype-chain/theory.mdx'),
+    'day-06': () => import('@/content/javascript/day-06-event-loop/theory.mdx'),
+    'day-07': () => import('@/content/javascript/day-07-promises-async-await/theory.mdx'),
+    'day-08': () => import('@/content/javascript/day-08-iterators-generators/theory.mdx'),
+    'day-09': () => import('@/content/javascript/day-09-async-generators/theory.mdx'),
+    'day-10': () => import('@/content/javascript/day-10-classes-inheritance/theory.mdx'),
+    'day-11': () => import('@/content/javascript/day-11-modules/theory.mdx'),
+    'day-12': () => import('@/content/javascript/day-12-destructuring-patterns/theory.mdx'),
+    'day-13': () => import('@/content/javascript/day-13-error-handling/theory.mdx'),
+    'day-14': () => import('@/content/javascript/day-14-weakmap-weakref/theory.mdx'),
+    'day-15': () => import('@/content/javascript/day-15-symbols/theory.mdx'),
+    'day-16': () => import('@/content/javascript/day-16-proxy-reflect/theory.mdx'),
+    'day-17': () => import('@/content/javascript/day-17-functional-programming/theory.mdx'),
+    'day-18': () => import('@/content/javascript/day-18-design-patterns/theory.mdx'),
+    'day-19': () => import('@/content/javascript/day-19-memory-management/theory.mdx'),
+    'day-20': () => import('@/content/javascript/day-20-workers-concurrency/theory.mdx'),
+    'day-21': () => import('@/content/javascript/day-21-security/theory.mdx'),
+    'day-22': () => import('@/content/javascript/day-22-ast-code-transformation/theory.mdx'),
+    'day-23': () => import('@/content/javascript/day-23-v8-internals-compilation/theory.mdx'),
+    'day-24': () => import('@/content/javascript/day-24-v8-hidden-classes/theory.mdx'),
+    'day-25': () => import('@/content/javascript/day-25-advanced-async-patterns/theory.mdx'),
+    'day-26': () => import('@/content/javascript/day-26-decorators/theory.mdx'),
+    'day-27': () => import('@/content/javascript/day-27-temporal-i18n/theory.mdx'),
+    'day-28': () => import('@/content/javascript/day-28-advanced-testing/theory.mdx'),
+    'day-29': () => import('@/content/javascript/day-29-observability/theory.mdx'),
+    'day-30': () => import('@/content/javascript/day-30-projeto-final-framework/theory.mdx'),
+  },
+}
+
+// Prose styles for MDX content
+const proseClasses = [
+  'prose prose-invert max-w-none',
+  'prose-headings:text-white prose-headings:font-semibold',
+  'prose-h1:text-3xl prose-h2:text-xl prose-h2:mt-8 prose-h3:text-lg',
+  'prose-p:text-gray-300 prose-p:leading-relaxed',
+  '[&_:not(pre)>code]:text-blue-300 [&_:not(pre)>code]:bg-gray-800 [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded [&_:not(pre)>code]:text-sm [&_:not(pre)>code]:font-mono',
+  '[&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:border-0',
+  '[&_pre>code]:!bg-transparent [&_pre>code]:text-inherit',
+  '[&_[data-rehype-pretty-code-figure]]:rounded-xl [&_[data-rehype-pretty-code-figure]]:overflow-hidden [&_[data-rehype-pretty-code-figure]]:border [&_[data-rehype-pretty-code-figure]]:border-gray-700 [&_[data-rehype-pretty-code-figure]]:my-6',
+  '[&_[data-rehype-pretty-code-figure]_pre]:!p-5 [&_[data-rehype-pretty-code-figure]_pre]:overflow-x-auto',
+  'prose-blockquote:border-l-blue-500 prose-blockquote:text-gray-300 prose-blockquote:bg-blue-900/20 prose-blockquote:rounded-r-lg prose-blockquote:px-4',
+  'prose-strong:text-white',
+  'prose-li:text-gray-300',
+].join(' ')
+
+export function TheoryReader() {
+  const { stackId = 'react', dayId } = useParams<{ stackId: string; dayId: string }>()
+  const navigate = useNavigate()
+  const lesson = useLesson(dayId ?? '', stackId)
+  const { markTheoryRead } = useLessonActions(dayId ?? '')
+  const [MdxContent, setMdxContent] = useState<React.ComponentType | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    if (!dayId) return
+    setMdxContent(null)
+    setNotFound(false)
+    setIsLoading(true)
+    const importer = MDX_IMPORTS[stackId]?.[dayId]
+    if (!importer) {
+      setNotFound(true)
+      setIsLoading(false)
+      return
+    }
+    importer()
+      .then(module => {
+        setMdxContent(() => module.default)
+        setIsLoading(false)
+      })
+      .catch(() => {
+        setNotFound(true)
+        setIsLoading(false)
+      })
+  }, [stackId, dayId])
+
+  const handleComplete = async () => {
+    await markTheoryRead()
+    if (!lesson) return
+    const steps = getLessonSteps(lesson)
+    const nextStep = steps[1]
+    navigate(`/${stackId}/day/${dayId}/${nextStep}`)
+  }
+
+  if (isLoading) {
+    return <div className="text-gray-500 animate-pulse">Carregando teoria...</div>
+  }
+
+  if (notFound || !MdxContent) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-gray-400 text-lg mb-2">Conteúdo ainda não disponível</p>
+        <p className="text-gray-600 text-sm">Este dia será liberado em breve.</p>
+        <Button className="mt-6" onClick={() => navigate(`/${stackId}`)}>← Voltar ao início</Button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <article className={cn(proseClasses, 'mb-12')}>
+        <MdxContent />
+      </article>
+
+      <div className="border-t border-gray-800 pt-6 flex justify-end">
+        <Button onClick={handleComplete} size="lg">
+          Concluir Teoria →
+        </Button>
+      </div>
+    </div>
+  )
+}

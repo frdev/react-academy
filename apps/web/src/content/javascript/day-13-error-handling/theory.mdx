@@ -1,0 +1,274 @@
+# Error Handling Avançado
+
+Error handling robusto é o que separa código de produção de código de prototipagem. Além do `try/catch` básico, JavaScript oferece uma hierarquia de Error types, custom errors com `cause`, tratamento de erros em Promises, e hooks globais para erros não tratados.
+
+## A Hierarquia de Error Types
+
+JavaScript possui tipos de erro nativos com semântica específica:
+
+```javascript
+// Error base — para erros genéricos
+new Error('algo deu errado')
+
+// ReferenceError — variável não declarada
+undeclaredVar  // ReferenceError: undeclaredVar is not defined
+
+// TypeError — operação em tipo errado
+null.toString()  // TypeError: Cannot read properties of null
+
+// SyntaxError — código inválido (detectado em parse time)
+// eval('if (')  // SyntaxError: Unexpected end of input
+
+// RangeError — número fora do range válido
+new Array(-1)          // RangeError: Invalid array length
+(1.5).toFixed(200)     // RangeError: toFixed() digits argument out of range
+
+// URIError
+decodeURIComponent('%')  // URIError: URI malformed
+
+// EvalError — legado, raramente usado
+```
+
+Cada tipo carrega informação semântica — ao lançar `TypeError` em vez de `Error` genérico, você comunica *por que* o erro ocorreu.
+
+## Custom Errors
+
+Estender `Error` para criar tipos próprios é a melhor prática para aplicações:
+
+```javascript
+class AppError extends Error {
+  constructor(message, options = {}) {
+    super(message, options)  // options.cause é passado automaticamente
+    this.name = this.constructor.name  // 'AppError' em vez de 'Error'
+  }
+}
+
+class ValidationError extends AppError {
+  constructor(field, message) {
+    super(`Validação falhou para '${field}': ${message}`)
+    this.field = field
+  }
+}
+
+class NetworkError extends AppError {
+  constructor(url, status, options) {
+    super(`HTTP ${status} ao acessar ${url}`, options)
+    this.url = url
+    this.status = status
+  }
+}
+
+class NotFoundError extends AppError {
+  constructor(resource, id) {
+    super(`${resource} com id=${id} não encontrado`)
+    this.resource = resource
+    this.id = id
+  }
+}
+
+// Uso
+try {
+  throw new ValidationError('email', 'formato inválido')
+} catch (err) {
+  if (err instanceof ValidationError) {
+    console.log(err.field)    // 'email'
+    console.log(err.name)     // 'ValidationError'
+  }
+}
+```
+
+## `error.cause`: Encadeando Erros
+
+ES2022 adicionou `cause` para preservar o erro original ao fazer wrap:
+
+```javascript
+async function loadUser(id) {
+  try {
+    const response = await fetch(`/api/users/${id}`)
+    if (!response.ok) {
+      throw new NetworkError(`/api/users/${id}`, response.status)
+    }
+    return response.json()
+  } catch (err) {
+    // Preserve a causa original ao criar um erro de mais alto nível
+    throw new AppError(`Falha ao carregar usuário ${id}`, { cause: err })
+  }
+}
+
+try {
+  await loadUser(42)
+} catch (err) {
+  console.log(err.message)        // "Falha ao carregar usuário 42"
+  console.log(err.cause.message)  // "HTTP 404 ao acessar /api/users/42"
+  console.log(err.cause instanceof NetworkError)  // true
+}
+```
+
+Isso cria uma *chain de causa* que mantém o contexto completo sem perder o erro original.
+
+## Error Handling Assíncrono
+
+```javascript
+// Padrão 1: try/catch em async/await (recomendado)
+async function fetchData(url) {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new NetworkError(url, res.status)
+    return await res.json()
+  } catch (err) {
+    // NetworkError OU erros de rede (fetch rejeitado)
+    handleError(err)
+    throw err  // re-lança para o caller decidir
+  }
+}
+
+// Padrão 2: .catch() em Promise chains
+fetch(url)
+  .then(res => res.json())
+  .catch(err => {
+    // captura qualquer erro no then anterior
+    return defaultData
+  })
+
+// Armadilha: não misturar async/await com .catch() sem cuidado
+async function risky() {
+  return fetch(url)  // SEM await!
+  // O catch() abaixo NÃO captura erros — a Promise é retornada, não aguardada
+}
+
+async function safe() {
+  return await fetch(url)  // COM await
+  // Erros são capturados pelo try/catch do caller
+}
+```
+
+## Erros em Paralelo com `Promise.all`
+
+```javascript
+// Promise.all falha rápido: o primeiro erro cancela tudo
+try {
+  const [users, posts, comments] = await Promise.all([
+    fetchUsers(),    // pode falhar
+    fetchPosts(),    // pode falhar
+    fetchComments()  // pode falhar
+  ])
+} catch (err) {
+  // err é o PRIMEIRO erro que ocorreu
+  // as outras Promises continuam rodando, mas os resultados são ignorados
+}
+
+// Promise.allSettled: coleta TODOS os resultados, sejam erros ou não
+const results = await Promise.allSettled([
+  fetchUsers(),
+  fetchPosts(),
+  fetchComments()
+])
+
+results.forEach(result => {
+  if (result.status === 'fulfilled') {
+    process(result.value)
+  } else {
+    logError(result.reason)  // o erro
+  }
+})
+```
+
+## Hooks Globais para Erros Não Tratados
+
+```javascript
+// Browser: captura Promises rejeitadas sem .catch()
+window.addEventListener('unhandledrejection', event => {
+  console.error('Promise não tratada:', event.reason)
+  event.preventDefault()  // previne o log padrão do browser
+  reportToErrorService(event.reason)
+})
+
+// Browser: captura erros síncronos não tratados
+window.addEventListener('error', event => {
+  console.error('Erro global:', event.error)
+  reportToErrorService(event.error)
+})
+
+// Node.js
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Promise não tratada:', reason)
+  // Em Node.js moderno, encerrar o processo é recomendado
+  process.exit(1)
+})
+
+process.on('uncaughtException', (err) => {
+  console.error('Exceção não capturada:', err)
+  process.exit(1)  // sempre encerrar após uncaughtException
+})
+```
+
+## Error Boundaries e Reporting
+
+Pattern para logar erros com contexto:
+
+```javascript
+class ErrorReporter {
+  static #instance = null
+
+  static getInstance() {
+    if (!ErrorReporter.#instance) {
+      ErrorReporter.#instance = new ErrorReporter()
+    }
+    return ErrorReporter.#instance
+  }
+
+  report(error, context = {}) {
+    const report = {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      cause: error.cause?.message,
+      context,
+      timestamp: new Date().toISOString(),
+      url: window.location?.href,
+    }
+
+    // Enviar para serviço de monitoramento (Sentry, DataDog, etc.)
+    console.error('[ErrorReporter]', report)
+    // await fetch('/api/errors', { method: 'POST', body: JSON.stringify(report) })
+  }
+}
+
+// Error boundary genérico
+async function withErrorBoundary(fn, context) {
+  try {
+    return await fn()
+  } catch (err) {
+    ErrorReporter.getInstance().report(err, context)
+    throw err  // re-lança para o caller
+  }
+}
+
+// Uso
+await withErrorBoundary(
+  () => loadUser(userId),
+  { component: 'UserProfile', userId }
+)
+```
+
+## Finally: Garantindo Limpeza
+
+```javascript
+async function withTransaction(db, operation) {
+  const tx = await db.beginTransaction()
+  try {
+    const result = await operation(tx)
+    await tx.commit()
+    return result
+  } catch (err) {
+    await tx.rollback()
+    throw err  // re-lança após rollback
+  } finally {
+    await tx.release()  // sempre libera o recurso, seja erro ou sucesso
+  }
+}
+```
+
+`finally` executa independente do que aconteceu — sucesso, erro, ou mesmo `return` dentro do `try`. Essencial para liberar recursos.
+
+> **Resumo:** Use tipos de erro semânticos (`TypeError`, `ValidationError`) para comunicar intenção. Preserve a causa original com `{ cause: err }`. Sempre trate `unhandledRejection` globalmente. Use `finally` para cleanup de recursos. Em Promises paralelas, `allSettled` quando você precisa de todos os resultados, `all` quando um erro deve abortar tudo.

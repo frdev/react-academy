@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-28",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença fundamental entre testes baseados em exemplos (example-based) e property-based testing?",
+      "options": [
+        "Property-based tests são mais lentos que example-based",
+        "Example-based usa casos específicos escritos pelo dev; property-based define propriedades que devem valer para qualquer entrada e a biblioteca gera centenas de casos automaticamente",
+        "Property-based testing só funciona com funções puras",
+        "Example-based é para unit tests; property-based é para integration tests"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em example-based você escreve expect(sort([3,1,2])).toEqual([1,2,3]). Em property-based você descreve: 'para qualquer array, sorted.length === arr.length E está em ordem crescente'. A biblioteca (fast-check, etc.) gera centenas de arrays aleatórios e verifica. Encontra casos que nenhum humano pensaria em escrever."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que é 'shrinking' em property-based testing e por que é valioso?",
+      "options": [
+        "Redução do número de testes gerados para acelerar a suite",
+        "Ao encontrar um input que falha, a biblioteca reduz automaticamente ao menor input que ainda causa a falha — tornando o contraexemplo mais fácil de debugar",
+        "Compressão do código de teste para diminuir o tamanho do bundle",
+        "Remoção de testes redundantes detectados automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem shrinking, você vê: 'falhou com [3, -1, 0, 9, 42, -7, 3, 15, -22, 8]' — difícil de entender. Com shrinking, fast-check tenta progressivamente inputs menores e reporta: 'falhou com [-7, 3]'. O mínimo que reproduz o bug. Isso transforma um caso de 10 elementos num de 2 — muito mais fácil de diagnosticar."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que mutation testing mede que coverage (% de linhas cobertas) não mede?",
+      "options": [
+        "Performance dos testes",
+        "Se os testes realmente detectam bugs — coverage mede se o código foi executado, mas não se o assertion verificaria um bug naquela linha",
+        "O número de testes necessários para cobertura completa",
+        "Se o código segue boas práticas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "100% de coverage pode ser atingido com expect(fn()).toBeDefined() — executa todo o código mas não verifica nada. Mutation testing faz isso: transforma age >= 18 em age > 18 e verifica se algum teste falha. Se não falha, o teste não verifica o comportamento correto daquela linha, mesmo com 100% coverage."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que é um 'mutant survived' no Stryker e o que indica?",
+      "options": [
+        "Um teste que passou mesmo com código mutado — indica lacuna na suite de testes",
+        "Um teste que foi gerado automaticamente pelo Stryker",
+        "Uma mutação que tornou o código mais performático",
+        "Um mutante que sobreviveu por timeout — indica teste lento"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Stryker gera uma mutação (ex: muda >= para >), roda a suite de testes completa com o código mutado, e verifica se algum teste falha. Se nenhum falha — o mutante 'sobreviveu' — significa que a suite não teria detectado esse bug se ele existisse no código real. É uma lacuna de teste que precisa ser corrigida."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual o principal benefício do contract testing em microsserviços?",
+      "options": [
+        "Permite testar todos os serviços em um único ambiente integrado",
+        "Garante que produtor e consumidor concordam com a interface da API sem precisar de ambiente integrado — cada lado verifica o contrato independentemente",
+        "Gera automaticamente documentação da API",
+        "Substitui testes de carga para APIs"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em microsserviços, integration tests que sobem todos os serviços são lentos e frágeis. Contract testing: o consumidor define o que espera (pact file), o produtor verifica que atende esse contrato. Cada lado testa independentemente, em CI próprio. Se o produtor quebra o contrato, detecta-se sem precisar do ambiente completo."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que é 'idempotência' como propriedade para testar com property-based testing?",
+      "options": [
+        "A função retorna o mesmo tipo que recebe",
+        "Aplicar a função duas vezes produz o mesmo resultado que aplicar uma vez: f(f(x)) === f(x)",
+        "A função não tem side effects",
+        "A função é determinística — mesmo input, mesmo output"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Idempotência: f(f(x)) === f(x). Exemplos: sanitize(sanitize(s)) === sanitize(s), normalize(normalize(s)) === normalize(s), JSON.parse(JSON.stringify(JSON.parse(JSON.stringify(x)))) === JSON.parse(JSON.stringify(x)). É uma propriedade fácil de testar com property-based testing e encontra bugs sutis em parsers e formatters."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o risco principal do Golden Master (snapshot) testing?",
+      "options": [
+        "Snapshots crescem indefinidamente e ficam lentos",
+        "Snapshots capturam o comportamento atual — incluindo bugs existentes. Se atualizar o snapshot sem revisar, você 'aprova' o bug como comportamento correto",
+        "Snapshots não funcionam com componentes React",
+        "Snapshot testing não funciona com CI/CD"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Golden Master detecta mudanças — mas não distingue mudança boa de mudança ruim. Se o output atual inclui um bug e você faz snapshot, o snapshot contém o bug. 'npm test -- --updateSnapshot' sem revisar o diff pode capturar regressões como comportamento esperado. Use para detectar mudanças não-intencionais, não para verificar corretude."
+    }
+  ]
+}

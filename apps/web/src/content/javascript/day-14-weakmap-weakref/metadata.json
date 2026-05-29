@@ -1,0 +1,14 @@
+{
+  "id": "day-14",
+  "day": 14,
+  "week": 2,
+  "title": "WeakMap, WeakSet & WeakRef",
+  "slug": "weakmap-weakref",
+  "topics": ["WeakMap", "WeakSet", "WeakRef", "FinalizationRegistry", "garbage collection e memória", "casos de uso", "private data pattern", "caches sem memory leak"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 120
+}

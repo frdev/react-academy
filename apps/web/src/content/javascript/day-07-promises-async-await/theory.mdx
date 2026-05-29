@@ -1,0 +1,253 @@
+# Promises & async/await
+
+Promises representam o resultado eventual de uma operação assíncrona. `async/await` é açúcar sintático sobre Promises que torna o código assíncrono legível como síncrono.
+
+## Estados de uma Promise
+
+Uma Promise pode estar em exatamente um de três estados:
+
+- **pending**: estado inicial, nem fulfilled nem rejected
+- **fulfilled**: operação concluída com sucesso → valor disponível
+- **rejected**: operação falhou → motivo disponível
+
+**Uma Promise é imutável após ser settled** (fulfilled ou rejected).
+
+```javascript
+const p1 = new Promise((resolve, reject) => {
+  // Ainda pending...
+  setTimeout(() => resolve('sucesso'), 1000)
+})
+
+const p2 = Promise.resolve('imediatamente fulfilled')
+const p3 = Promise.reject(new Error('falhou'))
+
+// Estados não são diretamente observáveis — só via .then/.catch
+```
+
+## Criando e consumindo Promises
+
+```javascript
+function buscarUsuario(id) {
+  return new Promise((resolve, reject) => {
+    fetch(`/api/users/${id}`)
+      .then(res => {
+        if (!res.ok) reject(new Error(`HTTP ${res.status}`))
+        else return res.json()
+      })
+      .then(resolve)
+      .catch(reject)
+  })
+}
+
+// Consumindo
+buscarUsuario(1)
+  .then(usuario => console.log(usuario))
+  .catch(err => console.error(err))
+  .finally(() => console.log('operação concluída'))
+```
+
+## Chaining: a cadeia de Promises
+
+`.then()` retorna uma nova Promise — isso permite encadeamento:
+
+```javascript
+fetch('/api/user')
+  .then(res => res.json())        // transforma Response em objeto
+  .then(user => user.profileId)   // extrai um campo
+  .then(id => fetch(`/api/profiles/${id}`)) // nova Promise
+  .then(res => res.json())
+  .then(profile => console.log(profile))
+  .catch(err => console.error(err))  // captura qualquer erro acima
+```
+
+### Erros no chain
+
+Um `.catch()` no final captura **qualquer** erro ou rejection anterior:
+
+```javascript
+Promise.resolve()
+  .then(() => { throw new Error('etapa 1 falhou') })
+  .then(() => console.log('nunca executa'))
+  .then(() => console.log('também não executa'))
+  .catch(err => console.log('capturado:', err.message))  // 'etapa 1 falhou'
+  .then(() => console.log('continua após o catch'))     // executa!
+```
+
+## Os métodos estáticos de Promise
+
+### `Promise.all`: todos ou nenhum
+
+```javascript
+const [user, posts, comments] = await Promise.all([
+  fetch('/api/user').then(r => r.json()),
+  fetch('/api/posts').then(r => r.json()),
+  fetch('/api/comments').then(r => r.json()),
+])
+// Executa em PARALELO, resolve quando todos resolvem
+// Se QUALQUER um rejeitar, toda a Promise rejeita
+```
+
+### `Promise.allSettled`: todos independente do resultado
+
+```javascript
+const results = await Promise.allSettled([
+  fetch('/api/user').then(r => r.json()),
+  fetch('/api/failing-endpoint').then(r => r.json()),
+])
+// [
+//   { status: 'fulfilled', value: {...} },
+//   { status: 'rejected', reason: Error }
+// ]
+// NUNCA rejeita — sempre espera todos terminarem
+```
+
+### `Promise.race`: o primeiro que terminar
+
+```javascript
+// Timeout pattern:
+const withTimeout = (promise, ms) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+])
+
+await withTimeout(fetch('/api/slow'), 3000)
+```
+
+### `Promise.any`: o primeiro que tiver SUCESSO
+
+```javascript
+// Tentar múltiplos mirrors:
+const data = await Promise.any([
+  fetch('https://mirror1.example.com/data'),
+  fetch('https://mirror2.example.com/data'),
+  fetch('https://mirror3.example.com/data'),
+])
+// Resolve com o primeiro que tiver sucesso
+// Rejeita apenas se TODOS falharem (AggregateError)
+```
+
+## async/await: Promises com cara de síncrono
+
+`async` transforma uma função em uma que sempre retorna uma Promise. `await` pausa a execução da função assíncrona até a Promise resolver:
+
+```javascript
+async function buscarDados(userId) {
+  try {
+    const res = await fetch(`/api/users/${userId}`)
+    
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    
+    const user = await res.json()
+    const profileRes = await fetch(`/api/profiles/${user.profileId}`)
+    const profile = await profileRes.json()
+    
+    return { user, profile }
+  } catch (err) {
+    console.error('Erro ao buscar dados:', err)
+    throw err  // re-throw para o chamador
+  }
+}
+
+// Chamando async function:
+buscarDados(1).then(dados => console.log(dados))
+// ou em outro async:
+const dados = await buscarDados(1)
+```
+
+## Anti-patterns comuns
+
+### Await sequencial desnecessário
+
+```javascript
+// ❌ Sequencial — desnecessariamente lento
+async function lento() {
+  const user = await fetch('/api/user')    // espera terminar
+  const posts = await fetch('/api/posts') // então começa este
+  // total: tempo do user + tempo do posts
+}
+
+// ✅ Paralelo — eficiente
+async function rapido() {
+  const [userRes, postsRes] = await Promise.all([
+    fetch('/api/user'),
+    fetch('/api/posts'),   // ambos começam ao mesmo tempo
+  ])
+  // total: max(tempo do user, tempo do posts)
+}
+```
+
+### Promise constructor anti-pattern
+
+```javascript
+// ❌ Desnecessário — fetch JÁ retorna Promise
+async function bugado() {
+  return new Promise((resolve, reject) => {
+    fetch('/api/data')
+      .then(resolve)
+      .catch(reject)
+  })
+}
+
+// ✅ Simplesmente retorne a Promise
+async function correto() {
+  return fetch('/api/data').then(r => r.json())
+}
+```
+
+### Esquecer de await
+
+```javascript
+// ❌ Bug silencioso — não espera a Promise
+async function bugado() {
+  const data = fetchData()  // esqueceu await!
+  console.log(data)         // Promise { <pending> }, não os dados
+}
+
+// Detectar com linting: @typescript-eslint/no-floating-promises
+```
+
+### Swallowing errors
+
+```javascript
+// ❌ Engole o erro silenciosamente
+async function bugado() {
+  try {
+    await riskyOperation()
+  } catch (e) {
+    // vazio — erro sumiu sem rastro
+  }
+}
+
+// ✅ Pelo menos logue ou re-throw
+async function correto() {
+  try {
+    await riskyOperation()
+  } catch (e) {
+    logger.error('riskyOperation failed', { error: e })
+    throw e  // ou retorne um valor de fallback
+  }
+}
+```
+
+## Error handling robusto
+
+```javascript
+// Helper para evitar try/catch repetitivo (padrão Go-style):
+async function safeAsync(promise) {
+  try {
+    const data = await promise
+    return [null, data]
+  } catch (error) {
+    return [error, null]
+  }
+}
+
+const [err, user] = await safeAsync(fetchUser(1))
+if (err) {
+  console.error('Falhou:', err)
+  return
+}
+console.log('Sucesso:', user)
+```
+
+> **Regra prática:** Use `async/await` para legibilidade. Use `Promise.all` para operações paralelas (principal otimização de performance). Use `Promise.allSettled` quando precisar do resultado de todos, mesmo os com erro. Nunca engula erros.

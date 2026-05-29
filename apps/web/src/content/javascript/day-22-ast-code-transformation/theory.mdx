@@ -1,0 +1,250 @@
+# AST & Transformações de Código
+
+Cada vez que Babel transpila JSX, ESLint analisa seu código ou Prettier o formata, a primeira coisa que acontece é parsear o código em uma AST. Entender Abstract Syntax Trees abre a porta para criar ferramentas que lêem, transformam e geram código programaticamente.
+
+## O que é uma AST?
+
+Uma **Abstract Syntax Tree** é a representação estruturada do código fonte — uma árvore onde cada nó representa uma construção da linguagem.
+
+```javascript
+// Código fonte:
+const x = 1 + 2
+```
+
+Resulta aproximadamente em:
+```
+VariableDeclaration (kind: "const")
+  └── VariableDeclarator
+        ├── Identifier (name: "x")
+        └── BinaryExpression (operator: "+")
+              ├── NumericLiteral (value: 1)
+              └── NumericLiteral (value: 2)
+```
+
+Você pode explorar ASTs visualmente em **astexplorer.net** — cole qualquer código e veja a árvore gerada em tempo real.
+
+## Como o Parser Funciona
+
+O processo de parsing tem duas etapas:
+
+**1. Lexing (tokenização):** transforma o texto em tokens
+
+```javascript
+// "const x = 1 + 2" vira:
+[
+  { type: 'keyword',    value: 'const' },
+  { type: 'identifier', value: 'x' },
+  { type: 'punctuator', value: '=' },
+  { type: 'number',     value: '1' },
+  { type: 'punctuator', value: '+' },
+  { type: 'number',     value: '2' },
+]
+```
+
+**2. Parsing:** tokens → AST seguindo a gramática da linguagem (acyclic context-free grammar)
+
+Parsers comuns: **Acorn** (base do V8), **@babel/parser**, **@typescript-eslint/parser**, **oxc** (Rust, ultrarrápido).
+
+## Traversal: Visitando Nós da AST
+
+Para transformar código, você traversa a AST visitando nós por tipo:
+
+```javascript
+import * as acorn from 'acorn'
+import { simple as walk } from 'acorn-walk'
+
+const code = `
+  const x = 1
+  let y = 2
+  var z = 3
+`
+
+const ast = acorn.parse(code, { ecmaVersion: 2022 })
+
+// Visitar todos os VariableDeclarations
+walk(ast, {
+  VariableDeclaration(node) {
+    console.log(`Encontrado: ${node.kind}`)
+  },
+  Identifier(node) {
+    console.log(`Identificador: ${node.name}`)
+  }
+})
+```
+
+## Babel: O Pipeline de Transformação
+
+Babel funciona em três etapas: **parse → transform → generate**
+
+```javascript
+import * as babel from '@babel/core'
+
+// Plugin que transforma var → const
+function varToConstPlugin() {
+  return {
+    visitor: {
+      VariableDeclaration(path) {
+        if (path.node.kind === 'var') {
+          path.node.kind = 'const'
+        }
+      }
+    }
+  }
+}
+
+const result = babel.transform(
+  `var x = 1; var y = 2`,
+  { plugins: [varToConstPlugin] }
+)
+
+console.log(result.code)  // "const x = 1; const y = 2"
+```
+
+O objeto `path` do Babel é mais poderoso que um nó simples — tem métodos para navegar e manipular a árvore:
+
+```javascript
+function plugin() {
+  return {
+    visitor: {
+      CallExpression(path) {
+        // path.node — o nó atual
+        // path.parent — o nó pai
+        // path.parentPath — o path do pai
+        // path.scope — informações de escopo
+        // path.remove() — remove o nó
+        // path.replaceWith(newNode) — substitui
+        // path.replaceWithMultiple([...]) — substitui por múltiplos
+        // path.skip() — não visita filhos
+        // path.stop() — para o traversal completamente
+      }
+    }
+  }
+}
+```
+
+## Caso Prático: Plugin de Log Automático
+
+```javascript
+// Adiciona console.log em cada chamada de função
+function autoLogPlugin({ types: t }) {
+  return {
+    visitor: {
+      Function(path) {
+        const funcName = path.node.id?.name ?? 'anonymous'
+
+        // Cria: console.log('[call] funcName', ...arguments)
+        const logStatement = t.expressionStatement(
+          t.callExpression(
+            t.memberExpression(
+              t.identifier('console'),
+              t.identifier('log')
+            ),
+            [
+              t.stringLiteral(`[call] ${funcName}`),
+              t.spreadElement(t.identifier('arguments'))
+            ]
+          )
+        )
+
+        // Insere no início do corpo da função
+        path.get('body').unshiftContainer('body', logStatement)
+      }
+    }
+  }
+}
+```
+
+## Tagged Template Literals como Micro-DSLs
+
+Tagged templates recebem a AST da template — permitem criar mini-linguagens:
+
+```javascript
+// SQL tag — previne SQL injection automaticamente
+function sql(strings, ...values) {
+  const query = strings.raw.join('?')  // placeholder para cada valor
+  return { query, params: values }
+}
+
+const userId = 42
+const result = sql`SELECT * FROM users WHERE id = ${userId}`
+// { query: 'SELECT * FROM users WHERE id = ?', params: [42] }
+
+// CSS-in-JS (como styled-components)
+function css(strings, ...values) {
+  return strings.reduce((acc, str, i) => {
+    return acc + str + (values[i] ?? '')
+  }, '')
+}
+
+const color = 'blue'
+const styles = css`
+  color: ${color};
+  font-size: ${16}px;
+`
+
+// HTML sanitizado
+function html(strings, ...values) {
+  const escape = str => String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
+  return strings.reduce((acc, str, i) => {
+    return acc + str + (i < values.length ? escape(values[i]) : '')
+  }, '')
+}
+
+const userInput = '<script>alert(1)</script>'
+html`<p>Olá, ${userInput}!</p>`
+// "<p>Olá, &lt;script&gt;alert(1)&lt;/script&gt;!</p>"
+```
+
+## Codemods: Refactoring em Escala
+
+Codemods usam AST para fazer refactorings em centenas de arquivos de uma vez:
+
+```javascript
+// jscodeshift codemod: renomear prop em todos os arquivos
+export default function transformer(file, api) {
+  const j = api.jscodeshift
+
+  return j(file.source)
+    // Encontra todos os JSXAttribute com name="oldProp"
+    .find(j.JSXAttribute, { name: { name: 'oldProp' } })
+    .forEach(path => {
+      // Renomeia para newProp
+      path.node.name.name = 'newProp'
+    })
+    .toSource()
+}
+
+// Executa em todos os arquivos:
+// npx jscodeshift --transform rename-prop.js src/**/*.tsx
+```
+
+## Gerando Código com `@babel/generator`
+
+```javascript
+import * as t from '@babel/types'
+import generate from '@babel/generator'
+
+// Constrói uma função AST programaticamente
+const funcAst = t.functionDeclaration(
+  t.identifier('add'),
+  [t.identifier('a'), t.identifier('b')],
+  t.blockStatement([
+    t.returnStatement(
+      t.binaryExpression('+', t.identifier('a'), t.identifier('b'))
+    )
+  ])
+)
+
+const { code } = generate(funcAst)
+console.log(code)
+// function add(a, b) {
+//   return a + b;
+// }
+```
+
+> **Resumo:** ASTs são a representação estruturada do código que toda ferramenta de desenvolvimento usa. Parse transforma texto em árvore, traversal visita nós, transform modifica, generate produz código novo. Babel plugins operam nesse pipeline. Tagged templates criam DSLs inline. Codemods fazem refactorings em escala. Entender ASTs é entender o substrato de Babel, ESLint, Prettier e TypeScript.

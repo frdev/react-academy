@@ -1,0 +1,14 @@
+{
+  "id": "day-20",
+  "day": 20,
+  "week": 3,
+  "title": "Workers & Concorrência Real",
+  "slug": "workers-concurrency",
+  "topics": ["Web Workers", "SharedArrayBuffer", "Atomics", "message passing", "transferable objects", "off-main-thread patterns", "race conditions", "locks em JS"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

@@ -1,0 +1,249 @@
+# Proxy & Reflect
+
+`Proxy` intercepta operações fundamentais em objetos — get, set, delete, chamadas de função. `Reflect` é a API espelho que executa essas operações de forma limpa. Juntos, são a base da meta-programação em JavaScript: reatividade, validação, logging, e muito mais.
+
+## O que é um Proxy?
+
+Um `Proxy` envolve um objeto *alvo* e intercepta operações via *traps* (armadilhas):
+
+```javascript
+const target = { name: 'Ana', age: 30 }
+
+const proxy = new Proxy(target, {
+  get(target, property, receiver) {
+    console.log(`Lendo: ${String(property)}`)
+    return Reflect.get(target, property, receiver)
+  },
+  set(target, property, value, receiver) {
+    console.log(`Escrevendo: ${String(property)} = ${value}`)
+    return Reflect.set(target, property, value, receiver)
+  }
+})
+
+proxy.name        // logs "Lendo: name", retorna "Ana"
+proxy.age = 31    // logs "Escrevendo: age = 31"
+```
+
+O segundo argumento (`{}`) é o *handler* — um objeto com traps. Traps não implementadas passam direto para o target.
+
+## As Traps Disponíveis
+
+```javascript
+const handler = {
+  // Intercepta leitura de propriedade: proxy.prop, proxy['prop']
+  get(target, prop, receiver) { },
+
+  // Intercepta escrita: proxy.prop = value
+  set(target, prop, value, receiver) { },
+
+  // Intercepta: prop in proxy
+  has(target, prop) { },
+
+  // Intercepta: delete proxy.prop
+  deleteProperty(target, prop) { },
+
+  // Intercepta: new Proxy(...)
+  construct(target, args, newTarget) { },
+
+  // Intercepta chamada de função: proxy(args)
+  apply(target, thisArg, args) { },
+
+  // Intercepta: Object.keys(), for...in
+  ownKeys(target) { },
+
+  // Intercepta: Object.getOwnPropertyDescriptor()
+  getOwnPropertyDescriptor(target, prop) { },
+
+  // Intercepta: Object.defineProperty()
+  defineProperty(target, prop, descriptor) { },
+
+  // Intercepta: Object.getPrototypeOf()
+  getPrototypeOf(target) { },
+
+  // Intercepta: Object.setPrototypeOf()
+  setPrototypeOf(target, proto) { },
+
+  // Intercepta: Object.isExtensible()
+  isExtensible(target) { },
+
+  // Intercepta: Object.preventExtensions()
+  preventExtensions(target) { }
+}
+```
+
+## `Reflect`: A API Espelho
+
+`Reflect` tem um método para cada trap — executa a operação padrão de forma explícita. Use sempre `Reflect.x()` nas traps em vez de operar diretamente no target:
+
+```javascript
+// Por que Reflect em vez de target[prop]?
+const handler = {
+  get(target, prop, receiver) {
+    // receiver é o proxy (ou o objeto que herdou dele)
+    // Reflect.get preserva o receiver correto para getters
+    return Reflect.get(target, prop, receiver)  // correto
+    // return target[prop]  — errado para getters que usam `this`
+  }
+}
+```
+
+```javascript
+// Reflect retorna boolean para operações que podem falhar
+Reflect.set(obj, 'x', 1)          // true se sucesso, false se falhou
+Reflect.deleteProperty(obj, 'x')   // true se deletou, false se não
+Reflect.has(obj, 'x')              // equivalente a 'x' in obj
+Reflect.ownKeys(obj)               // todas as chaves (string + symbol)
+```
+
+## Caso 1: Validação de Schema
+
+```javascript
+function createValidated(schema) {
+  return new Proxy({}, {
+    set(target, prop, value) {
+      const rule = schema[prop]
+      if (!rule) throw new TypeError(`Propriedade '${prop}' não permitida`)
+      if (!rule.validate(value)) {
+        throw new TypeError(`'${prop}': ${rule.message}`)
+      }
+      return Reflect.set(target, prop, value)
+    }
+  })
+}
+
+const user = createValidated({
+  name: {
+    validate: v => typeof v === 'string' && v.length > 0,
+    message: 'deve ser string não-vazia'
+  },
+  age: {
+    validate: v => typeof v === 'number' && v >= 0 && v <= 150,
+    message: 'deve ser número entre 0 e 150'
+  }
+})
+
+user.name = 'Ana'  // ok
+user.age = 30      // ok
+user.age = -5      // TypeError: 'age': deve ser número entre 0 e 150
+user.foo = 'bar'   // TypeError: Propriedade 'foo' não permitida
+```
+
+## Caso 2: Reatividade (base de Vue 3 e SolidJS)
+
+```javascript
+function reactive(target, onChange) {
+  return new Proxy(target, {
+    set(target, prop, value, receiver) {
+      const oldValue = target[prop]
+      const result = Reflect.set(target, prop, value, receiver)
+      if (oldValue !== value) {
+        onChange(prop, value, oldValue)
+      }
+      return result
+    },
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver)
+      // Se valor é objeto, torna reativo recursivamente
+      if (typeof value === 'object' && value !== null) {
+        return reactive(value, onChange)
+      }
+      return value
+    }
+  })
+}
+
+const state = reactive({ count: 0, user: { name: 'Ana' } }, (prop, val) => {
+  console.log(`Mudou: ${prop} = ${val}`)
+  renderUI()  // re-renderiza
+})
+
+state.count = 1            // logs "Mudou: count = 1"
+state.user.name = 'Bob'    // logs "Mudou: name = Bob" (reativo recursivo)
+```
+
+## Caso 3: Logging / Debugging Transparente
+
+```javascript
+function createLogged(target, label) {
+  return new Proxy(target, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver)
+      if (typeof value === 'function') {
+        return function(...args) {
+          console.log(`[${label}] ${String(prop)}(${args.map(JSON.stringify).join(', ')})`)
+          const result = value.apply(target, args)
+          console.log(`[${label}] → ${JSON.stringify(result)}`)
+          return result
+        }
+      }
+      return value
+    }
+  })
+}
+
+const db = createLogged(databaseService, 'DB')
+db.query('SELECT * FROM users')
+// [DB] query("SELECT * FROM users")
+// [DB] → [{"id": 1, "name": "Ana"}, ...]
+```
+
+## Caso 4: Acesso Seguro a Propriedades Aninhadas
+
+```javascript
+function safe(obj) {
+  return new Proxy(obj ?? {}, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop)
+      if (value === undefined || value === null) {
+        return safe(null)  // retorna proxy que sempre retorna undefined/safe
+      }
+      if (typeof value === 'object') {
+        return safe(value)
+      }
+      return value
+    }
+  })
+}
+
+const data = { user: { address: null } }
+safe(data).user.address.city  // undefined (sem TypeError!)
+safe(data).x.y.z.w            // undefined
+safe(data).user.name          // undefined
+safe({ user: { name: 'Ana' } }).user.name  // 'Ana'
+```
+
+## Proxies Revogáveis
+
+`Proxy.revocable()` cria um proxy que pode ser desativado:
+
+```javascript
+const { proxy, revoke } = Proxy.revocable({ secret: 42 }, {})
+
+proxy.secret  // 42
+
+revoke()  // desativa o proxy
+
+proxy.secret  // TypeError: Cannot perform 'get' on a proxy that has been revoked
+```
+
+Útil para capabilities com tempo de vida limitado — passar acesso temporário a um recurso que pode ser revogado.
+
+## Invariants: Limites das Traps
+
+Algumas traps têm invariantes que o Proxy deve respeitar — caso contrário, lança `TypeError`:
+
+```javascript
+const frozen = Object.freeze({ x: 1 })
+const proxy = new Proxy(frozen, {
+  get(target, prop) {
+    return 99  // tentativa de mentir sobre o valor
+  }
+})
+
+proxy.x  // TypeError! — o target tem x=1 como non-writable/non-configurable
+         // A trap get não pode retornar valor diferente de 1
+```
+
+O runtime verifica invariantes para garantir que Proxies não violem contratos fundamentais do JavaScript (como `Object.freeze`).
+
+> **Resumo:** Proxy é o mecanismo de meta-programação mais poderoso do JavaScript — permite interceptar qualquer operação fundamental em objetos. Sempre use `Reflect` nas traps para preservar semântica correta (especialmente `receiver`). Os casos de uso clássicos são: validação, reatividade, logging/mocking, e acesso seguro a objetos aninhados.

@@ -1,0 +1,14 @@
+{
+  "id": "day-11",
+  "day": 11,
+  "week": 2,
+  "title": "Modules em Profundidade",
+  "slug": "modules",
+  "topics": ["ES Modules vs CommonJS", "live bindings", "import() dinâmico", "circular dependencies", "tree shaking", "namespace imports", "bundlers"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-10"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

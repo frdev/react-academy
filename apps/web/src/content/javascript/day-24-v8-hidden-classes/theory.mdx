@@ -1,0 +1,237 @@
+# V8 Internals II — Hidden Classes & Código V8-Friendly
+
+No Dia 23 vimos o pipeline de compilação. Hoje descemos mais fundo: como V8 organiza objetos internamente via Hidden Classes (Shapes), o que são Inline Caches, e como escrever JavaScript que o V8 consegue otimizar ao máximo.
+
+## Hidden Classes (Shapes)
+
+JavaScript é dinamicamente tipado — objetos podem ter qualquer propriedade adicionada a qualquer momento. Para otimizar isso, V8 associa cada objeto a uma **hidden class** (também chamada de *shape* ou *map* internamente).
+
+Uma hidden class descreve a estrutura do objeto: quais propriedades ele tem e em quais offsets de memória estão armazenadas.
+
+```javascript
+// Ambos os objetos abaixo parecem iguais para o JavaScript
+const p1 = { x: 1, y: 2 }
+const p2 = { x: 1, y: 2 }
+
+// No V8, ambos compartilham a MESMA hidden class
+// porque foram criados com as mesmas propriedades na mesma ordem
+// HiddenClass_0: { x: offset 0, y: offset 8 }
+```
+
+## Transições de Hidden Class
+
+Cada vez que você adiciona uma propriedade, V8 cria uma nova hidden class:
+
+```javascript
+const obj = {}
+// HC0: {} (empty)
+
+obj.x = 1
+// HC1: { x: offset 0 }  ← transição de HC0 para HC1 por adição de 'x'
+
+obj.y = 2
+// HC2: { x: offset 0, y: offset 8 }  ← transição para HC2
+
+obj.z = 3
+// HC3: { x: offset 0, y: offset 8, z: offset 16 }
+```
+
+V8 guarda as transições em um **transition tree** — se outro objeto seguir o mesmo caminho de adições, reutiliza as hidden classes existentes.
+
+## Por que a Ordem das Propriedades Importa
+
+```javascript
+// Dois construtores que criam objetos "iguais", mas em ordem diferente
+function Point1(x, y) {
+  this.x = x  // cria HC com x primeiro
+  this.y = y
+}
+
+function Point2(x, y) {
+  this.y = y  // cria HC com y primeiro!
+  this.x = x
+}
+
+const p1 = new Point1(1, 2)  // HC_xy: { x: offset 0, y: offset 8 }
+const p2 = new Point2(1, 2)  // HC_yx: { y: offset 0, x: offset 8 }
+
+// p1 e p2 têm hidden classes DIFERENTES!
+// Funções que recebem ambos ficam polymorphic ou megamorphic
+```
+
+**Regra 1:** sempre defina as propriedades na mesma ordem em todos os objetos do mesmo "tipo".
+
+## Adicionar Propriedades Fora do Constructor
+
+```javascript
+// RUIM: adicionar propriedades depois de criado
+class User {
+  constructor(name) {
+    this.name = name  // HC1: { name }
+  }
+}
+
+const user = new User('Ana')
+user.age = 30       // HC2: { name, age } — nova hidden class!
+user.role = 'admin' // HC3: { name, age, role } — outra transição!
+
+// BOAS PRÁTICAS: definir todas as propriedades no constructor
+class User {
+  constructor(name, age, role) {
+    this.name = name    // HC1: { name }
+    this.age = age      // HC2: { name, age }
+    this.role = role    // HC3: { name, age, role }
+    // HC3 é criada uma vez, todos os usuários a compartilham
+  }
+}
+```
+
+**Regra 2:** defina todas as propriedades no constructor, mesmo que inicialmente `null` ou `undefined`.
+
+## Propriedades Deletadas
+
+`delete` torna o objeto "dicionário-mode" — V8 abandona hidden classes e passa a usar uma hash table, muito mais lenta:
+
+```javascript
+const obj = { x: 1, y: 2, z: 3 }
+delete obj.y  // obj entra em "dictionary mode"
+// obj agora usa hash table para todas as propriedades
+// acesso ~10x mais lento que com hidden classes
+
+// Alternativa: setar para null/undefined em vez de delete
+obj.y = null   // mantém a hidden class, apenas muda o valor
+obj.y = undefined  // mesma coisa
+```
+
+**Regra 3:** evite `delete`. Use `null` ou `undefined` para "remover" valores.
+
+## Arrays: Elementos vs Propriedades
+
+V8 trata elementos de array (índices numéricos) diferente de propriedades:
+
+```javascript
+// Array denso (packed): elementos armazenados em memória contígua — muito rápido
+const dense = [1, 2, 3, 4, 5]
+// V8 usa: PACKED_SMI_ELEMENTS (Small Integer)
+
+// Array esparso: holes na representação — mais lento
+const sparse = [1, , 3]  // hole no índice 1
+// V8 usa: HOLEY_SMI_ELEMENTS
+
+// Tipos de elementos (do mais rápido ao mais lento):
+// PACKED_SMI_ELEMENTS — inteiros pequenos, sem holes
+// PACKED_DOUBLE_ELEMENTS — floats, sem holes
+// PACKED_ELEMENTS — qualquer objeto, sem holes
+// HOLEY_SMI_ELEMENTS — inteiros com holes
+// HOLEY_DOUBLE_ELEMENTS — floats com holes
+// HOLEY_ELEMENTS — objetos com holes
+```
+
+**Regra 4:** evite criar arrays com holes. A transição de packed para holey é irreversível.
+
+## Inline Caches em Detalhe
+
+```javascript
+function getX(obj) {
+  return obj.x
+}
+
+// Chamada 1: obj = { x: 1, y: 2 } (HC_xy)
+// IC aprende: "objetos com HC_xy têm x no offset 0"
+
+// Chamada 2: obj = { x: 5, y: 10 } (HC_xy)
+// IC acerta: "é HC_xy → x no offset 0 → acesso direto"
+// → MONOMORPHIC (1 shape) — máximo performance
+
+// Chamada 3: obj = { x: 1, z: 9 } (HC_xz — shape diferente!)
+// IC atualiza: "pode ser HC_xy OU HC_xz"
+// → POLYMORPHIC (2 shapes) — pequena tabela de lookup
+
+// Chamadas com mais de 4 shapes diferentes:
+// → MEGAMORPHIC — desabilita IC completamente
+```
+
+## Micro-Benchmarks: Medindo o Impacto
+
+```javascript
+// Comparação: objetos com mesma shape vs shapes diferentes
+function benchmarkSameShape() {
+  const objects = Array.from({ length: 100000 }, () => ({ x: 1, y: 2 }))
+  let sum = 0
+  const start = performance.now()
+  for (const obj of objects) {
+    sum += obj.x + obj.y
+  }
+  return performance.now() - start
+}
+
+function benchmarkDifferentShapes() {
+  const objects = Array.from({ length: 100000 }, (_, i) => {
+    const obj = { x: 1 }
+    if (i % 2 === 0) obj.y = 2      // shape 1: { x, y }
+    if (i % 3 === 0) obj.z = 3      // shape 2: { x, y, z } or { x, z }
+    return obj
+  })
+  // ...mesmo loop...
+}
+
+// benchmarkSameShape: ~5ms
+// benchmarkDifferentShapes: ~50ms (10x mais lento)
+```
+
+## Classes vs Object Literals para Performance
+
+```javascript
+// Classes garantem shape consistente — o constructor define todas as propriedades
+class Point {
+  constructor(x, y) {
+    this.x = x  // sempre nesta ordem
+    this.y = y
+  }
+}
+
+// Todos os pontos criados via new Point() compartilham a mesma hidden class
+// → Monomorphic em qualquer função que os use
+
+// Object literals: risco de shapes diferentes se criados em lugares diferentes
+const p1 = { x: 1, y: 2 }       // HC_xy
+const p2 = { y: 2, x: 1 }       // HC_yx — diferente!
+const p3 = { x: 1, y: 2, z: 3 } // HC_xyz — diferente!
+```
+
+## Resumo das Regras V8-Friendly
+
+```javascript
+// ✅ Defina todas as propriedades no constructor
+class Optimized {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+    // Se precisar de campo opcional, inicialize com null:
+    this.metadata = null  // melhor que não declarar
+  }
+}
+
+// ✅ Mesma ordem sempre
+const makePoint = (x, y) => ({ x, y })  // sempre { x, y }
+
+// ✅ Evite delete — use null
+obj.prop = null  // em vez de delete obj.prop
+
+// ✅ Arrays densos
+const arr = new Array(100).fill(0)  // evita holes
+
+// ✅ Tipos consistentes em funções quentes
+function sum(a, b) {
+  return a + b  // sempre chamar com numbers
+}
+
+// ❌ Evite
+const obj2 = {}
+for (const key of dynamicKeys) {
+  obj2[key] = values[key]  // shape cresce dinamicamente → ruim
+}
+// Melhor: Object.fromEntries(entries) se você conhece as chaves antecipadamente
+```
+
+> **Resumo:** Hidden classes (shapes) permitem que V8 trate JavaScript como se tivesse tipos estáticos internamente. Objetos com a mesma shape — criados com as mesmas propriedades na mesma ordem — compartilham representação e permitem Inline Caches monomorphic. As regras: defina propriedades no constructor, mesma ordem sempre, evite `delete`, evite holes em arrays, e mantenha tipos consistentes em funções hot.

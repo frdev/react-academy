@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-24",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é uma Hidden Class (Shape) no V8?",
+      "options": [
+        "Uma classe JavaScript marcada como privada com #",
+        "Uma estrutura interna do V8 que descreve o layout de um objeto — quais propriedades ele tem e em quais offsets de memória",
+        "Uma cache de objetos frequentemente alocados para reutilização",
+        "Uma representação comprimida de objetos com muitas propriedades"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Hidden Class (ou Shape/Map internamente) é a estrutura que V8 usa para saber onde cada propriedade está em memória. Objetos com as mesmas propriedades na mesma ordem compartilham a mesma hidden class, permitindo acesso direto por offset sem busca."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `{ x: 1, y: 2 }` e `{ y: 2, x: 1 }` são problemáticos juntos em uma função?",
+      "options": [
+        "JavaScript não garante a ordem das propriedades em objetos",
+        "Eles têm hidden classes diferentes (shape xy ≠ shape yx), fazendo funções que os recebem ficarem polymorphic ou megamorphic",
+        "V8 não consegue otimizar objetos com mais de uma propriedade",
+        "A diferença de ordem causa erro de runtime em modo strict"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A ordem de criação das propriedades determina a hidden class. { x, y } e { y, x } são shapes diferentes — V8 cria hidden classes distintas com layouts de memória distintos. Uma função que recebe ambos não consegue ter um IC monomorphic e fica pelo menos polymorphic."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que `delete obj.prop` é prejudicial para performance?",
+      "options": [
+        "delete é uma operação O(n) que busca a propriedade sequencialmente",
+        "delete pode fazer o objeto entrar em 'dictionary mode' — V8 abandona hidden classes e usa hash table, tornando acesso ~10x mais lento",
+        "delete desabilita JIT compilation para o objeto",
+        "delete causa uma deoptimização global de todas as funções que usaram o objeto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando você deleta uma propriedade, o objeto pode não mais ter um layout 'limpo' que corresponda a uma hidden class existente. V8 pode fazer o objeto entrar em dictionary mode, onde todas as propriedades são armazenadas em uma hash table — muito mais lenta que acesso por offset."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre PACKED_SMI_ELEMENTS e HOLEY_ELEMENTS em arrays?",
+      "options": [
+        "PACKED é para arrays menores que 1000 elementos; HOLEY para maiores",
+        "PACKED indica array denso com inteiros sem buracos (representação contígua, mais rápida); HOLEY indica array com 'holes' (índices ausentes, representação mais lenta)",
+        "SMI são arrays de strings; HOLEY são arrays de objetos",
+        "PACKED arrays são imutáveis; HOLEY são mutáveis"
+      ],
+      "correctAnswer": 1,
+      "explanation": "V8 classifica arrays por densidade e tipo de elemento. PACKED_SMI_ELEMENTS (sem holes, small integers) é a representação mais eficiente — elementos em memória contígua. Criar holes (const a = [1,,3]) ou acessar índices além do length força transições para representações mais lentas. A transição de packed para holey é irreversível."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é a recomendação para propriedades opcionais no constructor de uma classe para maximizar performance?",
+      "options": [
+        "Não declarar propriedades opcionais no constructor — adicioná-las depois apenas quando necessário",
+        "Inicializar todas as propriedades no constructor, mesmo que opcionais, usando null ou undefined como placeholder",
+        "Usar Object.defineProperty para cada propriedade opcional",
+        "Criar uma subclasse para cada combinação de propriedades opcionais"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Definir this.metadata = null no constructor cria a shape completa do objeto uma vez. Todos os objetos desta classe compartilham a mesma hidden class desde o início. Se metadata for adicionado depois apenas quando necessário, objetos sem ele terão uma shape diferente dos que têm — causando polymorphism."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que é o 'transition tree' no V8?",
+      "options": [
+        "A hierarquia de otimizações do TurboFan (Ignition → Sparkplug → TurboFan)",
+        "Uma estrutura que guarda as transições de hidden class — permite reutilizar hidden classes existentes quando múltiplos objetos seguem o mesmo caminho de adição de propriedades",
+        "O grafo de dependências entre módulos ES",
+        "Um log das últimas 100 deoptimizações para debugging"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando obj.x = 1 é adicionado a {} (HC0 → HC1), V8 guarda essa transição. Quando outro objeto {} também recebe .x = 1, V8 segue a transição existente e reutiliza HC1 em vez de criar uma nova. Isso é o transition tree — permite compartilhamento de hidden classes entre objetos que crescem da mesma forma."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que usar classes em vez de object literals geralmente resulta em código mais performático?",
+      "options": [
+        "Classes são compiladas para código nativo, object literals não",
+        "O constructor de uma classe garante que todas as instâncias têm as mesmas propriedades na mesma ordem, resultando em uma única hidden class compartilhada por todas as instâncias",
+        "Classes têm acesso a otimizações especiais do TurboFan que object literals não têm",
+        "Object literals sempre entram em dictionary mode"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com class Point { constructor(x, y) { this.x = x; this.y = y } }, cada new Point() segue exatamente o mesmo caminho de transição de hidden class: HC0 → HC1 (x) → HC2 (x, y). Todos os pontos compartilham HC2. Com object literals espalhados pelo código, é fácil criar shapes ligeiramente diferentes sem perceber."
+    }
+  ]
+}

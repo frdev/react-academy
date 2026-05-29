@@ -1,0 +1,66 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual o valor de `fn.length` para `function fn(a, b = 0, c) {}`?",
+      "options": ["3", "2", "1", "0"],
+      "correctAnswer": 2,
+      "explanation": "1. fn.length conta apenas os parâmetros antes do primeiro default ou rest parameter. Como b=0 é um default, a contagem para em a. Portanto fn.length === 1."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre currying e partial application?",
+      "options": [
+        "São a mesma coisa com nomes diferentes",
+        "Currying transforma em funções de um argumento; partial application pré-preenche alguns argumentos",
+        "Partial application sempre usa bind(); currying não",
+        "Currying é apenas para funções de 2 argumentos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Currying transforma f(a,b,c) em f(a)(b)(c) — cada chamada recebe exatamente um argumento. Partial application pré-preenche alguns argumentos, retornando uma função que espera o restante: partial(f, 1) retorna uma função que espera b e c juntos."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `pipe(double, addOne, square)(3)` executa se double=x*2, addOne=x+1, square=x*x?",
+      "options": [
+        "square(addOne(double(3))) = 49",
+        "double(addOne(square(3))) = 20",
+        "square(double(addOne(3))) = 64",
+        "addOne(double(square(3))) = 19"
+      ],
+      "correctAnswer": 0,
+      "explanation": "pipe executa da esquerda para direita: primeiro double(3)=6, depois addOne(6)=7, depois square(7)=49. compose faria o oposto (direita para esquerda). 49 é a resposta correta."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que funções nomeadas são preferíveis a anônimas?",
+      "options": [
+        "São mais rápidas que anônimas",
+        "Podem ser chamadas recursivamente e aparecem com nome no stack trace",
+        "Apenas funções nomeadas suportam currying",
+        "Funções anônimas não podem ser usadas como callbacks"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Funções nomeadas têm dois benefícios: (1) o nome aparece no stack trace de erros, facilitando depuração, e (2) podem ser referenciadas por nome dentro delas mesmas para recursão. Arrow functions sempre são anônimas, mas recebem o nome da variável quando atribuídas."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é o propósito principal de um IIFE?",
+      "options": [
+        "Criar funções assíncronas",
+        "Criar escopo isolado para evitar poluição do escopo externo",
+        "Melhorar a performance de funções",
+        "Permitir recursão sem nome"
+      ],
+      "correctAnswer": 1,
+      "explanation": "IIFE (Immediately Invoked Function Expression) cria e executa uma função imediatamente, criando um escopo isolado. Variáveis declaradas dentro não vazam para o escopo externo. Era essencial antes de ES6 modules para encapsulamento."
+    }
+  ]
+}

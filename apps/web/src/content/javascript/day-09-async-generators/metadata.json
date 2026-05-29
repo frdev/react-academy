@@ -1,0 +1,14 @@
+{
+  "id": "day-09",
+  "day": 9,
+  "week": 2,
+  "title": "Async Generators & Streams",
+  "slug": "async-generators",
+  "topics": ["async function*", "for await...of", "async iterators", "pipelines assíncronos", "backpressure manual", "ReadableStream", "casos de uso reais"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-08"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,309 @@
+# Programação Funcional
+
+Programação funcional (FP) não é sobre usar `.map()` e `.filter()`. É sobre um modelo mental: funções puras, imutabilidade, composição. Em JavaScript, esses princípios produzem código mais previsível, testável e fácil de raciocinar.
+
+## Funções Puras
+
+Uma função pura: (1) dado o mesmo input, sempre retorna o mesmo output; (2) não tem side effects observáveis.
+
+```javascript
+// Impura — depende de estado externo e muta
+let total = 0
+function addToTotal(n) {
+  total += n  // side effect: muta variável externa
+  return total
+}
+
+// Pura — sem side effects, determinística
+function add(a, b) {
+  return a + b
+}
+
+// Impura — muta o argumento
+function pushItem(arr, item) {
+  arr.push(item)  // muta arr!
+  return arr
+}
+
+// Pura — retorna novo array
+function appendItem(arr, item) {
+  return [...arr, item]
+}
+```
+
+Funções puras são trivialmente testáveis — não precisam de setup, mocks ou estado global.
+
+## Imutabilidade
+
+Em FP, dados não são modificados — novas versões são criadas:
+
+```javascript
+// Atualizar objeto imutavelmente
+const user = { name: 'Ana', age: 30, role: 'user' }
+const promoted = { ...user, role: 'admin' }
+// user permanece inalterado
+
+// Atualizar array imutavelmente
+const items = [1, 2, 3]
+const added = [...items, 4]            // adicionar
+const removed = items.filter(x => x !== 2)  // remover
+const updated = items.map(x => x === 2 ? 99 : x)  // atualizar
+
+// Atualizar objeto aninhado
+const state = {
+  user: { name: 'Ana', address: { city: 'SP', zip: '01001' } },
+  loading: false
+}
+
+const newState = {
+  ...state,
+  user: {
+    ...state.user,
+    address: {
+      ...state.user.address,
+      city: 'RJ'
+    }
+  }
+}
+// state.user.address.city ainda é 'SP'
+```
+
+## Composição de Funções
+
+`compose` e `pipe` combinam funções — a saída de uma alimenta a entrada da próxima:
+
+```javascript
+// compose: da direita para a esquerda (matemático)
+const compose = (...fns) => x => fns.reduceRight((v, f) => f(v), x)
+
+// pipe: da esquerda para a direita (mais legível)
+const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x)
+
+const double = x => x * 2
+const addOne = x => x + 1
+const square = x => x * x
+
+const transform = pipe(double, addOne, square)
+// Equivalente a: square(addOne(double(x)))
+
+transform(3)  // double(3)=6 → addOne(6)=7 → square(7)=49
+```
+
+Composição permite construir operações complexas a partir de funções simples e reutilizáveis.
+
+## Currying
+
+Currying transforma `f(a, b, c)` em `f(a)(b)(c)`:
+
+```javascript
+// curry manual
+const curry = fn => {
+  const arity = fn.length
+  return function curried(...args) {
+    if (args.length >= arity) {
+      return fn(...args)
+    }
+    return (...moreArgs) => curried(...args, ...moreArgs)
+  }
+}
+
+const add = curry((a, b) => a + b)
+const multiply = curry((a, b, c) => a * b * c)
+
+add(2)(3)    // 5
+add(2, 3)    // 5 — funciona parcialmente também
+
+const double = multiply(2)(1)  // parcialmente aplicada: double(n) = 2 * 1 * n
+// Espera: não, multiply(2)(1)(n) seria 2*1*n
+
+// Aplicação parcial sem curry completo
+const double2 = n => multiply(2, 1, n)
+
+// Uso em pipelines
+const processNumbers = pipe(
+  numbers => numbers.filter(n => n > 0),
+  numbers => numbers.map(n => n * 2),
+  numbers => numbers.reduce((a, b) => a + b, 0)
+)
+
+processNumbers([-1, 2, -3, 4, 5])  // (2+4+5)*2 = 22
+```
+
+## Maybe: Tratando Null com Segurança
+
+O monad `Maybe` encapsula um valor que pode ser null/undefined, permitindo operações em cadeia sem checar null a cada passo:
+
+```javascript
+class Maybe {
+  constructor(value) {
+    this._value = value
+  }
+
+  static of(value) {
+    return new Maybe(value)
+  }
+
+  static empty() {
+    return new Maybe(null)
+  }
+
+  isNothing() {
+    return this._value === null || this._value === undefined
+  }
+
+  map(fn) {
+    if (this.isNothing()) return Maybe.empty()
+    return Maybe.of(fn(this._value))
+  }
+
+  flatMap(fn) {
+    if (this.isNothing()) return Maybe.empty()
+    return fn(this._value)
+  }
+
+  getOrElse(defaultValue) {
+    return this.isNothing() ? defaultValue : this._value
+  }
+}
+
+// Sem Maybe — checa null em cada etapa
+function getCity(user) {
+  if (!user) return 'Desconhecida'
+  if (!user.address) return 'Desconhecida'
+  if (!user.address.city) return 'Desconhecida'
+  return user.address.city.toUpperCase()
+}
+
+// Com Maybe — pipeline sem null checks
+function getCityMaybe(user) {
+  return Maybe.of(user)
+    .map(u => u.address)
+    .map(a => a.city)
+    .map(c => c.toUpperCase())
+    .getOrElse('Desconhecida')
+}
+
+getCityMaybe(null)                         // 'Desconhecida'
+getCityMaybe({ address: null })            // 'Desconhecida'
+getCityMaybe({ address: { city: 'sp' } }) // 'SP'
+```
+
+## Result/Either: Tratando Erros como Valores
+
+`Result` (ou `Either`) encapsula sucesso ou falha, eliminando try/catch em favor de composição:
+
+```javascript
+class Result {
+  constructor(value, error) {
+    this._value = value
+    this._error = error
+    this._isOk = error === undefined
+  }
+
+  static ok(value) { return new Result(value, undefined) }
+  static err(error) { return new Result(undefined, error) }
+
+  isOk() { return this._isOk }
+  isErr() { return !this._isOk }
+
+  map(fn) {
+    if (this.isErr()) return this
+    try {
+      return Result.ok(fn(this._value))
+    } catch (e) {
+      return Result.err(e)
+    }
+  }
+
+  flatMap(fn) {
+    if (this.isErr()) return this
+    return fn(this._value)
+  }
+
+  match({ ok, err }) {
+    return this._isOk ? ok(this._value) : err(this._error)
+  }
+}
+
+// Funções que retornam Result em vez de lançar
+function parseJSON(str) {
+  try {
+    return Result.ok(JSON.parse(str))
+  } catch (e) {
+    return Result.err(new Error(`JSON inválido: ${e.message}`))
+  }
+}
+
+function getUser(data) {
+  if (!data.id) return Result.err(new Error('ID ausente'))
+  return Result.ok({ ...data, processed: true })
+}
+
+// Pipeline de operações que podem falhar
+const result = parseJSON('{"id": 1, "name": "Ana"}')
+  .flatMap(data => getUser(data))
+  .map(user => ({ ...user, displayName: user.name.toUpperCase() }))
+
+result.match({
+  ok: user => console.log('Sucesso:', user),
+  err: error => console.log('Erro:', error.message)
+})
+```
+
+## Transducers: Composição Eficiente
+
+Transducers compõem transformações sem criar arrays intermediários:
+
+```javascript
+// Sem transducers: 3 arrays intermediários
+const result1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  .filter(x => x % 2 === 0)   // [2, 4, 6, 8, 10]
+  .map(x => x * x)             // [4, 16, 36, 64, 100]
+  .filter(x => x > 20)         // [36, 64, 100]
+
+// Com transducers: zero arrays intermediários
+const filtering = pred => reducer => (acc, val) =>
+  pred(val) ? reducer(acc, val) : acc
+
+const mapping = fn => reducer => (acc, val) =>
+  reducer(acc, fn(val))
+
+const transduce = (xf, reducer, init, coll) =>
+  coll.reduce(xf(reducer), init)
+
+const xf = compose(
+  filtering(x => x % 2 === 0),
+  mapping(x => x * x),
+  filtering(x => x > 20)
+)
+
+const result2 = transduce(xf, (acc, val) => [...acc, val], [], [1,2,3,4,5,6,7,8,9,10])
+// [36, 64, 100] — calculado em um único reduce
+```
+
+## Point-Free Style
+
+Funções definidas sem mencionar os argumentos explicitamente:
+
+```javascript
+// Com pontos (argumentos explícitos)
+const getNames = users => users.map(user => user.name)
+const filterAdults = users => users.filter(user => user.age >= 18)
+
+// Point-free — composição direta
+const prop = key => obj => obj[key]
+const filter = pred => arr => arr.filter(pred)
+const map = fn => arr => arr.map(fn)
+
+const getName = prop('name')
+const isAdult = user => user.age >= 18
+
+const getAdultNames = pipe(
+  filter(isAdult),
+  map(getName)
+)
+
+getAdultNames(users)  // array de nomes de adultos
+```
+
+> **Resumo:** Funções puras + imutabilidade tornam o código previsível e testável. `pipe`/`compose` permitem construir transformações a partir de peças simples. Maybe e Result eliminam null checks e try/catch espalhados pelo código. Transducers otimizam pipelines eliminando coleções intermediárias. FP em JavaScript é pragmático — use os princípios onde fazem sentido, não dogmaticamente.

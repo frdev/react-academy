@@ -1,0 +1,14 @@
+{
+  "id": "day-12",
+  "day": 12,
+  "week": 2,
+  "title": "Destructuring & Patterns",
+  "slug": "destructuring-patterns",
+  "topics": ["object destructuring", "array destructuring", "defaults", "aliases", "rest/spread", "nested destructuring", "computed keys", "swap idiomático"],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

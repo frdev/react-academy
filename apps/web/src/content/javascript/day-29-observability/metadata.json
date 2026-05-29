@@ -1,0 +1,14 @@
+{
+  "id": "day-29",
+  "day": 29,
+  "week": 4,
+  "title": "Observabilidade & Diagnóstico",
+  "slug": "observability",
+  "topics": ["structured logging", "performance.mark/measure", "PerformanceObserver", "source maps", "error reporting", "tracing", "Long Tasks API", "flame charts"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-24"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

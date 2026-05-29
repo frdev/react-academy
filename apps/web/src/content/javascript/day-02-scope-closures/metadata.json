@@ -1,0 +1,24 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Scope & Closures",
+  "slug": "scope-closures",
+  "topics": [
+    "var/let/const",
+    "lexical scope",
+    "scope chain",
+    "hoisting",
+    "TDZ",
+    "closure patterns",
+    "memory implications"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 55,
+  "prerequisites": [
+    "day-01"
+  ],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

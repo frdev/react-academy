@@ -1,0 +1,256 @@
+# Gerenciamento de Memória
+
+JavaScript tem garbage collection automático — mas "automático" não significa "sem problemas". Memory leaks são sutis, acumulam lentamente, e degradam aplicações ao longo do tempo. Entender como o GC funciona e quais padrões causam leaks é essencial para aplicações de longa duração.
+
+## Como o Garbage Collector Funciona
+
+### Mark-and-Sweep
+
+O algoritmo principal do V8 (e a maioria dos engines):
+
+1. **Mark**: começa pelas *GC roots* (variáveis globais, call stack ativa, registros da CPU) e marca tudo alcançável seguindo referências
+2. **Sweep**: libera tudo que não foi marcado — objetos não alcançáveis
+
+```javascript
+let obj1 = { data: 'grande buffer' }
+let obj2 = { ref: obj1 }
+
+// obj1 é alcançável via obj2.ref
+
+obj2 = null  // obj2 não é mais referenciado
+// obj1 ainda é alcançável? Não diretamente, mas...
+// SE nada mais referencia obj2, e obj2 é o único caminho para obj1,
+// então obj1 TAMBÉM pode ser coletado
+
+obj1 = null
+// Agora ambos são candidatos a coleta
+```
+
+Um objeto é coletável quando *não existe nenhum caminho de referência* a partir das GC roots.
+
+### Gerações de GC
+
+O V8 divide a heap em gerações:
+
+- **Young Generation (Scavenger)**: objetos novos. Coleta frequente e rápida. A maioria dos objetos morre jovem.
+- **Old Generation (Major GC)**: objetos que sobreviveram ao young. Coleta menos frequente mas mais cara (pode pausar a UI).
+
+```javascript
+// Objetos de curta duração ficam no Young Generation
+function processRequest(data) {
+  const temp = { processed: transform(data) }  // alocado no Young
+  return temp.processed
+  // temp morre ao sair do escopo — coletado no próximo Scavenge
+}
+
+// Objetos de longa duração vão para o Old Generation
+const cache = new Map()  // fica vivo enquanto o módulo existir
+```
+
+## Memory Leaks Comuns
+
+### 1. Event Listeners Não Removidos
+
+```javascript
+// LEAK: adiciona listener toda vez que o componente monta
+// sem nunca remover
+class Component {
+  mount() {
+    window.addEventListener('resize', this.handleResize)
+    document.addEventListener('keydown', this.handleKey)
+  }
+
+  // Sem unmount() → listeners ficam para sempre
+  // Pior: this (o componente) fica na memória via closure
+}
+
+// CORRETO: remover ao desmontar
+class Component {
+  mount() {
+    this._onResize = () => this.handleResize()  // arrow para poder remover
+    window.addEventListener('resize', this._onResize)
+  }
+
+  unmount() {
+    window.removeEventListener('resize', this._onResize)
+  }
+}
+```
+
+### 2. Closures Segurando Referências
+
+```javascript
+// LEAK: a closure segura uma referência para 'data' inteiro
+function createHandler(data) {
+  const hugeData = data  // 10MB de dados
+
+  return function handler(event) {
+    console.log(event.type)  // só usa event.type
+    // MAS a closure inclui hugeData — fica na memória enquanto handler existir
+  }
+}
+
+// CORRETO: extrair apenas o necessário
+function createHandler(data) {
+  const id = data.id  // apenas o que precisamos
+
+  return function handler(event) {
+    console.log(event.type, id)
+    // data e hugeData podem ser coletados
+  }
+}
+```
+
+### 3. Timers e Intervals Esquecidos
+
+```javascript
+// LEAK: setInterval segura referência ao callback E ao closure
+let count = 0
+const data = { huge: new Array(1000000).fill('x') }
+
+const id = setInterval(() => {
+  count++
+  process(data)  // data fica na memória indefinidamente
+}, 1000)
+
+// Sem clearInterval(id), o interval roda para sempre
+// E data nunca é coletado
+
+// CORRETO: sempre limpar
+class Widget {
+  mount() {
+    this._interval = setInterval(() => this.tick(), 1000)
+  }
+
+  destroy() {
+    clearInterval(this._interval)
+  }
+}
+```
+
+### 4. Referências em Coleções Globais
+
+```javascript
+// LEAK: Map forte segura todos os objetos adicionados
+const registry = new Map()
+
+function register(obj) {
+  registry.set(obj, { metadata: '...' })
+  // obj nunca pode ser coletado enquanto registry existir
+}
+
+// CORRETO: usar WeakMap para não impedir GC
+const registry = new WeakMap()
+
+function register(obj) {
+  registry.set(obj, { metadata: '...' })
+  // quando obj não tem mais referências, a entrada some
+}
+```
+
+### 5. DOM Nodes Desconectados
+
+```javascript
+// LEAK: referência a nó DOM removido
+let container = document.getElementById('container')
+let button = container.querySelector('button')
+
+container.remove()  // remove do DOM
+container = null    // libera referência ao container
+
+// MAS button ainda referencia o nó DOM desconectado
+// E button.parentElement chains até o container (via parent refs)
+// container NÃO pode ser coletado!
+
+// CORRETO: limpar todas as referências a nós removidos
+container.remove()
+container = null
+button = null  // agora container pode ser coletado
+```
+
+## Profiling no Chrome DevTools
+
+### Heap Snapshot
+
+1. DevTools → Memory → Heap Snapshot
+2. Tire um snapshot (baseline)
+3. Execute a ação suspeita várias vezes
+4. Tire outro snapshot
+5. Compare: veja o que cresceu
+
+```
+// O que procurar no snapshot:
+// - Objetos "(detached DOM tree)" — DOM nodes desconectados
+// - Closures acumulando
+// - Arrays crescendo sem bound
+// - WeakMap vs Map: preferir WeakMap para metadados
+```
+
+### Allocation Timeline
+
+Para encontrar *onde* memória está sendo alocada:
+
+1. DevTools → Memory → Allocation instrumentation on timeline
+2. Clique Record
+3. Execute a ação suspeita
+4. Stop recording
+5. Analise o gráfico — picos que não descem = leak
+
+### `performance.measureUserAgentSpecificMemory()`
+
+Para medir uso de memória programaticamente (requer cross-origin isolation):
+
+```javascript
+if (performance.measureUserAgentSpecificMemory) {
+  const result = await performance.measureUserAgentSpecificMemory()
+  console.log(result.bytes)  // bytes totais usados
+}
+```
+
+## Boas Práticas para Evitar Leaks
+
+```javascript
+// 1. AbortController para cancelar fetch e remover listeners
+const controller = new AbortController()
+
+element.addEventListener('click', handler, { signal: controller.signal })
+fetch(url, { signal: controller.signal })
+
+// Limpa TUDO de uma vez:
+controller.abort()  // remove todos os listeners registrados com este signal
+
+// 2. FinalizationRegistry para detectar leaks em desenvolvimento
+if (process.env.NODE_ENV === 'development') {
+  const registry = new FinalizationRegistry(label => {
+    console.log(`[Memory] Coletado: ${label}`)
+  })
+
+  function trackObject(obj, label) {
+    registry.register(obj, label)
+    return obj
+  }
+}
+
+// 3. Limitar tamanho de caches
+class BoundedCache {
+  #cache = new Map()
+  #maxSize
+
+  constructor(maxSize = 100) {
+    this.#maxSize = maxSize
+  }
+
+  set(key, value) {
+    if (this.#cache.size >= this.#maxSize) {
+      // Remove o mais antigo (primeiro inserido)
+      const firstKey = this.#cache.keys().next().value
+      this.#cache.delete(firstKey)
+    }
+    this.#cache.set(key, value)
+  }
+
+  get(key) { return this.#cache.get(key) }
+}
+```
+
+> **Resumo:** Memory leaks em JavaScript vêm de referências inadvertidas que impedem o GC de liberar objetos. Os 4 culpados mais comuns: event listeners não removidos, closures segurando dados grandes, timers/intervals nunca cancelados, e coleções globais com referências fortes. Use WeakMap/WeakSet para metadados, limpe listeners em cleanup/unmount, e use o DevTools Memory profiler para diagnosticar.

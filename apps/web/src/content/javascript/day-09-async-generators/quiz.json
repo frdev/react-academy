@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-09",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `.next()` de um async iterator retorna?",
+      "options": [
+        "Diretamente { value, done }",
+        "Uma Promise que resolve para { value, done }",
+        "Um generator object",
+        "Um AsyncIterator object"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Async iterators são idênticos aos síncronos, exceto que .next() retorna uma Promise<{ value, done }>. for await...of espera cada Promise antes de continuar."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença principal entre `Promise.all(items)` e `for await...of items`?",
+      "options": [
+        "Promise.all é mais moderno e sempre preferível",
+        "for await...of só funciona com async generators, Promise.all funciona com qualquer array",
+        "Promise.all dispara todas em paralelo e espera todas; for await...of processa em ordem uma por vez",
+        "Não há diferença prática de comportamento"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Promise.all dispara todas as Promises simultaneamente e aguarda todas resolverem. for await...of (sobre um array de Promises) processa em ordem: espera a primeira, depois a segunda, etc. Promise.all é melhor para paralelismo; for await...of para controle de ordem e backpressure."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que async generators implementam backpressure naturalmente?",
+      "options": [
+        "Porque usam Web Workers internamente para não bloquear",
+        "Porque o produtor só avança para o próximo yield quando o consumidor chamar .next()",
+        "Porque limitam automaticamente a 10 itens no buffer",
+        "Porque pausam o event loop quando necessário"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O mecanismo pull-based dos iterators garante backpressure: o produtor só produz quando o consumidor solicita (via .next()). Se o consumidor demora 100ms para processar, o produtor aguarda — não há acúmulo de dados não processados."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a forma correta de declarar um async generator?",
+      "options": [
+        "async function gen() { yield 1 }",
+        "function* gen() { await something(); yield 1 }",
+        "async function* gen() { yield 1 }",
+        "async* function gen() { yield 1 }"
+      ],
+      "correctAnswer": 2,
+      "explanation": "async function* combina as duas palavras-chave. Essa função pode usar tanto yield (para produzir valores) quanto await (para esperar Promises). Tentar usar await dentro de function* comum ou yield dentro de async function comum lança SyntaxError."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Você tem um endpoint `/api/logs` que retorna um ReadableStream de JSON lines. Qual abordagem melhor processa os dados sem acumular tudo em memória?",
+      "options": [
+        "const data = await response.json() — depois iterar o array",
+        "const text = await response.text() — depois split por linha",
+        "for await (const chunk of response.body) — processar cada chunk",
+        "response.body.pipe(process.stdout)"
+      ],
+      "correctAnswer": 2,
+      "explanation": "response.body é um ReadableStream que implementa o async iterable protocol. for await...of processa cada chunk à medida que chega, sem acumular toda a resposta em memória — ideal para respostas grandes."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Em um pipeline de async generators `enrich(parse(read(file)))`, o que acontece se `enrich` processar 10x mais devagar que `read`?",
+      "options": [
+        "read acumula os itens em buffer até enrich terminar",
+        "read é pausado automaticamente — só avança quando enrich solicita o próximo item",
+        "O pipeline lança um BackpressureError",
+        "read e enrich rodam em threads separadas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Async generators são pull-based: each stage só avança quando o estágio seguinte solicita. read só chama fetchData quando parse solicitar via .next(), e parse só avança quando enrich solicitar. O sistema se auto-regula — sem buffers explícitos."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Como cancelar um async generator em andamento de forma limpa?",
+      "options": [
+        "Lançar um erro no generator com .throw()",
+        "Usar AbortController e checar signal.aborted antes de cada yield",
+        "Usar clearTimeout no intervalo interno",
+        "Chamar .return() no generator object"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Passar um AbortSignal e checar signal.aborted antes de cada yield é o padrão moderno — se abortado, o generator retorna (done: true). Alternativamente, .return() no generator object também funciona e executa blocos finally para cleanup. Ambas são válidas."
+    }
+  ]
+}

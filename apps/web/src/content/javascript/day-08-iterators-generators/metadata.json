@@ -1,0 +1,14 @@
+{
+  "id": "day-08",
+  "day": 8,
+  "week": 2,
+  "title": "Iteradores & Generators",
+  "slug": "iterators-generators",
+  "topics": ["Symbol.iterator", "protocolo iterável", "for...of", "generators", "yield", "yield*", "generators como coroutines", "lazy sequences infinitas"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-07"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

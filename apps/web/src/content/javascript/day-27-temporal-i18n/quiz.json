@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-27",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é um problema fundamental com `new Date(2024, 0, 1)`?",
+      "options": [
+        "new Date não aceita argumentos numéricos",
+        "Meses são 0-indexed (janeiro = 0) — contraintuitivo e fonte frequente de bugs. Temporal usa 1-indexed (janeiro = 1)",
+        "O construtor Date não aceita o ano 2024",
+        "Date cria cópias imutáveis que não podem ser modificadas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "new Date(ano, mês, dia) usa meses 0-indexed: 0 = janeiro, 11 = dezembro. new Date(2024, 12, 1) não é um erro — faz overflow para janeiro de 2025! Temporal.PlainDate.from('2024-01-01') usa formato ISO e 1-indexed, eliminando essa fonte de bugs."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `Temporal.PlainDate` e `Temporal.ZonedDateTime`?",
+      "options": [
+        "PlainDate é mais preciso que ZonedDateTime",
+        "PlainDate representa apenas uma data sem timezone (2024-03-15); ZonedDateTime representa data e hora com timezone explícita — o tipo correto para timestamps em produção",
+        "ZonedDateTime só funciona com timezones americanas",
+        "PlainDate é mutável; ZonedDateTime é imutável"
+      ],
+      "correctAnswer": 1,
+      "explanation": "PlainDate (e PlainDateTime) são 'floating' — representam uma data/hora sem timezone, como um aniversário ou horário de abertura. ZonedDateTime inclui timezone explícita: '2024-03-15T14:30:00[America/Sao_Paulo]' — o tipo correto para eventos com horário preciso em qualquer parte do mundo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que operações como `.add()` no Temporal retornam um novo objeto em vez de modificar o existente?",
+      "options": [
+        "Por limitação técnica do JavaScript — objetos frozen não podem ser modificados",
+        "Temporal é imutável por design — evita bugs de mutação acidental, similar ao por que strings são imutáveis em JavaScript",
+        "Para compatibilidade com frameworks funcionais",
+        "Porque datas e horas são primitivos, não objetos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Date.setMonth(), Date.setFullYear() etc. mutam o objeto — um bug clássico quando se passa um Date para uma função que o modifica. Temporal é completamente imutável: date.add({ days: 7 }) retorna um novo objeto, date permanece inalterado. O comportamento é previsível e seguro."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Para formatar R$ 1.234,56 em pt-BR usando apenas APIs nativas (sem moment.js), qual é a abordagem correta?",
+      "options": [
+        "number.toLocaleString('pt-BR') + ' BRL'",
+        "new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(1234.56)",
+        "new Intl.DateTimeFormat('pt-BR', { currency: 'BRL' }).format(1234.56)",
+        "Intl.Currency.format(1234.56, 'BRL', 'pt-BR')"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Intl.NumberFormat com style: 'currency' e currency: 'BRL' formata corretamente: separador de milhar como ponto, decimal como vírgula, símbolo R$. É zero-dependency, nativo em todos os browsers modernos e Node.js. number.toLocaleString() usa a mesma API internamente mas com menos controle."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `Intl.RelativeTimeFormat` resolve que `Intl.DateTimeFormat` não resolve?",
+      "options": [
+        "Formatação de datas no passado",
+        "Formatação de tempo relativo ('há 3 dias', 'próxima semana', 'ontem') — expressões idiomáticas por locale que dateFns/moment implementam com centenas de KB",
+        "Formatação de intervalos de tempo (ex: '10:00 - 11:30')",
+        "Formatação de datas com timezones"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Intl.RelativeTimeFormat('pt-BR').format(-1, 'day') retorna 'ontem'. Sabe quando usar formas idiomáticas ('ontem', 'amanhã') vs numéricas ('há 1 dia'). É locale-aware e nativo — sem precisar de date-fns/moment que adicionam dezenas/centenas de KB apenas para esse tipo de formatação."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que `names.sort()` para strings com acentos em pt-BR produz resultados incorretos?",
+      "options": [
+        "JavaScript não suporta strings com acentos",
+        "O sort padrão usa ordem de code points Unicode — 'á' (U+00E1) vem depois de 'z' (U+007A), não entre 'a' e 'b' como esperado em pt-BR",
+        "sort() é assíncrono e pode completar fora de ordem",
+        "Acentos causam um bug no algoritmo QuickSort do V8"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O sort padrão compara strings por código Unicode: 'Z' (90) < 'a' (97) < 'z' (122) < 'À' (192) < 'á' (225). 'álvaro' seria ordenado depois de 'zorro'. Intl.Collator('pt-BR') usa o CLDR (Common Locale Data Repository) para ordenação linguisticamente correta: 'á' é tratado como variante de 'a'."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que `Intl.PluralRules` resolve que string concatenation simples não resolve?",
+      "options": [
+        "Permite usar variáveis dentro de strings localizadas",
+        "Define regras de pluralização por locale — alguns idiomas têm formas para zero, um, dois, poucos, muitos, outros (árabe tem 6 formas); PluralRules seleciona a forma correta automaticamente",
+        "Traduz palavras automaticamente entre idiomas",
+        "Verifica ortografia das strings pluralizadas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Português tem 'one' (1 item) e 'other' (0, 2+ itens). Russo tem 4 formas. Árabe tem 6. Com Intl.PluralRules, você define as formas para cada caso e a API seleciona a correta para o número e locale. Impossível fazer corretamente com 'n === 1 ? singular : plural' para idiomas com mais de 2 formas."
+    }
+  ]
+}

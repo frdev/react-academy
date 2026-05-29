@@ -1,0 +1,25 @@
+{
+  "id": "day-07",
+  "day": 7,
+  "week": 1,
+  "title": "Promises & async/await",
+  "slug": "promises-async-await",
+  "topics": [
+    "estados da Promise",
+    "Promise chaining",
+    ".then/.catch/.finally",
+    "Promise.all/race/allSettled/any",
+    "async/await",
+    "error handling async",
+    "sequential vs parallel",
+    "anti-patterns"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": [
+    "day-06"
+  ],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

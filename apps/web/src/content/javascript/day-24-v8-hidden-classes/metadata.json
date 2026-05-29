@@ -1,0 +1,14 @@
+{
+  "id": "day-24",
+  "day": 24,
+  "week": 4,
+  "title": "V8 Internals II — Hidden Classes",
+  "slug": "v8-hidden-classes",
+  "topics": ["shapes (hidden classes)", "inline caching (IC)", "monomorphic vs megamorphic", "como escrever código V8-friendly", "micro-benchmarks reais", "perf.mark/measure"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 70,
+  "prerequisites": ["day-23"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

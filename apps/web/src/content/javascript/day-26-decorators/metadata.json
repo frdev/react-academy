@@ -1,0 +1,14 @@
+{
+  "id": "day-26",
+  "day": 26,
+  "week": 4,
+  "title": "Decoradores (TC39 Stage 3)",
+  "slug": "decorators",
+  "topics": ["class decorators", "method decorators", "field decorators", "decorator factory", "metadata", "addInitializer", "diferença TypeScript vs JS nativo", "@"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-10"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 140
+}

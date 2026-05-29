@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-13",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que criar custom errors estendendo `Error` ao invés de usar `new Error('mensagem')` diretamente?",
+      "options": [
+        "Custom errors são mais rápidos que Error nativo",
+        "Custom errors permitem semântica tipada (instanceof), campos extras, e comunicam a natureza do erro ao caller",
+        "É obrigatório em TypeScript mas opcional em JavaScript",
+        "Custom errors não precisam de stack trace, reduzindo overhead"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Custom errors permitem catch { if (err instanceof ValidationError) — tratamento específico por tipo. Você pode adicionar campos (err.field, err.status) sem parsear a mensagem de texto. O nome correto (err.name = 'ValidationError') aparece nos logs. São a base de qualquer error handling profissional."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Para que serve `error.cause` introduzido no ES2022?",
+      "options": [
+        "Para especificar qual linha do código causou o erro",
+        "Para encadear erros — preservar o erro original ao criar um erro de mais alto nível",
+        "Para adicionar uma mensagem de causa à stack trace",
+        "Para indicar se o erro é recuperável ou não"
+      ],
+      "correctAnswer": 1,
+      "explanation": "error.cause preserva o erro original: throw new AppError('mensagem', { cause: originalError }). Isso cria uma cadeia: o erro de alto nível tem contexto semântico (o que falhou), e cause preserva os detalhes técnicos (por que falhou). Evita perder informação ao fazer wrap de erros."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `Promise.all` e `Promise.allSettled` no contexto de error handling?",
+      "options": [
+        "Promise.all é síncrono, Promise.allSettled é assíncrono",
+        "Promise.all falha rápido (primeiro erro encerra tudo); allSettled espera todas e retorna { status, value/reason } para cada",
+        "Promise.allSettled lança o erro mais severo; Promise.all lança o primeiro",
+        "Não há diferença — ambos propagam todos os erros"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Promise.all rejeita ao primeiro erro, ignorando as demais. Promise.allSettled aguarda todas, independente de sucesso/falha, retornando um array de { status: 'fulfilled', value } ou { status: 'rejected', reason }. Use all quando qualquer falha deve abortar tudo; allSettled quando você quer processar todos os resultados."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O bloco `finally` executa em qual situação?",
+      "options": [
+        "Apenas quando não há erro (equivalente ao 'else' do try/catch)",
+        "Apenas quando há erro no try",
+        "Sempre — independente de sucesso, erro, ou return dentro do try",
+        "Apenas quando o catch não relança o erro"
+      ],
+      "correctAnswer": 2,
+      "explanation": "finally sempre executa: após try bem-sucedido, após catch (com ou sem re-throw), e mesmo quando há return dentro do try. É a garantia de limpeza de recursos — fechar conexões, liberar locks, etc."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `process.on('unhandledRejection')` e `window.addEventListener('unhandledrejection')` têm em comum?",
+      "options": [
+        "São formas de criar Promises rejeitadas intencionalmente",
+        "Capturam Promises que foram rejeitadas sem um .catch() ou try/catch tratando a rejeição",
+        "Previnem que o programa encerre em caso de erro assíncrono",
+        "São equivalentes a try/catch mas para código assíncrono"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Ambos capturam 'Promise esquecidas' — Promises rejeitadas que não tiveram nenhum handler de erro. Em produção, são essenciais para detectar bugs de async/await onde o dev esqueceu o await ou o .catch(). Em Node.js, é recomendado chamar process.exit(1) nesse handler."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual é o problema de `async function risky() { return fetch(url) }` (sem await)?",
+      "options": [
+        "Nenhum — fetch sem await funciona igual com await",
+        "O caller recebe uma Promise<Promise<Response>> em vez de Promise<Response>",
+        "Erros de rede não são capturados pelo try/catch do caller que faz await risky()",
+        "A função não é async de verdade, age como função síncrona"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Sem await, os erros do fetch não são propagados corretamente pela cadeia de async/await. A função retorna a Promise diretamente, e rejeições podem não ser tratadas pelo try/catch do caller como esperado — especialmente em edge cases. Sempre use return await quando está dentro de try/catch."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que é importante setar `this.name = this.constructor.name` no constructor de um custom error?",
+      "options": [
+        "Para que instanceof funcione corretamente",
+        "Para que o nome da classe apareça nos logs e stack traces em vez de apenas 'Error'",
+        "Para que o error type seja serializável em JSON",
+        "Para que o catch consiga diferenciar os erros automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Ao estender Error, a propriedade name é herdada como 'Error'. Sem setar this.name = this.constructor.name, console.error(err) e err.toString() mostrariam 'Error: mensagem' em vez de 'ValidationError: mensagem'. O name correto é crucial para debugging e logging."
+    }
+  ]
+}

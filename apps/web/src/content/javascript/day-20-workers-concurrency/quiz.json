@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-20",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que Web Workers são necessários se JavaScript já tem async/await para operações não-bloqueantes?",
+      "options": [
+        "Web Workers permitem usar APIs mais modernas do browser",
+        "async/await não bloqueia para I/O mas código CPU-intensivo (loops pesados, parsing, compressão) ainda bloqueia a thread principal — Workers rodam em threads separadas",
+        "Web Workers são mais rápidos que async/await para qualquer tipo de operação",
+        "async/await não funciona com arrays grandes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "async/await libera a thread para I/O (aguardando rede, disco, timers) — o JS não está 'trabalhando', só esperando. Mas código computacional (criptografia, análise de imagem, compressão) realmente usa a CPU. Workers movem esse trabalho para uma thread separada, mantendo a UI responsiva."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que acontece com um ArrayBuffer após ser enviado via postMessage como Transferable?",
+      "options": [
+        "Uma cópia é enviada ao worker e o original permanece intacto",
+        "O buffer é 'neutered' na thread original — byteLength vira 0 e ele não pode mais ser usado",
+        "O buffer é congelado (read-only) na thread original",
+        "O buffer é automaticamente copiado de volta quando o worker termina"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Transferables transferem propriedade do buffer — o ArrayBuffer não é copiado, a thread que o enviou perde acesso. O buffer no sender fica 'detached': qualquer acesso lança TypeError ou retorna 0. Isso permite transferência O(1) de gigabytes de dados sem cópia."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que `SharedArrayBuffer` requer Cross-Origin Isolation (headers COOP/COEP)?",
+      "options": [
+        "Por motivos de performance — precisa de ambiente isolado para otimização",
+        "Para prevenir ataques de timing (Spectre/Meltdown): memória compartilhada permite medir timing com precisão, expondo dados de outros contextos",
+        "Porque SharedArrayBuffer usa APIs nativas do sistema operacional",
+        "Para garantir que apenas HTTPS possa usar SharedArrayBuffer"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Spectre/Meltdown exploram timing side-channels — lendo memória de outras origens medindo diferenças de tempo. SharedArrayBuffer permite um timer de alta precisão via Atomics.wait em loop. Cross-Origin Isolation (COOP + COEP headers) isola o contexto, impedindo que código malicioso acesse dados de outras origens."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que é uma race condition e como `Atomics.compareExchange` ajuda a evitá-la?",
+      "options": [
+        "Race condition é quando dois workers terminam ao mesmo tempo; compareExchange serializa o acesso",
+        "Race condition é quando leitura-modificação-escrita de múltiplas threads se intercalam, corrompendo dados; compareExchange faz a operação atomicamente (indivisível)",
+        "Race condition é quando um worker é mais rápido que outro; compareExchange equaliza a velocidade",
+        "Race condition é um tipo de bug que só ocorre em Node.js"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Race condition: Thread A lê valor 0, Thread B lê valor 0, A escreve 1, B escreve 1 — um incremento foi perdido. compareExchange(arr, i, expected, new) só escreve se o valor atual === expected. Se outra thread mudou antes, retorna o valor atual e você pode retry. Base de todos os locks e estruturas lock-free."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual o objetivo de um Worker Pool?",
+      "options": [
+        "Criar um novo Worker para cada tarefa e destruí-lo depois",
+        "Manter um conjunto fixo de Workers reusáveis, enfileirando tarefas e despachando para Workers disponíveis",
+        "Fazer todos os Workers compartilharem o mesmo SharedArrayBuffer",
+        "Permitir que Workers se comuniquem diretamente sem passar pelo main thread"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Criar/destruir Workers tem overhead. Um pool cria N workers (geralmente navigator.hardwareConcurrency) uma vez e os reutiliza. Tarefas entram em uma fila. Quando um worker fica disponível, recebe a próxima tarefa. Maximiza utilização de cores sem overhead de criação."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `OffscreenCanvas` permite que `<canvas>` normal não permite?",
+      "options": [
+        "Renderizar gráficos 3D sem WebGL",
+        "Transferir o controle do canvas para um Worker, permitindo renderização off-main-thread sem bloquear a UI",
+        "Exportar o canvas como SVG automaticamente",
+        "Compartilhar o canvas entre múltiplas abas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "canvas.transferControlToOffscreen() cria um OffscreenCanvas que pode ser transferido para um Worker. O Worker pode fazer todo o trabalho de renderização (incluindo requestAnimationFrame) sem tocar a thread principal. Ideal para jogos e visualizações pesadas."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a principal limitação dos Web Workers em relação ao código da thread principal?",
+      "options": [
+        "Workers não podem usar async/await",
+        "Workers não têm acesso ao DOM, window, document — apenas APIs específicas (fetch, crypto, IndexedDB, etc.)",
+        "Workers só podem se comunicar com o main thread, não entre si",
+        "Workers são limitados a 1MB de memória por padrão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Workers rodam em contexto diferente — sem DOM, sem window.location, sem document. Isso é intencional: o DOM não é thread-safe. Workers têm acesso a fetch, crypto, WebSockets, IndexedDB, SharedArrayBuffer, e podem criar outros Workers. Comunicação com main thread é via postMessage ou SharedArrayBuffer."
+    }
+  ]
+}

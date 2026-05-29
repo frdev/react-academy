@@ -1,0 +1,206 @@
+# V8 Internals I — Compilação
+
+V8 é o engine JavaScript do Chrome e Node.js. Entender seu pipeline de compilação — de código fonte a bytecode a máquina nativa — explica por que JavaScript pode ser tão rápido e quando fica lento.
+
+## O Pipeline do V8
+
+```
+Código fonte
+    ↓
+  Parser (Sparkplug parser / BlinkDB)
+    ↓
+    AST
+    ↓
+  Ignition (intérprete de bytecode)
+    ↓
+  Bytecode
+    ↓  ← profiling data coletado aqui
+  TurboFan (JIT compiler)
+    ↓
+  Código nativo otimizado
+    ↓  ← se deoptimize, volta para bytecode
+  Deoptimization → Ignition
+```
+
+## Ignition: O Intérprete
+
+Ignition compila JavaScript para **bytecode** e o interpreta. Bytecode é uma representação intermediária compacta — menor que AST, mais rápida de gerar que código nativo.
+
+```
+// JavaScript:
+function add(a, b) { return a + b }
+
+// Bytecode (simplificado):
+LdaNamedProperty a0, [0]   // Load 'a'
+Star r0                     // Store in register r0
+LdaNamedProperty a1, [0]   // Load 'b'
+Add r0                      // Add r0 + accumulator
+Return                      // Return result
+```
+
+Ignition também coleta **profiling data**: quantas vezes cada função foi chamada, com quais tipos de argumentos.
+
+## TurboFan: O Compilador JIT
+
+Quando uma função é chamada muitas vezes (**hot function**), TurboFan a compila para código nativo otimizado. O threshold padrão é ~1000 execuções.
+
+```javascript
+function sum(arr) {
+  let total = 0
+  for (let i = 0; i < arr.length; i++) {
+    total += arr[i]
+  }
+  return total
+}
+
+// Primeira chamada: Ignition interpreta bytecode
+sum([1, 2, 3])
+
+// ~1000 chamadas depois: TurboFan compila
+// Assumindo: arr é sempre Array<number>, total é sempre number
+// Gera código nativo com instruções SSE/AVX de ponto flutuante
+```
+
+## Otimização Especulativa
+
+TurboFan usa os dados de profiling para fazer **otimizações especulativas** — assume que os tipos vistos no passado continuarão iguais:
+
+```javascript
+function multiply(a, b) {
+  return a * b
+}
+
+// Primeiras 1000 chamadas: sempre numbers
+multiply(2, 3)    // número × número
+multiply(4, 5)    // número × número
+// ...
+
+// TurboFan assume: a e b são sempre numbers
+// Gera código nativo que usa multiplicação de inteiros diretamente
+// (sem verificação de tipo, sem boxing)
+
+// Então:
+multiply('hello', 3)  // string × número!
+// TurboFan não pode mais usar o código otimizado → deoptimização
+```
+
+## Deoptimização
+
+Quando uma suposição do TurboFan é violada, ocorre **deoptimização**: o engine descarta o código nativo e volta para o bytecode do Ignition.
+
+```javascript
+// Código que causa deoptimização frequente:
+function process(value) {
+  return value * 2
+}
+
+for (let i = 0; i < 10000; i++) {
+  process(i)        // number — TurboFan otimiza para number
+}
+
+process('foo')       // string — deoptimização!
+process(true)        // boolean — deoptimização!
+process({ x: 1 })   // object — deoptimização!
+
+// V8 pode marcar a função como "megamorphic" e nunca otimizar
+```
+
+Deoptimizações frequentes são um indicador de performance ruim. Para detectar:
+
+```bash
+# Node.js com flag para logar deoptimizações
+node --trace-deopt --trace-opt script.js
+```
+
+## Parsing Lazy vs Eager
+
+V8 usa **lazy parsing** por padrão — funções não executadas imediatamente são apenas pré-parseadas (verifica sintaxe, não constrói AST completa):
+
+```javascript
+// Esta função é lazy-parsed no carregamento do módulo
+function rarelyUsed() {
+  // Código complexo...
+  // Só será completamente parseado quando chamado pela 1ª vez
+}
+
+// Esta função é eager-parsed porque é chamada imediatamente
+// (padrão de IIFE ou export default function)
+const result = (function() {
+  return 42
+})()
+```
+
+Lazy parsing acelera o startup, mas a *primeira chamada* de uma função lazy tem latência extra. Para funções críticas para o startup, você pode forçar eager parse:
+
+```javascript
+// Força eager parse (sintaxe especial reconhecida por V8)
+const criticalFn = (function() {
+  return function() {
+    // código crítico
+  }
+})()
+```
+
+## Inline Caches (ICs)
+
+Inline Caches são um dos mecanismos de otimização mais importantes do V8. Para `obj.property`, V8 guarda em cache o "shape" (hidden class) do objeto e o offset da propriedade:
+
+```javascript
+// Sem IC: toda vez verifica onde 'x' está em obj
+function getX(obj) {
+  return obj.x
+}
+
+// Com IC (após algumas chamadas):
+// V8 memoriza: "objetos com hidden class H0 têm 'x' no offset 8"
+// Próximas chamadas: verifica apenas se o hidden class é H0 → acessa offset 8 diretamente
+
+// Se a função recebe objetos com apenas 1 shape → Monomorphic (mais rápido)
+// 2-4 shapes → Polymorphic (aceitável)
+// 5+ shapes → Megamorphic (desabilita otimização, muito lento)
+```
+
+## Feedback Vectors
+
+V8 mantém um **feedback vector** por função com os tipos observados em cada "slot" (cada operação):
+
+```javascript
+function add(a, b) {
+  return a + b  // slot 0: BinaryOp
+}
+
+// Após chamadas com numbers:
+// slot 0: { type: 'number + number' }
+// TurboFan usa esse feedback para gerar código especializado
+```
+
+## Tiers de Compilação (V8 12+)
+
+V8 moderno tem múltiplos tiers:
+
+1. **Spark plug**: compiler de bytecode → código não-otimizado rápido (tier 1)
+2. **Maglev**: JIT de médio porte, compila funções moderadamente hot (tier 2, novo)
+3. **TurboFan**: JIT pesado, compila funções muito hot com otimizações agressivas (tier 3)
+
+O objetivo é reduzir o tempo até código eficiente sem pagar o custo do TurboFan em tudo.
+
+## Flags Úteis para Debugging V8
+
+```bash
+# Ver o bytecode gerado pelo Ignition
+node --print-bytecode --print-bytecode-filter=minhafuncao script.js
+
+# Ver quando TurboFan otimiza/deoptimiza
+node --trace-opt --trace-deopt script.js
+
+# Perfil de allocations (para GC)
+node --heap-prof script.js
+
+# Compilar com otimizações desabilitadas (baseline)
+node --no-opt script.js
+
+# Forçar compilação TurboFan imediata (para testes)
+# Em Node.js, %OptimizeFunctionOnNextCall(fn) com --allow-natives-syntax
+```
+
+> **Resumo:** V8 interpreta bytecode com Ignition enquanto coleta profiling. Funções hot são compiladas pelo TurboFan com otimizações especulativas baseadas nos tipos observados. Quando uma suposição é violada, deoptimização ocorre. Código V8-friendly mantém tipos consistentes em funções quentes, evita misturar tipos, e cria objetos com a mesma "shape". Lazy parsing acelera o startup; ICs tornam acesso a propriedades quase tão rápido quanto acesso a arrays.

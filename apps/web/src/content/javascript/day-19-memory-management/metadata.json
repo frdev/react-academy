@@ -1,0 +1,14 @@
+{
+  "id": "day-19",
+  "day": 19,
+  "week": 3,
+  "title": "Gerenciamento de Memória",
+  "slug": "memory-management",
+  "topics": ["mark-and-sweep", "gerações de GC", "memory leaks comuns", "closures e leaks", "event listeners esquecidos", "timers perdidos", "Chrome DevTools profiling", "heap snapshots"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-14"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

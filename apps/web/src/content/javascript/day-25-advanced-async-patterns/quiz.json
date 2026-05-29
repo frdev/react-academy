@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-25",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a prioridade correta entre microtasks e macrotasks no event loop?",
+      "options": [
+        "Macrotasks têm prioridade — são processadas primeiro",
+        "Microtasks têm maior prioridade — a fila de microtasks é completamente esvaziada antes de qualquer macrotask executar",
+        "Ambas têm a mesma prioridade e são intercaladas uma a uma",
+        "A prioridade depende do tipo do browser"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A fila de microtasks (Promises, queueMicrotask, MutationObserver) é processada completamente ao final de cada task. Só após esvaziar todas as microtasks o event loop seleciona a próxima macrotask (setTimeout, setInterval, etc.). Isso garante que callbacks de Promise executam antes de qualquer setTimeout."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a vantagem de `queueMicrotask(fn)` sobre `Promise.resolve().then(fn)`?",
+      "options": [
+        "queueMicrotask tem prioridade maior que Promises",
+        "queueMicrotask não cria um objeto Promise — é mais eficiente em memória para casos onde você só quer agendar uma função no microtask queue",
+        "queueMicrotask pode ser cancelado; Promise.resolve não",
+        "queueMicrotask funciona em Node.js; Promise.resolve não"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Ambos adicionam ao microtask queue com a mesma prioridade. A diferença é overhead: Promise.resolve().then(fn) cria um objeto Promise, resolve ele, e adiciona fn ao queue. queueMicrotask(fn) adiciona diretamente sem criar objetos intermediários. Para batching de alta frequência, a diferença pode ser significativa."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que `requestAnimationFrame` é preferível a `setTimeout(fn, 16)` para animações?",
+      "options": [
+        "requestAnimationFrame é mais preciso ao milissegundo que setTimeout",
+        "requestAnimationFrame sincroniza com o ciclo de repaint do browser — executa no momento certo antes de cada frame, e é automaticamente pausado quando a aba não está visível",
+        "setTimeout tem limite de 16ms; requestAnimationFrame não tem limite",
+        "requestAnimationFrame tem prioridade maior que microtasks"
+      ],
+      "correctAnswer": 1,
+      "explanation": "setTimeout(fn, 16) não garante 60fps — pode ser 17ms, 20ms, ou mais. requestAnimationFrame executa sincronizado com o repaint do monitor (60fps = ~16.6ms, 120fps = ~8.3ms). Quando a aba fica em background, rAF é pausado automaticamente, economizando CPU. setTimeout continuaria executando."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que processar uma lista grande de 10000 itens em um único loop síncrono pode ser problemático e qual é a solução?",
+      "options": [
+        "JavaScript tem limite de 1000 iterações por loop",
+        "Um loop longo bloqueia a thread principal — a UI trava. A solução é dividir em chunks e usar await setTimeout(0) entre eles para ceder controle ao event loop",
+        "Loops síncronos não funcionam com arrays maiores que 1000 elementos",
+        "O V8 deoptimiza loops muito longos automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "JavaScript é single-threaded. Um loop de 10000 iterações com processamento pesado pode travar a UI por segundos. Dividir em chunks + await new Promise(r => setTimeout(r, 0)) cede controle ao event loop entre chunks — o browser pode renderizar um frame, processar clicks, e depois continuar o processamento."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que uma fila de concorrência (ConcurrencyQueue com limite 3) faz quando recebe 10 tarefas ao mesmo tempo?",
+      "options": [
+        "Executa todas as 10 em paralelo, ignorando o limite",
+        "Executa as primeiras 3 imediatamente; as demais ficam na fila e são iniciadas conforme as anteriores terminam, mantendo sempre no máximo 3 em execução",
+        "Executa as 10 sequencialmente, uma por vez",
+        "Rejeita as tarefas além do limite com um erro"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A fila processa até N tarefas simultaneamente. Quando uma completa, o slot fica livre e a próxima da fila começa. Com 10 tarefas e limite 3: as primeiras 3 iniciam imediatamente, 7 aguardam na fila. À medida que terminam, novas começam. Resultado: throughput máximo sem sobrecarregar servidor ou rede."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como AbortController permite cancelar operações assíncronas?",
+      "options": [
+        "AbortController interrompe a execução JavaScript no meio de uma função async",
+        "Gera um AbortSignal que pode ser passado para fetch e outros. Chamar abort() faz o signal disparar 'abort', e operações que observam o signal lançam AbortError",
+        "AbortController usa Web Workers para cancelar tasks em background",
+        "AbortController cancela apenas Promises, não fetch requests"
+      ],
+      "correctAnswer": 1,
+      "explanation": "controller.abort() dispara o evento 'abort' no signal. fetch({ signal }) observa esse evento e cancela o request HTTP, lançando AbortError. Você pode passar o mesmo signal para múltiplas operações e cancelar todas com um único abort(). É o padrão moderno para cancelamento limpo — sem flags globais nem race conditions."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que React Scheduler usa MessageChannel em vez de setTimeout(fn, 0) para scheduling de macrotasks?",
+      "options": [
+        "MessageChannel tem suporte melhor em browsers antigos",
+        "setTimeout(fn, 0) tem um delay mínimo de ~4ms por spec HTML; MessageChannel despacha em ~0ms real, permitindo scheduling mais preciso",
+        "MessageChannel funciona em Web Workers; setTimeout não",
+        "MessageChannel é mais fácil de cancelar que setTimeout"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O HTML spec define um mínimo de 4ms para setTimeout. Na prática, setTimeout(fn, 0) demora 4ms+. MessageChannel.port.onmessage é uma macrotask sem esse floor — executa em ~0.2ms. Para um scheduler que toma decisões a cada frame (16ms), 4ms de overhead por task seria 25% do budget. React usa MessageChannel por isso."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-08",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que um objeto precisa ter para ser considerado *iterável* em JavaScript?",
+      "options": [
+        "Um método .forEach()",
+        "Um método [Symbol.iterator]() que retorna um iterator",
+        "Um método .next() que retorna { value, done }",
+        "Herdar de Array.prototype"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O Iterable Protocol exige o método [Symbol.iterator]() que retorna um iterator. O método .next() é o Iterator Protocol — um objeto pode ser iterator sem ser iterável (e vice-versa, embora seja incomum)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que acontece quando você chama `simple()` em `function* simple() { yield 1 }`?",
+      "options": [
+        "A função executa imediatamente e retorna 1",
+        "Retorna um generator object, mas nenhum código da função executa ainda",
+        "Lança TypeError porque generators precisam ser chamados com new",
+        "Retorna { value: 1, done: false } imediatamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Chamar uma generator function retorna um generator object sem executar nada do corpo. A execução só começa com o primeiro .next()."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `yield*` faz dentro de um generator?",
+      "options": [
+        "Yielda múltiplos valores de uma vez como array",
+        "Delega para outro iterável, produzindo todos os seus valores",
+        "Cria um sub-generator que roda em paralelo",
+        "É equivalente a return com múltiplos valores"
+      ],
+      "correctAnswer": 1,
+      "explanation": "yield* delega para qualquer iterável — outro generator, array, string, Set, etc. — e produz cada um de seus valores sequencialmente, como se fossem yields individuais."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é o resultado de `gen.next(42)` quando o generator está pausado em `const x = yield 'hello'`?",
+      "options": [
+        "O generator recebe 42 em x e continua a partir de yield",
+        "O generator ignora 42 e usa 'hello' como x",
+        "Lança TypeError — next() não aceita argumentos",
+        "O generator reinicia do início com x = 42"
+      ],
+      "correctAnswer": 0,
+      "explanation": "next(value) injeta o value como resultado da expressão yield atual. Então x recebe 42 e a execução continua. O valor passado para o *primeiro* next() é ignorado (não há yield esperando)."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que generators são ideais para sequências infinitas?",
+      "options": [
+        "Porque generators rodam em Web Workers automaticamente",
+        "Porque generators são mais rápidos que arrays para grandes volumes",
+        "Porque valores só são computados quando pedidos via next() — computação lazy",
+        "Porque generators têm acesso a memória ilimitada"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Generators são lazy: cada valor só é computado quando .next() é chamado. Um generator de números naturais infinitos não aloca memória para a sequência — apenas mantém o estado atual (o número corrente)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `g.return('fim')` faz em um generator que está pausado em um try/finally?",
+      "options": [
+        "Ignora o finally e termina imediatamente",
+        "Executa o bloco finally antes de terminar com { value: 'fim', done: true }",
+        "Lança um erro porque return() não pode ser chamado durante try/finally",
+        "Continua executando normalmente e ignora o 'fim'"
+      ],
+      "correctAnswer": 1,
+      "explanation": "return() força o generator a terminar, mas respeita o bloco finally — ele é executado antes de retornar { value: 'fim', done: true }. Isso garante limpeza de recursos."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual afirmação sobre objetos comuns `{ a: 1 }` e iterabilidade é correta?",
+      "options": [
+        "Objetos comuns são iteráveis via for...of por padrão",
+        "Objetos comuns NÃO são iteráveis — for...of lança TypeError neles",
+        "Objetos comuns são iteráveis mas só sobre suas chaves",
+        "Objetos comuns são iteráveis com for...in mas não for...of"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Objetos literais não implementam Symbol.iterator. for...of lança TypeError: 'obj is not iterable'. for...in (que itera sobre *chaves*) funciona, mas é diferente. Para iterar objetos, use Object.entries(), Object.keys(), ou adicione [Symbol.iterator] manualmente."
+    }
+  ]
+}

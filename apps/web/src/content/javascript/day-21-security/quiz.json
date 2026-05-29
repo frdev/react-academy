@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-21",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é prototype pollution e por que é perigoso?",
+      "options": [
+        "É quando um módulo importa muitos protótipos, causando conflitos de naming",
+        "É quando código malicioso modifica Object.prototype, fazendo todos os objetos da aplicação herdarem propriedades/métodos não esperados",
+        "É quando métodos de prototype são sobrescritos por subclasses inadvertidamente",
+        "É quando o GC não consegue coletar objetos no prototype chain"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Prototype pollution adiciona ou modifica propriedades em Object.prototype. Como todos os objetos herdam de Object.prototype, isso afeta a aplicação inteira. Um atacante pode adicionar isAdmin: true em Object.prototype e qualquer verificação user.isAdmin retornará true, mesmo para usuários não-admin."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `Object.keys(source)` é mais seguro que `for...in source` em merges de objetos?",
+      "options": [
+        "Object.keys é mais rápido que for...in",
+        "for...in inclui propriedades herdadas do prototype (como __proto__); Object.keys retorna apenas as propriedades próprias e enumeráveis do objeto",
+        "Object.keys ignora propriedades null automaticamente",
+        "Não há diferença de segurança entre os dois"
+      ],
+      "correctAnswer": 1,
+      "explanation": "for...in itera sobre todas as propriedades enumeráveis, incluindo as herdadas. Se source tem __proto__ como chave enumerável, for...in a incluirá. Object.keys() retorna apenas as own properties (não herdadas), excluindo __proto__. Mesmo assim, é necessário verificar explicitamente keys como 'constructor' e 'prototype'."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `element.innerHTML = userInput` e `element.textContent = userInput`?",
+      "options": [
+        "innerHTML é mais rápido para grandes quantidades de texto",
+        "innerHTML interpreta HTML (incluindo <script>, event handlers) — permite XSS; textContent trata tudo como texto puro e escapa HTML automaticamente",
+        "textContent não funciona com elementos aninhados",
+        "Não há diferença de segurança — ambos escapam HTML"
+      ],
+      "correctAnswer": 1,
+      "explanation": "innerHTML parseia a string como HTML — <img onerror='alert(1)'> executa JavaScript. textContent insere como texto literal: <img onerror='alert(1)'> aparece como texto na tela, sem execução. Sempre use textContent para inserir texto do usuário; use innerHTML apenas com conteúdo sanitizado por DOMPurify."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `Object.freeze()` e `Object.seal()`?",
+      "options": [
+        "freeze congela apenas o nível superior; seal congela recursivamente",
+        "freeze impede add/delete/modify; seal impede add/delete mas permite modify de valores existentes",
+        "seal é mais forte que freeze — impede qualquer operação no objeto",
+        "Não há diferença prática — são aliases"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Object.seal: não pode adicionar ou deletar propriedades, mas pode modificar valores existentes. Object.freeze: não pode adicionar, deletar OU modificar. Ambos são shallow — objetos aninhados não são afetados. Para configs completamente imutáveis, use deepFreeze."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como Content Security Policy (CSP) mitiga ataques XSS?",
+      "options": [
+        "CSP filtra o HTML da página antes de renderizar",
+        "CSP restringe quais origens podem carregar scripts, styles e recursos — sem 'unsafe-inline', scripts injetados por XSS não executam",
+        "CSP criptografa a comunicação entre cliente e servidor",
+        "CSP monitora e bloqueia requests suspeitos automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "CSP é um header que diz ao browser: 'só execute scripts desta lista de origens'. Com script-src 'self' (sem unsafe-inline), um XSS que injeta <script>código malicioso</script> não executa — o browser bloqueia inline scripts. CSP é a defesa em profundidade: mesmo que XSS ocorra, o script não roda."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que é um supply chain attack em JavaScript?",
+      "options": [
+        "Um ataque que compromete o servidor de produção via CI/CD",
+        "Comprometer uma dependência (npm package) — quando você instala o pacote malicioso, o código malicioso entra na sua aplicação",
+        "Um ataque que rouba credenciais durante o processo de build",
+        "Injetar código malicioso diretamente nos arquivos de build"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Supply chain attacks comprometem o elo fraco na cadeia de dependências. Exemplos: typosquatting (pacote com nome similar ao legítimo), comprometimento de conta do mantenedor (event-stream incident), ou postinstall scripts maliciosos. Mitigação: lockfiles (builds determinísticos), npm audit, e mínimo de dependências."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que um iframe com `sandbox` (sem outros atributos) é mais seguro para executar código não-confiável?",
+      "options": [
+        "Sandboxed iframes não podem usar JavaScript",
+        "O atributo sandbox remove as permissões padrão: sem acesso a cookies, localStorage, DOM pai, sem popup, sem formulários — isolamento completo",
+        "Sandboxed iframes rodam em um processo separado do sistema operacional",
+        "O sandbox previne que o iframe faça requests de rede"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um iframe com sandbox sem allow-same-origin tem um origin unique e opaco — não pode acessar cookies, localStorage, IndexedDB, nem o DOM do parent. Sem allow-scripts, nem JavaScript executa. Você pode adicionar permissões granulares: allow-scripts permite JS mas ainda sem same-origin access. É o isolamento mais forte no browser."
+    }
+  ]
+}

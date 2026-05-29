@@ -1,0 +1,273 @@
+# Workers & Concorrência Real
+
+JavaScript tem um thread único para código de usuário — mas "single-threaded" não significa "sem concorrência real". Web Workers e SharedArrayBuffer abrem a porta para paralelismo verdadeiro, com todas as complexidades que isso implica.
+
+## Por que Workers?
+
+O event loop JavaScript roda em uma única thread. Operações pesadas bloqueiam a UI:
+
+```javascript
+// Sem Workers: bloqueia a thread principal por segundos
+function heavyComputation(n) {
+  let result = 0
+  for (let i = 0; i < n * 1000000; i++) {
+    result += Math.sqrt(i)
+  }
+  return result
+}
+
+// Isso trava a UI completamente enquanto executa
+heavyComputation(10)
+```
+
+Workers executam em threads separadas — a thread principal continua responsiva:
+
+```javascript
+// main.js
+const worker = new Worker('./worker.js')
+
+worker.postMessage({ n: 10 })
+
+worker.onmessage = ({ data }) => {
+  console.log('Resultado:', data.result)
+  // UI permanece responsiva enquanto o worker processa
+}
+
+// worker.js
+self.onmessage = ({ data }) => {
+  const result = heavyComputation(data.n)
+  self.postMessage({ result })
+}
+```
+
+## Comunicação por Message Passing
+
+Workers se comunicam via `postMessage` — a única forma de troca de dados (exceto SharedArrayBuffer):
+
+```javascript
+// main.js
+const worker = new Worker('./worker.js', { type: 'module' })
+
+// Enviar mensagem
+worker.postMessage({ type: 'COMPUTE', payload: { data: largeArray } })
+
+// Receber resultado
+worker.addEventListener('message', ({ data }) => {
+  switch (data.type) {
+    case 'RESULT':
+      handleResult(data.payload)
+      break
+    case 'PROGRESS':
+      updateProgressBar(data.percent)
+      break
+    case 'ERROR':
+      handleError(data.error)
+      break
+  }
+})
+
+// worker.js
+self.addEventListener('message', ({ data }) => {
+  if (data.type === 'COMPUTE') {
+    try {
+      // Reportar progresso periodicamente
+      const chunks = splitIntoChunks(data.payload.data)
+      let processed = []
+
+      chunks.forEach((chunk, i) => {
+        processed = [...processed, ...processChunk(chunk)]
+        self.postMessage({
+          type: 'PROGRESS',
+          percent: Math.round((i + 1) / chunks.length * 100)
+        })
+      })
+
+      self.postMessage({ type: 'RESULT', payload: processed })
+    } catch (err) {
+      self.postMessage({ type: 'ERROR', error: err.message })
+    }
+  }
+})
+```
+
+## Transferable Objects: Zero-Copy
+
+Por padrão, dados enviados via `postMessage` são **copiados** (structured clone algorithm). Para arrays grandes, isso é caro. *Transferable objects* transferem a propriedade do buffer sem cópia:
+
+```javascript
+// Sem transfer: copia o buffer — lento para dados grandes
+worker.postMessage({ data: largeArrayBuffer })
+
+// Com transfer: transfere propriedade — O(1), sem cópia
+worker.postMessage(
+  { data: largeArrayBuffer },
+  [largeArrayBuffer]  // array de transferables
+)
+
+// Após transfer, largeArrayBuffer no main thread fica "neutered" (detached)
+largeArrayBuffer.byteLength  // 0 — o main thread não tem mais acesso
+
+// No worker, você recebe o buffer completo
+self.onmessage = ({ data }) => {
+  console.log(data.data.byteLength)  // tamanho original
+}
+```
+
+Transferables incluem: `ArrayBuffer`, `MessagePort`, `OffscreenCanvas`, `ReadableStream`, `WritableStream`.
+
+## SharedArrayBuffer: Memória Compartilhada Real
+
+`SharedArrayBuffer` é um buffer que múltiplas threads podem ler e escrever simultaneamente — sem cópia:
+
+```javascript
+// main.js
+const sab = new SharedArrayBuffer(4)  // 4 bytes compartilhados
+const shared = new Int32Array(sab)
+
+const worker = new Worker('./worker.js')
+worker.postMessage({ buffer: sab })
+
+// Ler diretamente — sem postMessage
+setTimeout(() => {
+  console.log(shared[0])  // vê mudanças feitas pelo worker
+}, 500)
+
+// worker.js
+self.onmessage = ({ data }) => {
+  const shared = new Int32Array(data.buffer)
+  shared[0] = 42  // escreve diretamente na memória compartilhada
+}
+```
+
+**Atenção:** `SharedArrayBuffer` requer headers de segurança específicos (Cross-Origin Isolation) por causa de vulnerabilidades de side-channel (Spectre/Meltdown).
+
+## Atomics: Operações Atômicas
+
+Com memória compartilhada, operações de leitura-modificação-escrita podem ter race conditions:
+
+```javascript
+// Race condition: dois workers incrementam simultaneamente
+// Worker A lê shared[0] = 0
+// Worker B lê shared[0] = 0
+// Worker A escreve shared[0] = 1
+// Worker B escreve shared[0] = 1  ← incremento de A foi perdido!
+```
+
+`Atomics` garante operações atômicas (indivisíveis):
+
+```javascript
+const sab = new SharedArrayBuffer(4)
+const counter = new Int32Array(sab)
+
+// Em qualquer número de workers simultaneamente:
+Atomics.add(counter, 0, 1)  // incremento atômico — sem race condition
+
+// Outras operações atômicas:
+Atomics.sub(counter, 0, 1)        // subtração atômica
+Atomics.and(counter, 0, mask)      // AND bit a bit
+Atomics.or(counter, 0, mask)       // OR bit a bit
+Atomics.exchange(counter, 0, val)  // troca atômica, retorna valor anterior
+Atomics.compareExchange(counter, 0, expected, replacement)
+// troca apenas se atual === expected — base de locks (Compare-And-Swap)
+```
+
+## Mutex com Atomics.wait/notify
+
+Implementar um mutex (lock) básico:
+
+```javascript
+// mutex.js — para uso nos workers
+const UNLOCKED = 0
+const LOCKED = 1
+
+export function lock(sharedBuffer, index = 0) {
+  const lock = new Int32Array(sharedBuffer)
+  while (true) {
+    // Tenta adquirir o lock (CAS: compare-and-swap)
+    if (Atomics.compareExchange(lock, index, UNLOCKED, LOCKED) === UNLOCKED) {
+      return  // lock adquirido
+    }
+    // Aguarda até que o lock seja liberado (sleep sem busy-wait)
+    Atomics.wait(lock, index, LOCKED)  // bloqueia a thread até notify
+  }
+}
+
+export function unlock(sharedBuffer, index = 0) {
+  const lock = new Int32Array(sharedBuffer)
+  Atomics.store(lock, index, UNLOCKED)
+  Atomics.notify(lock, index, 1)  // acorda um worker esperando
+}
+
+// Uso em worker:
+// lock(lockBuffer)
+// // seção crítica — apenas um worker por vez
+// doWork()
+// unlock(lockBuffer)
+```
+
+## Worker Pool: Padrão para Múltiplos Workers
+
+```javascript
+class WorkerPool {
+  #workers = []
+  #queue = []
+  #available = []
+
+  constructor(workerScript, size = navigator.hardwareConcurrency) {
+    for (let i = 0; i < size; i++) {
+      const worker = new Worker(workerScript, { type: 'module' })
+      this.#workers.push(worker)
+      this.#available.push(worker)
+
+      worker.onmessage = ({ data }) => {
+        const { resolve, reject } = worker._current
+        this.#available.push(worker)
+        this.#processQueue()
+        data.error ? reject(new Error(data.error)) : resolve(data.result)
+      }
+    }
+  }
+
+  run(payload) {
+    return new Promise((resolve, reject) => {
+      this.#queue.push({ payload, resolve, reject })
+      this.#processQueue()
+    })
+  }
+
+  #processQueue() {
+    if (this.#queue.length === 0 || this.#available.length === 0) return
+    const worker = this.#available.pop()
+    const task = this.#queue.shift()
+    worker._current = task
+    worker.postMessage(task.payload)
+  }
+}
+
+// Uso
+const pool = new WorkerPool('./heavy-worker.js')
+
+const results = await Promise.all(
+  data.chunks.map(chunk => pool.run({ chunk }))
+)
+```
+
+## Off-Main-Thread Rendering com OffscreenCanvas
+
+```javascript
+// main.js
+const canvas = document.getElementById('canvas')
+const offscreen = canvas.transferControlToOffscreen()
+
+const worker = new Worker('./render-worker.js')
+worker.postMessage({ canvas: offscreen }, [offscreen])
+
+// render-worker.js
+self.onmessage = ({ data }) => {
+  const ctx = data.canvas.getContext('2d')
+  // Renderiza sem bloquear a thread principal
+  animate(ctx)
+}
+```
+
+> **Resumo:** Workers permitem paralelismo real — tarefas CPU-intensivas rodam em threads separadas sem travar a UI. Use postMessage para comunicação simples, Transferables para zero-copy de ArrayBuffers grandes. SharedArrayBuffer + Atomics permitem memória compartilhada com garantias de atomicidade, mas requerem Cross-Origin Isolation e cuidado com race conditions. Para a maioria dos casos, um Worker Pool com postMessage é suficiente.

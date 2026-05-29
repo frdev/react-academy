@@ -1,0 +1,274 @@
+# Decoradores (TC39 Stage 3)
+
+Decoradores são uma proposta TC39 Stage 3 que adiciona sintaxe `@` para modificar classes, métodos, campos e acessores em tempo de definição. Já suportados no TypeScript 5.0+ e via Babel.
+
+## O que são Decoradores?
+
+Decoradores são funções que recebem o *alvo* (classe, método, campo) e podem modificá-lo ou substituí-lo:
+
+```javascript
+// Decorador de método mais simples possível
+function log(originalMethod, context) {
+  return function(...args) {
+    console.log(`Chamando ${context.name}(${args})`)
+    const result = originalMethod.apply(this, args)
+    console.log(`Retornou: ${result}`)
+    return result
+  }
+}
+
+class Calculator {
+  @log
+  add(a, b) {
+    return a + b
+  }
+}
+
+const calc = new Calculator()
+calc.add(2, 3)
+// "Chamando add(2,3)"
+// "Retornou: 5"
+```
+
+## Anatomia de um Decorador
+
+A assinatura varia por tipo de alvo:
+
+```javascript
+// Decorador de classe
+function classDecorator(Class, context) {
+  // context.kind === 'class'
+  // context.name — nome da classe
+  return NewClass  // opcional: substitui a classe
+}
+
+// Decorador de método
+function methodDecorator(method, context) {
+  // context.kind === 'method'
+  // context.name — nome do método
+  // context.static — se é método estático
+  // context.private — se é método privado
+  return replacementMethod  // opcional: substitui o método
+}
+
+// Decorador de campo (field)
+function fieldDecorator(value, context) {
+  // context.kind === 'field'
+  // value é undefined para fields
+  return function initializer(initialValue) {
+    // retorna novo valor inicial
+    return initialValue
+  }
+}
+
+// Decorador de accessor (get/set)
+function accessorDecorator({ get, set }, context) {
+  // context.kind === 'accessor'
+  return {
+    get() { ... },
+    set(value) { ... }
+  }
+}
+```
+
+## `context.addInitializer`: Código ao Construir
+
+`context.addInitializer(fn)` registra um callback que roda quando a instância é criada:
+
+```javascript
+function bound(method, context) {
+  context.addInitializer(function() {
+    // 'this' é a instância
+    this[context.name] = method.bind(this)
+  })
+  return method
+}
+
+class EventHandler {
+  @bound
+  handleClick(event) {
+    console.log(this.name, event.type)  // 'this' sempre correto
+  }
+
+  constructor(name) {
+    this.name = name
+  }
+}
+
+const handler = new EventHandler('btn')
+document.addEventListener('click', handler.handleClick)  // 'this' correto!
+```
+
+## Exemplos Práticos
+
+### `@memoize` — Cache de método
+
+```javascript
+function memoize(method, context) {
+  const cache = new WeakMap()
+
+  return function(...args) {
+    if (!cache.has(this)) {
+      cache.set(this, new Map())
+    }
+    const instanceCache = cache.get(this)
+    const key = JSON.stringify(args)
+
+    if (instanceCache.has(key)) {
+      return instanceCache.get(key)
+    }
+
+    const result = method.apply(this, args)
+    instanceCache.set(key, result)
+    return result
+  }
+}
+
+class Service {
+  @memoize
+  computeExpensive(x, y) {
+    // calculates...
+    return x * y * Math.PI
+  }
+}
+
+const svc = new Service()
+svc.computeExpensive(2, 3)  // calcula
+svc.computeExpensive(2, 3)  // retorna do cache
+```
+
+### `@validate` — Validação de parâmetros
+
+```javascript
+function validate(schema) {
+  return function(method, context) {
+    return function(...args) {
+      for (const [index, rule] of Object.entries(schema)) {
+        const value = args[index]
+        if (!rule(value)) {
+          throw new TypeError(`Argumento ${index} inválido para ${context.name}`)
+        }
+      }
+      return method.apply(this, args)
+    }
+  }
+}
+
+class UserService {
+  @validate({
+    0: v => typeof v === 'string' && v.length > 0,
+    1: v => typeof v === 'number' && v >= 0
+  })
+  createUser(name, age) {
+    return { name, age }
+  }
+}
+```
+
+### `@readonly` — Field imutável
+
+```javascript
+function readonly(value, context) {
+  if (context.kind === 'field') {
+    return function(initialValue) {
+      Object.defineProperty(this, context.name, {
+        value: initialValue,
+        writable: false,
+        configurable: false
+      })
+      return initialValue
+    }
+  }
+}
+
+class Config {
+  @readonly
+  version = '1.0.0'
+}
+
+const config = new Config()
+config.version = '2.0.0'  // silencioso ou TypeError em strict mode
+console.log(config.version)  // '1.0.0' — não mudou
+```
+
+### `@deprecated` — Aviso em runtime
+
+```javascript
+function deprecated(message) {
+  return function(method, context) {
+    return function(...args) {
+      console.warn(`[DEPRECATED] ${context.name}: ${message}`)
+      return method.apply(this, args)
+    }
+  }
+}
+
+class API {
+  @deprecated('Use fetchUser(id) instead')
+  getUser(id) {
+    return legacyFetch(id)
+  }
+}
+```
+
+### `@observable` — Accessor com notificação
+
+```javascript
+function observable(target, context) {
+  const { get, set } = target
+
+  return {
+    get() {
+      return get.call(this)
+    },
+    set(value) {
+      const oldValue = get.call(this)
+      set.call(this, value)
+      if (value !== oldValue) {
+        this.dispatchEvent?.(new CustomEvent('change', {
+          detail: { property: context.name, oldValue, newValue: value }
+        }))
+      }
+    }
+  }
+}
+
+class Store extends EventTarget {
+  @observable
+  accessor count = 0
+}
+
+const store = new Store()
+store.addEventListener('change', e => console.log('Mudou:', e.detail))
+store.count = 5  // logs "Mudou: { property: 'count', oldValue: 0, newValue: 5 }"
+```
+
+## Decoradores vs Higher-Order Functions
+
+```javascript
+// Sem decoradores — mais verboso
+class Service {
+  computeExpensive = memoize((x) => x * Math.PI)
+  handleClick = bound(function(e) { ... })
+}
+
+// Com decoradores — mais declarativo, próximo de class annotations em Java/Python
+class Service {
+  @memoize
+  computeExpensive(x) { return x * Math.PI }
+
+  @bound
+  handleClick(e) { ... }
+}
+```
+
+## Compatibilidade
+
+```
+TypeScript 5.0+: suporte nativo (nova spec, não a antiga experimentalDecorators)
+Babel: @babel/plugin-proposal-decorators com version: "2023-11"
+Node.js: ainda não nativo (aguarda V8 implementar Stage 3 → 4)
+Chrome: parcialmente implementado (verificar caniuse)
+```
+
+> **Resumo:** Decoradores são meta-programação com sintaxe declarativa — modificam classes, métodos e campos sem alterar o código deles. A nova spec (2023) é diferente da antiga `experimentalDecorators` do TypeScript. Use para cross-cutting concerns: logging, caching, validação, binding, observabilidade. Cada decorador é uma função que recebe o alvo e um context object com metadados.

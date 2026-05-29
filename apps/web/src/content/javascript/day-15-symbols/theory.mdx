@@ -1,0 +1,227 @@
+# Symbols & Well-Known Symbols
+
+`Symbol` é o único tipo primitivo que garante unicidade absoluta. Mais que uma curiosidade, os *well-known symbols* são os ganchos que o JavaScript expõe para personalizar o comportamento de qualquer objeto — de iteração a conversão de tipo.
+
+## O Básico: Unicidade Garantida
+
+```javascript
+const s1 = Symbol('description')
+const s2 = Symbol('description')
+
+s1 === s2    // false — SEMPRE únicos, mesmo com mesma descrição
+typeof s1    // "symbol"
+s1.toString() // "Symbol(description)"
+s1.description // "description" (ES2019+)
+```
+
+Symbols nunca colidem — nem com strings, nem entre si. São ideais para chaves de objeto que não devem ser sobrescritas por código externo.
+
+## Symbols como Chaves de Objeto
+
+```javascript
+const ID = Symbol('id')
+const METADATA = Symbol('metadata')
+
+const user = {
+  name: 'Ana',
+  [ID]: 42,
+  [METADATA]: { createdAt: '2024-01-01' }
+}
+
+user[ID]     // 42
+user.name    // 'Ana'
+
+// Symbols NÃO aparecem em iterações comuns:
+Object.keys(user)           // ['name'] — sem symbols
+JSON.stringify(user)        // {"name":"Ana"} — symbols ignorados
+for (const k in user) { }  // itera apenas 'name'
+
+// Para acessar symbols:
+Object.getOwnPropertySymbols(user)  // [Symbol(id), Symbol(metadata)]
+Reflect.ownKeys(user)               // ['name', Symbol(id), Symbol(metadata)]
+```
+
+Isso cria extensão "semi-privada" — não é privacidade real (qualquer um com a referência ao symbol acessa), mas evita colisões acidentais com propriedades de string.
+
+## Symbol Registry Global
+
+Symbols criados com `Symbol()` são únicos por chamada. `Symbol.for()` busca ou cria no registro global:
+
+```javascript
+const a = Symbol.for('app.userId')
+const b = Symbol.for('app.userId')
+
+a === b           // true — mesma instância do registry
+Symbol.keyFor(a)         // 'app.userId'
+Symbol.keyFor(Symbol())  // undefined — não está no registry
+```
+
+Use `Symbol.for` quando diferentes módulos, iframes ou workers precisam compartilhar o mesmo símbolo sem passar a referência explicitamente.
+
+## Well-Known Symbols: Ganchos do Runtime
+
+JavaScript expõe pontos de extensão via symbols estáticos em `Symbol.*`. Implementar esses symbols personaliza como o runtime trata seus objetos.
+
+### `Symbol.iterator` — Protocolo de Iteração
+
+```javascript
+class Range {
+  constructor(start, end) {
+    this.start = start
+    this.end = end
+  }
+
+  [Symbol.iterator]() {
+    let current = this.start
+    const end = this.end
+    return {
+      next() {
+        return current <= end
+          ? { value: current++, done: false }
+          : { value: undefined, done: true }
+      }
+    }
+  }
+}
+
+const r = new Range(1, 5)
+console.log([...r])    // [1, 2, 3, 4, 5]
+const [a, b] = r       // a=1, b=2
+for (const n of r) { } // 1, 2, 3, 4, 5
+```
+
+### `Symbol.toPrimitive` — Conversão de Tipo
+
+Controla como o objeto se converte para primitivo em coerções:
+
+```javascript
+class Money {
+  constructor(amount, currency) {
+    this.amount = amount
+    this.currency = currency
+  }
+
+  [Symbol.toPrimitive](hint) {
+    if (hint === 'number') return this.amount
+    if (hint === 'string') return `${this.amount} ${this.currency}`
+    return this.amount  // 'default' — usado em == e operador +
+  }
+}
+
+const price = new Money(42, 'BRL')
++price        // 42         (hint: 'number')
+`${price}`    // "42 BRL"   (hint: 'string')
+price + 10    // 52         (hint: 'default')
+price == 42   // true       (hint: 'default')
+```
+
+### `Symbol.hasInstance` — Customizando `instanceof`
+
+```javascript
+class Even {
+  static [Symbol.hasInstance](value) {
+    return typeof value === 'number' && value % 2 === 0
+  }
+}
+
+2 instanceof Even   // true
+3 instanceof Even   // false
+4 instanceof Even   // true
+'4' instanceof Even // false
+```
+
+### `Symbol.toStringTag` — Customizando `Object.prototype.toString`
+
+```javascript
+class HttpResponse {
+  get [Symbol.toStringTag]() {
+    return 'HttpResponse'
+  }
+}
+
+const res = new HttpResponse()
+Object.prototype.toString.call(res)  // "[object HttpResponse]"
+// Mais robusto que instanceof para type checking cross-realm
+```
+
+### `Symbol.species` — Controlando o Tipo de Retorno em Subclasses
+
+```javascript
+class MyArray extends Array {
+  static get [Symbol.species]() {
+    return Array  // .map(), .filter() retornam Array, não MyArray
+  }
+
+  sum() {
+    return this.reduce((a, b) => a + b, 0)
+  }
+}
+
+const arr = new MyArray(1, 2, 3)
+arr.sum()                     // 6 — método próprio funciona
+arr.map(x => x * 2) instanceof MyArray  // false — Array por species
+arr.map(x => x * 2) instanceof Array    // true
+```
+
+### `Symbol.asyncIterator` — Protocolo Assíncrono
+
+```javascript
+class AsyncRange {
+  constructor(start, end, delay = 100) {
+    this.start = start
+    this.end = end
+    this.delay = delay
+  }
+
+  [Symbol.asyncIterator]() {
+    let current = this.start
+    const { end, delay } = this
+    return {
+      async next() {
+        await new Promise(r => setTimeout(r, delay))
+        return current <= end
+          ? { value: current++, done: false }
+          : { value: undefined, done: true }
+      }
+    }
+  }
+}
+
+for await (const n of new AsyncRange(1, 3)) {
+  console.log(n)  // 1, 2, 3 com delay entre cada
+}
+```
+
+### `Symbol.isConcatSpreadable`
+
+```javascript
+const obj = { 0: 'a', 1: 'b', length: 2 }
+
+[].concat(obj)  // [{ 0: 'a', 1: 'b', length: 2 }] — não espalhado
+
+obj[Symbol.isConcatSpreadable] = true
+[].concat(obj)  // ['a', 'b'] — espalhado como array-like
+```
+
+## Padrão: Extensão Sem Colisão
+
+O uso mais prático no dia a dia — adicionar comportamento a objetos de terceiros sem risco de conflito:
+
+```javascript
+// Biblioteca A: adiciona metadados sem poluir o objeto
+const META_A = Symbol('libA.meta')
+
+function attachMeta(obj, data) {
+  obj[META_A] = data
+  return obj
+}
+
+// Biblioteca B usa o mesmo objeto — nenhuma colisão possível
+const META_B = Symbol('libA.meta')  // mesma descrição, symbol diferente!
+META_A === META_B  // false — garantido
+
+// Plugin system: cada plugin usa seu próprio symbol como namespace
+const PLUGIN_STATE = Symbol('myPlugin.state')
+```
+
+> **Resumo:** Symbols garantem unicidade sem exceção — nunca colidem. Os well-known symbols (`Symbol.iterator`, `Symbol.toPrimitive`, `Symbol.hasInstance`, etc.) são os pontos de extensão do runtime JavaScript: qualquer objeto pode participar dos protocolos nativos implementando esses symbols. Dominar symbols é dominar a API de extensão do próprio runtime.

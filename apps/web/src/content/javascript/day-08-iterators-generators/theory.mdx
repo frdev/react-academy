@@ -1,0 +1,290 @@
+# Iteradores & Generators
+
+O protocolo de iteração do JavaScript define como qualquer objeto pode ser percorrido com `for...of`. Generators são funções que podem pausar e retomar execução — a base de toda programação lazy e assíncrona avançada em JavaScript.
+
+## O Protocolo de Iteração
+
+JavaScript define dois protocolos complementares:
+
+**Iterable Protocol:** um objeto é *iterável* se tem o método `[Symbol.iterator]()` que retorna um *iterator*.
+
+**Iterator Protocol:** um objeto é um *iterator* se tem o método `next()` que retorna `{ value, done }`.
+
+```javascript
+// Um iterator manual
+const counter = {
+  current: 0,
+  max: 3,
+  next() {
+    if (this.current < this.max) {
+      return { value: this.current++, done: false }
+    }
+    return { value: undefined, done: true }
+  }
+}
+
+counter.next() // { value: 0, done: false }
+counter.next() // { value: 1, done: false }
+counter.next() // { value: 2, done: false }
+counter.next() // { value: undefined, done: true }
+```
+
+Para ser *iterável* (funcionar com `for...of`), o objeto precisa ter `[Symbol.iterator]`:
+
+```javascript
+const range = {
+  from: 1,
+  to: 5,
+  [Symbol.iterator]() {
+    let current = this.from
+    const last = this.to
+    return {
+      next() {
+        if (current <= last) {
+          return { value: current++, done: false }
+        }
+        return { value: undefined, done: true }
+      }
+    }
+  }
+}
+
+for (const n of range) {
+  console.log(n) // 1, 2, 3, 4, 5
+}
+
+// Spread e destructuring funcionam com qualquer iterável
+const arr = [...range]         // [1, 2, 3, 4, 5]
+const [first, second] = range  // 1, 2
+```
+
+## Iteráveis Nativos
+
+Arrays, strings, Maps, Sets, NodeLists — todos implementam o protocolo iterável:
+
+```javascript
+// String é iterável (itera sobre code points, não code units)
+for (const char of 'hello') {
+  console.log(char) // 'h', 'e', 'l', 'l', 'o'
+}
+
+// Map itera sobre [key, value] pairs
+const map = new Map([['a', 1], ['b', 2]])
+for (const [key, value] of map) {
+  console.log(key, value)
+}
+
+// Verificar se algo é iterável
+function isIterable(obj) {
+  return obj != null && typeof obj[Symbol.iterator] === 'function'
+}
+
+isIterable([1, 2, 3])   // true
+isIterable('hello')      // true
+isIterable(42)           // false
+isIterable({ a: 1 })    // false (objetos comuns NÃO são iteráveis)
+```
+
+## Generator Functions
+
+Generators são funções especiais que podem *pausar* a execução com `yield` e *retomar* depois. A sintaxe usa `function*`:
+
+```javascript
+function* simple() {
+  console.log('inicio')
+  yield 1
+  console.log('meio')
+  yield 2
+  console.log('fim')
+  return 3
+}
+
+const gen = simple()  // nada executa aqui
+gen.next()  // imprime "inicio", retorna { value: 1, done: false }
+gen.next()  // imprime "meio",  retorna { value: 2, done: false }
+gen.next()  // imprime "fim",   retorna { value: 3, done: true }
+gen.next()  // retorna { value: undefined, done: true }
+```
+
+Generators implementam *automaticamente* ambos os protocolos — são iteráveis e iterators ao mesmo tempo:
+
+```javascript
+function* range(start, end, step = 1) {
+  for (let i = start; i <= end; i += step) {
+    yield i
+  }
+}
+
+for (const n of range(0, 10, 2)) {
+  console.log(n) // 0, 2, 4, 6, 8, 10
+}
+
+console.log([...range(1, 5)])  // [1, 2, 3, 4, 5]
+```
+
+## Passando Valores para o Generator
+
+`next(value)` pode *enviar* um valor de volta para o generator. O valor torna-se o resultado da expressão `yield`:
+
+```javascript
+function* calculator() {
+  let result = 0
+  while (true) {
+    const input = yield result  // pausa e envia result; espera o próximo next()
+    if (input === null) break
+    result += input
+  }
+  return result
+}
+
+const calc = calculator()
+calc.next()      // inicia, chega no primeiro yield: { value: 0, done: false }
+calc.next(10)    // input = 10, result = 10: { value: 10, done: false }
+calc.next(25)    // input = 25, result = 35: { value: 35, done: false }
+calc.next(null)  // input = null, break: { value: 35, done: true }
+```
+
+## `yield*`: Delegando para Outro Iterável
+
+`yield*` delega para outro iterável, percorrendo todos os seus valores:
+
+```javascript
+function* concat(...iterables) {
+  for (const iterable of iterables) {
+    yield* iterable  // produz todos os valores de cada iterável
+  }
+}
+
+console.log([...concat([1, 2], [3, 4], [5])]) // [1, 2, 3, 4, 5]
+
+// yield* também funciona com strings, Maps, Sets, etc.
+function* letters() {
+  yield* 'abc'  // produz 'a', 'b', 'c'
+}
+```
+
+## Generators como Lazy Sequences Infinitas
+
+A maior vantagem dos generators: valores só são computados quando pedidos — perfeito para sequências infinitas:
+
+```javascript
+function* naturals() {
+  let n = 0
+  while (true) {
+    yield n++
+  }
+}
+
+function* take(n, iterable) {
+  let count = 0
+  for (const value of iterable) {
+    if (count++ >= n) break
+    yield value
+  }
+}
+
+function* map(fn, iterable) {
+  for (const value of iterable) {
+    yield fn(value)
+  }
+}
+
+function* filter(pred, iterable) {
+  for (const value of iterable) {
+    if (pred(value)) yield value
+  }
+}
+
+// Pipeline lazy — nada executa até consumir
+const result = take(
+  5,
+  filter(
+    n => n % 2 === 0,
+    map(
+      n => n * n,
+      naturals()
+    )
+  )
+)
+
+console.log([...result]) // [0, 4, 16, 36, 64]
+// Calcula apenas o suficiente para obter 5 pares quadrados pares
+```
+
+## Generators como Coroutines
+
+Generators permitem cooperação entre tarefas — cada `yield` é um ponto de troca de controle:
+
+```javascript
+function* task1() {
+  console.log('task1: passo 1')
+  yield
+  console.log('task1: passo 2')
+  yield
+  console.log('task1: passo 3')
+}
+
+function* task2() {
+  console.log('task2: passo A')
+  yield
+  console.log('task2: passo B')
+}
+
+// Scheduler cooperativo simples
+function runAll(...tasks) {
+  const generators = tasks.map(t => t())
+  let active = generators.map(() => true)
+
+  while (active.some(Boolean)) {
+    generators.forEach((gen, i) => {
+      if (!active[i]) return
+      const { done } = gen.next()
+      if (done) active[i] = false
+    })
+  }
+}
+
+runAll(task1, task2)
+// task1: passo 1
+// task2: passo A
+// task1: passo 2
+// task2: passo B
+// task1: passo 3
+```
+
+## `return()` e `throw()` no Generator
+
+Além de `next()`, generators têm `return(value)` e `throw(error)`:
+
+```javascript
+function* gen() {
+  try {
+    yield 1
+    yield 2
+    yield 3
+  } finally {
+    console.log('cleanup!')
+  }
+}
+
+const g = gen()
+g.next()          // { value: 1, done: false }
+g.return('done')  // imprime "cleanup!", retorna { value: 'done', done: true }
+
+// throw() injeta um erro no generator
+function* safe() {
+  try {
+    yield 'a'
+    yield 'b'
+  } catch (err) {
+    console.log('caught:', err.message)
+    yield 'recovered'
+  }
+}
+
+const s = safe()
+s.next()                    // { value: 'a', done: false }
+s.throw(new Error('boom'))  // imprime "caught: boom", retorna { value: 'recovered', done: false }
+```
+
+> **Resumo:** O protocolo iterável (`[Symbol.iterator]` + `next()`) conecta `for...of`, spread, destructuring e generators. Generators são funções com memória — cada `yield` congela o estado local. Usados corretamente, eliminam intermediários desnecessários e permitem processar sequências infinitas com baixo uso de memória.

@@ -1,0 +1,245 @@
+# Testing Avançado
+
+Além de unit tests convencionais, existem abordagens que encontram bugs que testes escritos manualmente nunca encontrariam: property-based testing, mutation testing e contract testing. Cada um ataca um ângulo diferente da confiabilidade do código.
+
+## Property-Based Testing com fast-check
+
+Em vez de exemplos específicos, você define **propriedades** que devem valer para qualquer entrada — e a biblioteca gera centenas de casos automaticamente:
+
+```javascript
+import fc from 'fast-check'
+
+// Teste convencional: exemplos específicos
+test('sort funciona', () => {
+  expect([3, 1, 2].sort((a, b) => a - b)).toEqual([1, 2, 3])
+})
+
+// Property-based: qualquer array de números
+test('sort: propriedades universais', () => {
+  fc.assert(
+    fc.property(fc.array(fc.integer()), arr => {
+      const sorted = [...arr].sort((a, b) => a - b)
+
+      // Propriedade 1: mesmo tamanho
+      expect(sorted.length).toBe(arr.length)
+
+      // Propriedade 2: todos os elementos presentes (multiset equality)
+      const sortedOriginal = [...arr].sort((a, b) => a - b)
+      expect(sorted).toEqual(sortedOriginal)
+
+      // Propriedade 3: ordem não-decrescente
+      for (let i = 0; i < sorted.length - 1; i++) {
+        expect(sorted[i]).toBeLessThanOrEqual(sorted[i + 1])
+      }
+    })
+  )
+})
+```
+
+fast-check gera 100 casos por padrão e, ao encontrar um falho, aplica **shrinking** — reduz o input ao menor caso que ainda falha:
+
+```javascript
+// Encontrou falha com [3, -1, 0, 9, 42, -7, 3]?
+// Shrinking tenta: [3, -1], [-1, 0], [-7, 3], etc.
+// Até encontrar o mínimo: [-1, 0]
+// Muito mais útil para debugging que o caso original!
+```
+
+### Geradores Customizados
+
+```javascript
+// Gerar objetos de domínio válidos
+const userArbitrary = fc.record({
+  id: fc.uuid(),
+  name: fc.string({ minLength: 1, maxLength: 100 }),
+  age: fc.integer({ min: 0, max: 150 }),
+  email: fc.emailAddress(),
+  role: fc.constantFrom('admin', 'editor', 'viewer')
+})
+
+test('processUser aceita qualquer usuário válido', () => {
+  fc.assert(
+    fc.property(userArbitrary, user => {
+      expect(() => processUser(user)).not.toThrow()
+      const result = processUser(user)
+      expect(result.displayName).toBeTruthy()
+    })
+  )
+})
+```
+
+### Modelo de Referência (Model-Based Testing)
+
+Testa que sua implementação se comporta como um modelo simples e correto:
+
+```javascript
+// Modelo simples (a "verdade")
+class SimpleQueue {
+  constructor() { this._items = [] }
+  enqueue(item) { this._items.push(item) }
+  dequeue() { return this._items.shift() }
+  size() { return this._items.length }
+}
+
+// Implementação otimizada para testar
+// (circular buffer, etc.)
+
+test('fila otimizada = fila simples para qualquer sequência de operações', () => {
+  const model = new SimpleQueue()
+  const sut = new OptimizedQueue()
+
+  fc.assert(
+    fc.property(
+      fc.array(
+        fc.oneof(
+          fc.record({ op: fc.constant('enqueue'), value: fc.integer() }),
+          fc.record({ op: fc.constant('dequeue') })
+        )
+      ),
+      operations => {
+        for (const op of operations) {
+          if (op.op === 'enqueue') {
+            model.enqueue(op.value)
+            sut.enqueue(op.value)
+          } else {
+            expect(sut.dequeue()).toBe(model.dequeue())
+          }
+        }
+        expect(sut.size()).toBe(model.size())
+      }
+    )
+  )
+})
+```
+
+## Mutation Testing com Stryker
+
+Mutation testing verifica se seus testes realmente detectam bugs — introduz mutações no código e checa se os testes falham:
+
+```javascript
+// Código original
+function isAdult(age) {
+  return age >= 18
+}
+
+// Mutações geradas automaticamente:
+// return age > 18    ← muda >= para >
+// return age <= 18   ← inverte
+// return age >= 17   ← muda a constante
+// return true        ← remove a lógica
+// return false       ← remove a lógica
+```
+
+Se um teste não captura a mutação — o teste passa mesmo com código errado — é um **sobrevivente** (*mutant survived*). Isso indica que a suite de testes tem lacunas.
+
+```bash
+# Configurar Stryker
+npx stryker init
+npx stryker run
+
+# Saída:
+# Mutants killed:     45 (81%)  ← testes capturaram essas mutações
+# Mutants survived:   11 (19%)  ← LACUNAS na suite
+# Timeout:             2  (3%)
+#
+# Mutation Score: 81%
+```
+
+### Interpretando Sobreviventes
+
+```javascript
+// Se esse mutante sobrevive:
+function discount(price, percent) {
+  return price * (1 - percent / 100)
+}
+// Mutação: percent / 100 → percent / 101
+
+// Significa que nenhum teste testou o valor correto do desconto!
+// Precisamos de: expect(discount(100, 10)).toBe(90) — não apenas .not.toThrow()
+```
+
+## Contract Testing
+
+Contract testing verifica que produtor e consumidor de uma API concordam sobre o contrato — sem precisar de um ambiente integrado:
+
+```javascript
+// consumer.test.js — define o que o consumidor espera
+const { Pact } = require('@pact-foundation/pact')
+
+const provider = new Pact({ consumer: 'Frontend', provider: 'UserAPI' })
+
+test('GET /users/:id retorna user object', async () => {
+  await provider.addInteraction({
+    state: 'user 1 exists',
+    uponReceiving: 'a request for user 1',
+    withRequest: {
+      method: 'GET',
+      path: '/users/1',
+    },
+    willRespondWith: {
+      status: 200,
+      body: {
+        id: 1,
+        name: Matchers.like('Ana'),
+        email: Matchers.like('ana@example.com')
+      }
+    }
+  })
+
+  const user = await fetchUser(1)
+  expect(user.name).toBeDefined()
+})
+// Gera um arquivo pact que é verificado contra o provider real
+```
+
+## Fuzzing: Encontrando Crashes com Input Aleatório
+
+```javascript
+// Fuzzing manual: testar com inputs extremos
+const fuzzInputs = [
+  null, undefined, '', 0, -0, NaN, Infinity, -Infinity,
+  [], {}, [null], { __proto__: null },
+  '\x00', '𝕳𝖊𝖑𝖑𝖔',  // unicode edge cases
+  'a'.repeat(1000000),   // string gigante
+  Number.MAX_SAFE_INTEGER,
+  Number.MIN_SAFE_INTEGER,
+]
+
+test('parseInput não lança para nenhum input', () => {
+  for (const input of fuzzInputs) {
+    expect(() => parseInput(input)).not.toThrow()
+  }
+})
+
+// Com fast-check: fuzzing de strings
+test('sanitize é idempotente', () => {
+  fc.assert(
+    fc.property(fc.string(), str => {
+      const once = sanitize(str)
+      const twice = sanitize(once)
+      expect(twice).toBe(once)  // sanitizar duas vezes = sanitizar uma
+    })
+  )
+})
+```
+
+## Golden Master Testing
+
+Captura o output atual ("golden") e verifica que não muda:
+
+```javascript
+import { toMatchSnapshot } from 'jest-snapshot'
+
+// Primeiro run: cria o snapshot (golden master)
+test('renderComponent output', () => {
+  const output = renderComponent({ user: { name: 'Ana', role: 'admin' } })
+  expect(output).toMatchSnapshot()
+  // Salva o HTML/output em __snapshots__/
+})
+
+// Runs subsequentes: verifica que output não mudou
+// Útil para: code generation, serialization, formatters
+// CUIDADO: não substitui assertions semânticas — apenas detecta mudanças
+```
+
+> **Resumo:** Property-based testing (fast-check) encontra casos extremos que exemplos escritos manualmente não cobrem — com shrinking para minimizar o contraexemplo. Mutation testing (Stryker) mede a efetividade real da suite, revelando onde os testes passariam mesmo com código errado. Contract testing garante que serviços que se comunicam concordam com a interface, sem integração. Use essas técnicas onde os riscos são mais altos.

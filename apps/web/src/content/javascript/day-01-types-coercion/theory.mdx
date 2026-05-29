@@ -1,0 +1,210 @@
+# Types & Coercion
+
+JavaScript tem um sistema de tipos dinâmico com comportamentos de coerção que confundem até desenvolvedores experientes. Entender como tipos funcionam de verdade é a base de tudo.
+
+## Os 8 tipos do JavaScript
+
+JavaScript possui exatamente 8 tipos:
+
+**Primitivos (7):**
+- `undefined` — variável declarada mas não inicializada
+- `null` — ausência intencional de valor
+- `boolean` — `true` / `false`
+- `number` — IEEE 754 double-precision (inclui `NaN`, `Infinity`)
+- `bigint` — inteiros arbitrários (`42n`)
+- `string` — sequência de caracteres UTF-16
+- `symbol` — valor único e irreproduzível
+
+**Objeto (1):**
+- `object` — funções, arrays, datas, objetos literais, `null` (historicamente)
+
+```javascript
+typeof undefined  // "undefined"
+typeof null       // "object" ← bug histórico de 1995, nunca corrigido
+typeof []         // "object"
+typeof function(){} // "function" ← typeof mente: functions são objects
+typeof 42n        // "bigint"
+typeof Symbol()   // "symbol"
+```
+
+## Primitivos vs Objetos: a diferença fundamental
+
+Primitivos são **imutáveis e passados por valor**. Objetos são **mutáveis e passados por referência**.
+
+```javascript
+// Primitivos: cópia do valor
+let a = 'hello'
+let b = a
+b = 'world'
+console.log(a) // 'hello' — não mudou
+
+// Objetos: cópia da referência
+let obj1 = { x: 1 }
+let obj2 = obj1
+obj2.x = 99
+console.log(obj1.x) // 99 — mesma referência!
+```
+
+### Autoboxing: primitivos agindo como objetos
+
+Quando você acessa `.length` em uma string, o JavaScript cria temporariamente um `String` object wrapper, executa o método, e descarta o wrapper.
+
+```javascript
+'hello'.toUpperCase() // 'HELLO'
+// É como se fosse: new String('hello').toUpperCase()
+
+// Mas primitivos NÃO são objetos:
+let str = 'hello'
+str.foo = 'bar'
+console.log(str.foo) // undefined — a propriedade foi no wrapper temporário
+```
+
+## Coerção: explícita vs implícita
+
+**Coerção explícita** — você claramente está convertendo:
+
+```javascript
+Number('42')    // 42
+Number('')      // 0
+Number('  ')    // 0
+Number('abc')   // NaN
+Number(true)    // 1
+Number(false)   // 0
+Number(null)    // 0
+Number(undefined) // NaN
+
+String(42)      // "42"
+String(null)    // "null"
+String(undefined) // "undefined"
+
+Boolean(0)      // false
+Boolean('')     // false
+Boolean(null)   // false
+Boolean(NaN)    // false
+Boolean(undefined) // false
+```
+
+**Coerção implícita** — o JavaScript decide por você:
+
+```javascript
+// O operador + com string converte tudo para string
+'5' + 3        // "53" (3 vira string)
+'5' + true     // "5true"
+'' + null      // "null"
+'' + undefined // "undefined"
+
+// Outros operadores numéricos convertem para number
+'5' - 3        // 2
+'5' * '3'      // 15
+true + true    // 2
+```
+
+### Os truthy e falsy values
+
+Apenas esses **6 valores são falsy** em JavaScript — tudo o mais é truthy:
+
+```javascript
+false
+0
+-0
+0n        // BigInt zero
+''        // string vazia
+null
+undefined
+NaN
+```
+
+```javascript
+// Truthy (surpreendentes):
+Boolean([])    // true — array vazio é truthy!
+Boolean({})    // true — objeto vazio é truthy!
+Boolean('0')   // true — string não-vazia é truthy!
+Boolean(-1)    // true
+```
+
+## `==` vs `===`: a comparação de igualdade
+
+`===` (**strict equality**): compara valor E tipo. Sem coerção.
+
+`==` (**abstract equality**): segue o [Abstract Equality Comparison Algorithm](https://tc39.es/ecma262/#sec-abstract-equality-comparison) que faz coerção de tipos.
+
+```javascript
+// === sem surpresas
+1 === 1      // true
+1 === '1'    // false
+null === undefined // false
+
+// == com coerção (as regras)
+null == undefined  // true (única exceção: não coerce para comparar)
+null == 0          // false
+undefined == 0     // false
+
+1 == '1'           // true ('1' coerce para 1)
+0 == false         // true (false coerce para 0)
+0 == ''            // true ('' coerce para 0)
+'' == false        // true (ambos coercem para 0)
+
+// O clássico pegadinho:
+[] == false         // true!
+[] == ![]           // true!! ([] converte para '', depois para 0)
+```
+
+### Quando usar `==`?
+
+A única comparação útil com `==` é checar `null` ou `undefined` ao mesmo tempo:
+
+```javascript
+// Ao invés de:
+if (value === null || value === undefined) { ... }
+
+// Pode usar:
+if (value == null) { ... }  // captura ambos
+```
+
+## `Object.is`: igualdade sem surpresas
+
+`Object.is(a, b)` é como `===` mas trata corretamente dois casos especiais:
+
+```javascript
+// NaN não é igual a si mesmo com ===
+NaN === NaN         // false (!!!)
+Object.is(NaN, NaN) // true  ✓
+
+// -0 e +0 são "iguais" com ===
+0 === -0            // true
+Object.is(0, -0)    // false  ✓
+```
+
+## NaN: o valor que não é igual a si mesmo
+
+`NaN` (Not a Number) é o resultado de operações matemáticas inválidas:
+
+```javascript
+Number('abc')  // NaN
+0 / 0          // NaN
+Math.sqrt(-1)  // NaN
+
+// Para checar NaN, use Number.isNaN (não isNaN global!)
+isNaN('hello')         // true — ERRADO! converte para number primeiro
+Number.isNaN('hello')  // false ✓ — não converte, checa tipo primeiro
+Number.isNaN(NaN)      // true  ✓
+```
+
+## Conversões que todo dev deveria saber de cor
+
+```javascript
+// Para boolean rápido:
+!!value              // converte qualquer valor para boolean
+
+// Para number rápido:
++value               // + unário converte para number
++'42'  // 42
++''    // 0
++null  // 0
++undefined // NaN
+
+// Para string rápido:
+'' + value           // concatena com string vazia
+```
+
+> **Regra de ouro:** Seja explícito nas conversões. Use `Number()`, `String()`, `Boolean()`. Reserve `==` apenas para checar `null/undefined` juntos. Use `Number.isNaN` em vez de `isNaN`. Use `Object.is` quando precisar de igualdade sem edge cases.

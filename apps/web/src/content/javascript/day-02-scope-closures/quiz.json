@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que este código imprime?\n```js\nfor (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0)\n}\n```",
+      "options": ["0, 1, 2", "3, 3, 3", "0, 0, 0", "undefined, undefined, undefined"],
+      "correctAnswer": 1,
+      "explanation": "3, 3, 3. Com var, i tem escopo de função (não de bloco). Quando os callbacks de setTimeout executam, o loop já terminou e i vale 3. Todos os callbacks compartilham a mesma variável i."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que é a Temporal Dead Zone (TDZ)?",
+      "options": [
+        "O tempo que o JS espera para coletar garbage",
+        "A zona onde let/const existem mas não podem ser acessadas antes da declaração",
+        "Um bug do var no hoisting",
+        "O escopo de bloco criado por chaves {}"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A TDZ é o período entre o início do escopo e a linha de declaração de uma variável let/const. A variável tecnicamente existe (foi hoistada), mas acessá-la lança um ReferenceError. Isso previne o comportamento silencioso do var (que retornaria undefined)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que uma closure captura?",
+      "options": [
+        "Uma cópia dos valores das variáveis no momento da criação",
+        "Uma referência ao escopo onde foi definida (escopo léxico)",
+        "Apenas variáveis globais",
+        "Apenas variáveis passadas como parâmetro"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma closure captura uma referência ao escopo léxico, não uma cópia dos valores. Isso significa que se a variável externa mudar depois, a closure vê o valor atualizado. É por isso que o bug do var em loop ocorre: todos os callbacks veem o mesmo i (referência), que ao executar vale 3."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre hoisting de `var` e hoisting de `let`?",
+      "options": [
+        "Apenas var é hoistado; let não é hoistado",
+        "Ambos são hoistados, mas var inicializa com undefined e let entra na TDZ",
+        "Var e let têm comportamento idêntico de hoisting",
+        "Let é hoistado apenas em funções, não em blocos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Ambos são hoistados (a engine sabe da existência deles antes de executar), mas var é imediatamente inicializado com undefined (acessível mas undefined), enquanto let entra na TDZ e lança ReferenceError se acessado antes da declaração."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Este código tem um problema de memória?\n```js\nfunction criarHandler() {\n  const buffer = new ArrayBuffer(50_000_000)\n  return () => console.log('clicked')\n}\nconst handler = criarHandler()\n```",
+      "options": [
+        "Não, buffer não é referenciado na closure",
+        "Sim, a closure mantém buffer vivo mesmo sem usá-lo",
+        "Não, ArrayBuffer é coletado imediatamente",
+        "Não tem como saber sem ver mais código"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Depende do motor JS, mas na maioria dos casos sim — a closure captura o escopo inteiro, incluindo buffer. Alguns engines modernos fazem 'escape analysis' e podem coletar variáveis não-referenciadas, mas não é garantido. A solução é declarar buffer fora ou não criar a closure dentro de criarHandler."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual o resultado de acessar uma função declarada ANTES de sua definição?",
+      "options": [
+        "ReferenceError",
+        "undefined",
+        "Funciona normalmente — function declarations são hoistadas completamente",
+        "TypeError"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Function declarations (function nome() {}) são hoistadas completamente — tanto a declaração quanto o corpo. Diferente de function expressions (const fn = function() {}) onde apenas a variável var seria hoistada com undefined."
+    }
+  ]
+}

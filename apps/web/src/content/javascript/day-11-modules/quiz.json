@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-11",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que são 'live bindings' em ES Modules?",
+      "options": [
+        "Imports que são re-executados a cada render do componente",
+        "Referências vivas às variáveis exportadas — quando o módulo exportador atualiza o valor, todos os importadores veem a mudança",
+        "Binding de eventos que são automaticamente removidos quando o módulo descarrega",
+        "Imports que são lazy-evaluated apenas quando acessados pela primeira vez"
+      ],
+      "correctAnswer": 1,
+      "explanation": "ESM exporta referências às variáveis originais, não cópias. Se counter.js exporta `let count = 0` e faz `count++`, qualquer módulo que importou `count` verá o valor atualizado. CommonJS exporta cópias do valor no momento do require."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que tree shaking funciona com ES Modules mas não com CommonJS?",
+      "options": [
+        "CommonJS não suporta exports nomeados",
+        "ESM tem resolução estática (conhecida em parse time); CJS é dinâmico e só resolve em runtime",
+        "Tree shaking é uma feature do V8, não dos módulos",
+        "CommonJS usa eval() internamente, impedindo análise"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Bundlers como Rollup/Webpack analisam o código em tempo de build. Com ESM, imports/exports são estáticos — o bundler sabe exatamente o que é usado. Com CJS, require() pode ser chamado condicionalmente com strings dinâmicas, tornando impossível saber estaticamente o que é necessário."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quantas vezes o código de um módulo ESM é executado, independente de quantos arquivos o importam?",
+      "options": [
+        "Uma vez por importador",
+        "Uma vez por aplicação — módulos são singletons",
+        "Depende de como o bundler configura o chunk",
+        "Cada vez que o import() dinâmico é chamado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Módulos ESM são singletons: o código de initialização executa uma única vez, e o mesmo objeto de módulo é compartilhado por todos os importadores. Isso é ótimo para state global e conexões de banco de dados — mas cuidado com side effects inesperados."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que `import('./heavy.js')` retorna?",
+      "options": [
+        "O módulo diretamente (síncrono)",
+        "Uma Promise que resolve para o módulo",
+        "Um generator que carrega o módulo lazily",
+        "Um proxy do módulo que carrega on-demand"
+      ],
+      "correctAnswer": 1,
+      "explanation": "import() dinâmico é uma função que retorna Promise<module>. Permite lazy loading: const { fn } = await import('./heavy.js'). É a base do code splitting em React (React.lazy), Vue e outros frameworks."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que pode causar um valor `undefined` inesperado em dependências circulares de módulos?",
+      "options": [
+        "O JavaScript proíbe dependências circulares e lança SyntaxError",
+        "Um módulo pode tentar ler um export do outro antes de ele ter sido inicializado",
+        "Módulos em ciclo são sempre carregados em ordem alfabética",
+        "Dependências circulares só causam problemas com CommonJS, não com ESM"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando A importa B e B importa A, no momento que B é avaliado, A ainda não terminou de inicializar — seus exports podem ser undefined (para valores) ou já existir (para funções declaradas com hoisting). ESM permite ciclos, mas você precisa garantir que os valores necessários já estão inicializados."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `import * as math from './math.js'` e `import { add, sub } from './math.js'`?",
+      "options": [
+        "Nenhuma — são equivalentes em runtime",
+        "O namespace import (*) cria um objeto com todos os exports; named import pega apenas os especificados",
+        "Namespace import impede tree shaking; named import permite",
+        "Ambas as afirmações B e C estão corretas"
+      ],
+      "correctAnswer": 3,
+      "explanation": "import * cria um namespace object com todos os exports (math.add, math.sub, etc.) E pode impedir tree shaking em alguns bundlers, pois não é claro quais exports serão usados. Named imports ({ add, sub }) são explícitos e permitem ao bundler eliminar o que não é importado."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que 'sideEffects: false' no package.json de um módulo indica para os bundlers?",
+      "options": [
+        "O módulo não tem exports — apenas executa código",
+        "É seguro remover qualquer export não importado sem risco de quebrar comportamento",
+        "O módulo não usa eval() nem Function constructor",
+        "O módulo não modifica protótipos nativos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "sideEffects: false diz ao bundler: 'se um arquivo deste pacote não tiver nenhum export usado, pode eliminar o arquivo inteiro do bundle'. Módulos com side effects (polyfills, CSS injections, global registrations) devem ser listados explicitamente para não serem removidos."
+    }
+  ]
+}
