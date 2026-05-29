@@ -1,0 +1,20 @@
+{
+  "id": "day-18",
+  "day": 18,
+  "week": 3,
+  "title": "Template Literal Types Avançados",
+  "slug": "template-literal-advanced",
+  "topics": [
+    "Split<S, D>",
+    "Join<T, D>",
+    "parsing de strings no nível de tipos",
+    "Replace e Trim",
+    "URL parsing em type level"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-12", "day-15", "day-16", "day-17"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

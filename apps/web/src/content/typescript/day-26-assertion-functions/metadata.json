@@ -1,0 +1,20 @@
+{
+  "id": "day-26",
+  "day": 26,
+  "week": 4,
+  "title": "Assertion Functions & Guards Avançados",
+  "slug": "assertion-functions",
+  "topics": [
+    "asserts x is T",
+    "narrowing em todos os branches",
+    "composição de type guards",
+    "assertion functions vs type guards",
+    "never assertions"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-08", "day-09"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

@@ -1,0 +1,20 @@
+{
+  "id": "day-14",
+  "day": 14,
+  "week": 2,
+  "title": "Intersection Types",
+  "slug": "intersection-types",
+  "topics": [
+    "A & B",
+    "composição vs herança",
+    "conflitos de propriedade",
+    "mixin pattern tipado",
+    "intersection com generics"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-02", "day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

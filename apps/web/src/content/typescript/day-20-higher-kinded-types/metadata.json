@@ -1,0 +1,20 @@
+{
+  "id": "day-20",
+  "day": 20,
+  "week": 3,
+  "title": "Higher-Kinded Types (simulação)",
+  "slug": "higher-kinded-types",
+  "topics": [
+    "limitações do TypeScript",
+    "simulação de HKT com interfaces",
+    "type classes pattern",
+    "Functor e Monad em TS",
+    "defunctionalization"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 70,
+  "prerequisites": ["day-15", "day-16", "day-17"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

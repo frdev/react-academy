@@ -1,0 +1,20 @@
+{
+  "id": "day-16",
+  "day": 16,
+  "week": 3,
+  "title": "infer",
+  "slug": "infer",
+  "topics": [
+    "infer keyword",
+    "ReturnType do zero",
+    "Awaited do zero",
+    "UnpackPromise",
+    "infer em posições covariantes e contravariantes"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-15"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

@@ -1,0 +1,20 @@
+{
+  "id": "day-24",
+  "day": 24,
+  "week": 4,
+  "title": "Branded & Opaque Types",
+  "slug": "branded-types",
+  "topics": [
+    "nominal typing em TypeScript estrutural",
+    "Brand<T, B>",
+    "Phantom types",
+    "type-safe IDs",
+    "validated strings"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-04", "day-13"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

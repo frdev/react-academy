@@ -1,0 +1,20 @@
+{
+  "id": "day-13",
+  "day": 13,
+  "week": 2,
+  "title": "Index Types",
+  "slug": "index-types",
+  "topics": [
+    "keyof operator",
+    "indexed access (T[K])",
+    "PropertyKey",
+    "index signatures",
+    "Record<K,V>"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-04", "day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

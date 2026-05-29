@@ -1,0 +1,20 @@
+{
+  "id": "day-27",
+  "day": 27,
+  "week": 4,
+  "title": "Decorators (Stage 3)",
+  "slug": "decorators",
+  "topics": [
+    "class decorators tipados",
+    "method decorators",
+    "field decorators",
+    "context.addInitializer",
+    "metadata e reflect"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

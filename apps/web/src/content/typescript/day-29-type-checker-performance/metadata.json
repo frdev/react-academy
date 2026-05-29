@@ -1,0 +1,20 @@
+{
+  "id": "day-29",
+  "day": 29,
+  "week": 4,
+  "title": "Performance do Type Checker",
+  "slug": "type-checker-performance",
+  "topics": [
+    "tipos lentos e como identificar",
+    "--extendedDiagnostics",
+    "interface vs type em grandes bases",
+    "simplificação de tipos complexos",
+    "skiplibcheck e isolatedModules"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-15", "day-17", "day-22"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

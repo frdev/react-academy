@@ -1,0 +1,20 @@
+{
+  "id": "day-17",
+  "day": 17,
+  "week": 3,
+  "title": "Recursive Types",
+  "slug": "recursive-types",
+  "topics": [
+    "auto-referência em tipos",
+    "JSONValue",
+    "DeepReadonly",
+    "DeepPartial",
+    "depth limits e workarounds"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-15", "day-16"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

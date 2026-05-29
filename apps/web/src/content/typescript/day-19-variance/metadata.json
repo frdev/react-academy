@@ -1,0 +1,20 @@
+{
+  "id": "day-19",
+  "day": 19,
+  "week": 3,
+  "title": "Variância",
+  "slug": "variance",
+  "topics": [
+    "covariance e contravariance",
+    "invariance",
+    "in/out modifiers (TS 4.7+)",
+    "function parameter bivariance",
+    "strictFunctionTypes"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-04", "day-15"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

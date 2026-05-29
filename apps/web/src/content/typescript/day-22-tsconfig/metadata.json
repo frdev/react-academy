@@ -1,0 +1,20 @@
+{
+  "id": "day-22",
+  "day": 22,
+  "week": 4,
+  "title": "tsconfig em Profundidade",
+  "slug": "tsconfig",
+  "topics": [
+    "strict mode flags individuais",
+    "module e moduleResolution (Node16/Bundler)",
+    "paths e baseUrl",
+    "project references",
+    "composite e incremental"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

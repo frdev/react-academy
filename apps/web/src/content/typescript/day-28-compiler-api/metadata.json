@@ -1,0 +1,20 @@
+{
+  "id": "day-28",
+  "day": 28,
+  "week": 4,
+  "title": "Compiler API",
+  "slug": "compiler-api",
+  "topics": [
+    "ts.createProgram",
+    "AST walker em TypeScript",
+    "custom diagnostics",
+    "codemods tipados",
+    "type checker programático"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 70,
+  "prerequisites": ["day-22"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

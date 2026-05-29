@@ -1,0 +1,20 @@
+{
+  "id": "day-21",
+  "day": 21,
+  "week": 3,
+  "title": "Type System Internals",
+  "slug": "type-system-internals",
+  "topics": [
+    "structural subtyping",
+    "freshness checking (excess property)",
+    "control flow analysis",
+    "literal widening",
+    "type instantiation depth"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-01", "day-15"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

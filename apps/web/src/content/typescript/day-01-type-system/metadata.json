@@ -1,0 +1,20 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Sistema de Tipos",
+  "slug": "type-system",
+  "topics": [
+    "structural typing vs nominal",
+    "annotation vs inference",
+    "widening e narrowing",
+    "any vs unknown vs never",
+    "void e undefined"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

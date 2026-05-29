@@ -1,0 +1,20 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "Generics Fundamentais",
+  "slug": "generics",
+  "topics": [
+    "type parameters",
+    "constraints com extends",
+    "default type parameters",
+    "generic functions vs generic types",
+    "múltiplos type parameters"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-01", "day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

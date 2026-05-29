@@ -1,0 +1,20 @@
+{
+  "id": "day-12",
+  "day": 12,
+  "week": 2,
+  "title": "Template Literal Types",
+  "slug": "template-literal-types",
+  "topics": [
+    "backtick types",
+    "Uppercase/Lowercase/Capitalize/Uncapitalize",
+    "combinação com unions",
+    "geração de keys",
+    "event name patterns"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-05", "day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

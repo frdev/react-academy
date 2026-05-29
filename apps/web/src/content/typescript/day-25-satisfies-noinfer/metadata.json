@@ -1,0 +1,20 @@
+{
+  "id": "day-25",
+  "day": 25,
+  "week": 4,
+  "title": "satisfies & NoInfer",
+  "slug": "satisfies-noinfer",
+  "topics": [
+    "operador satisfies (TS 4.9)",
+    "inferência preservada com satisfies",
+    "const T extends (TS 5.0)",
+    "NoInfer<T> (TS 5.4)",
+    "casos de uso práticos"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-04", "day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

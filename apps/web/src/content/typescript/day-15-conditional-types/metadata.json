@@ -1,0 +1,20 @@
+{
+  "id": "day-15",
+  "day": 15,
+  "week": 3,
+  "title": "Conditional Types",
+  "slug": "conditional-types",
+  "topics": [
+    "T extends U ? X : Y",
+    "distributividade sobre unions",
+    "NonNullable custom",
+    "conditional types aninhados",
+    "never como filtro"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-04", "day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

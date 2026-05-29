@@ -13,10 +13,10 @@ export const STACKS: Stack[] = [
   {
     id: 'typescript',
     name: 'TypeScript',
-    tagline: 'Em breve',
-    description: 'Sistema de tipos, generics, utilidades e patterns avançados de TypeScript.',
+    tagline: '30 dias do sistema de tipos ao type-level programming',
+    description: 'Sistema de tipos, generics, conditional types, infer, mapped types e patterns avançados.',
     totalDays: 30,
-    status: 'coming-soon',
+    status: 'available',
     color: 'indigo',
   },
   {

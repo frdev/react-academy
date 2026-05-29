@@ -1,0 +1,20 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Literal Types & as const",
+  "slug": "literal-types",
+  "topics": [
+    "string/number/boolean literals",
+    "const assertion (as const)",
+    "const enums vs union de literais",
+    "template literal types intro",
+    "readonly arrays"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

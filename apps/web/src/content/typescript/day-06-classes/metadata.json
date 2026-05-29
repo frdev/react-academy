@@ -1,0 +1,20 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "Classes em TypeScript",
+  "slug": "classes",
+  "topics": [
+    "public/private/protected",
+    "readonly",
+    "abstract classes",
+    "implements",
+    "parameter properties"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-01", "day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

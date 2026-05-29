@@ -1,0 +1,20 @@
+{
+  "id": "day-11",
+  "day": 11,
+  "week": 2,
+  "title": "Mapped Types",
+  "slug": "mapped-types",
+  "topics": [
+    "[K in keyof T]",
+    "modificadores +/- readonly",
+    "modificadores +/- ?",
+    "key remapping com as",
+    "mapped types condicionais"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-04", "day-10"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

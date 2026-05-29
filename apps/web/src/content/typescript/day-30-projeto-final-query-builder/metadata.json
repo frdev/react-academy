@@ -1,0 +1,20 @@
+{
+  "id": "day-30",
+  "day": 30,
+  "week": 4,
+  "title": "Projeto Final: Type-safe Query Builder",
+  "slug": "projeto-final-query-builder",
+  "topics": [
+    "select com tipos inferidos",
+    "where type-safe",
+    "join com inferência de schema",
+    "builder pattern tipado",
+    "síntese de conditional types, infer, template literals"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 90,
+  "prerequisites": ["day-15", "day-16", "day-17", "day-18"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 200
+}

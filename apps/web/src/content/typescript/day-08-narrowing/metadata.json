@@ -1,0 +1,20 @@
+{
+  "id": "day-08",
+  "day": 8,
+  "week": 2,
+  "title": "Type Narrowing",
+  "slug": "narrowing",
+  "topics": [
+    "typeof guards",
+    "instanceof narrowing",
+    "in operator",
+    "truthiness narrowing",
+    "user-defined type guards (is)"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-01", "day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}
