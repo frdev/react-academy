@@ -8,6 +8,7 @@ const COLOR_MAP: Record<string, { ring: string; bg: string; text: string; icon: 
   yellow: { ring: 'ring-yellow-500', bg: 'bg-yellow-600', text: 'text-yellow-400', icon: 'bg-yellow-500/10' },
   indigo: { ring: 'ring-indigo-500', bg: 'bg-indigo-600', text: 'text-indigo-400', icon: 'bg-indigo-500/10' },
   green:  { ring: 'ring-green-500',  bg: 'bg-green-600',  text: 'text-green-400',  icon: 'bg-green-500/10' },
+  orange: { ring: 'ring-orange-500', bg: 'bg-orange-600', text: 'text-orange-400', icon: 'bg-orange-500/10' },
 }
 
 const STACK_ICONS: Record<string, string> = {
@@ -15,6 +16,7 @@ const STACK_ICONS: Record<string, string> = {
   javascript: 'JS',
   typescript: 'TS',
   nodejs:     '🟢',
+  algorithms: '🧮',
 }
 
 function StackCard({ stack }: { stack: Stack }) {

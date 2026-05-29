@@ -46,6 +46,15 @@ export const STACKS: Stack[] = [
     status: 'coming-soon',
     color: 'purple',
   },
+  {
+    id: 'algorithms',
+    name: 'Algoritmos & Estruturas de Dados',
+    tagline: '30 dias de DSA com JavaScript, do Big-O ao grafo',
+    description: 'Complexidade, arrays, hash maps, listas, pilhas, filas, recursão, sorting, árvores, heaps, tries, grafos (BFS/DFS) e programação dinâmica — tudo em JavaScript.',
+    totalDays: 30,
+    status: 'coming-soon',
+    color: 'orange',
+  },
 ]
 
 export function getStackById(id: string): Stack | undefined {
