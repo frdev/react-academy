@@ -1,1 +1,219 @@
-# Conteúdo em breve
+# `infer` — Extraindo Tipos de Dentro de Outros Tipos
+
+A keyword `infer` é usada dentro de conditional types para **capturar** um tipo que o TypeScript vai inferir a partir da estrutura. É o mecanismo que permite "desempacotar" tipos compostos.
+
+## Sintaxe Básica
+
+```typescript
+type Unpack<T> = T extends Array<infer Item> ? Item : T;
+
+type A = Unpack<string[]>;        // string
+type B = Unpack<number[]>;        // number
+type C = Unpack<(string | number)[]>; // string | number
+type D = Unpack<string>;          // string — T não é array, retorna T
+```
+
+`infer Item` diz ao TypeScript: "se `T` bate com este padrão, capture o tipo nessa posição como `Item` e disponibilize no branch `true`."
+
+## ReturnType — Implementado do Zero
+
+```typescript
+type MyReturnType<T extends (...args: any) => any> =
+  T extends (...args: any) => infer R ? R : never;
+
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+type AddReturn = MyReturnType<typeof add>; // number
+
+async function fetchUser(): Promise<{ id: string; name: string }> {
+  return { id: '1', name: 'Ana' };
+}
+
+type FetchReturn = MyReturnType<typeof fetchUser>;
+// Promise<{ id: string; name: string }>
+```
+
+## Parameters — Implementado do Zero
+
+```typescript
+type MyParameters<T extends (...args: any) => any> =
+  T extends (...args: infer P) => any ? P : never;
+
+function greet(name: string, age: number): string {
+  return `${name} has ${age} years`;
+}
+
+type GreetParams = MyParameters<typeof greet>;
+// [name: string, age: number] — tuple com labels preservados
+```
+
+## Awaited — Unwrapping Recursivo de Promises
+
+```typescript
+type MyAwaited<T> =
+  T extends Promise<infer Inner>
+    ? MyAwaited<Inner>  // recursivo!
+    : T;
+
+type A = MyAwaited<Promise<string>>;          // string
+type B = MyAwaited<Promise<Promise<number>>>; // number
+type C = MyAwaited<string>;                  // string — não é Promise
+```
+
+A recursão permite lidar com Promises aninhadas: `Promise<Promise<T>>` → `T`.
+
+## Extraindo Tipos de Tuplas
+
+```typescript
+// Primeiro elemento
+type Head<T extends any[]> = T extends [infer H, ...any[]] ? H : never;
+
+// Resto após o primeiro
+type Tail<T extends any[]> = T extends [any, ...infer R] ? R : never;
+
+// Último elemento
+type Last<T extends any[]> = T extends [...any[], infer L] ? L : never;
+
+type H = Head<[string, number, boolean]>; // string
+type T = Tail<[string, number, boolean]>; // [number, boolean]
+type L = Last<[string, number, boolean]>; // boolean
+```
+
+Rest elements em posições variadas: `[infer H, ...infer R]`, `[...infer I, infer L]`.
+
+## infer em Template Literal Types
+
+```typescript
+// Extrair o "Event" de strings "onEvent"
+type ExtractEventName<T extends string> =
+  T extends `on${infer Event}` ? Event : never;
+
+type E1 = ExtractEventName<'onClick'>;  // 'Click'
+type E2 = ExtractEventName<'onFocus'>;  // 'Focus'
+type E3 = ExtractEventName<'submit'>;   // never
+
+// Para lowercase: combine com Uncapitalize
+type CleanEvent<T extends string> =
+  T extends `on${infer E}` ? Uncapitalize<E> : never;
+
+type E4 = CleanEvent<'onClick'>; // 'click'
+```
+
+## infer em Tipos de Objetos
+
+```typescript
+// Extrair o tipo de uma propriedade específica
+type PropType<T, K extends keyof T> = T extends { [P in K]: infer V } ? V : never;
+
+interface User {
+  id: string;
+  name: string;
+  age: number;
+}
+
+type IdType = PropType<User, 'id'>; // string
+
+// Extrair tipo de retorno de um método
+type MethodReturn<T, K extends keyof T> =
+  T[K] extends (...args: any) => infer R ? R : never;
+
+interface Service {
+  getUser(id: string): Promise<User>;
+  createUser(data: Partial<User>): Promise<User>;
+}
+
+type GetUserReturn = MethodReturn<Service, 'getUser'>;
+// Promise<User>
+```
+
+## infer com Múltiplas Capturas
+
+```typescript
+// Capturar múltiplos tipos em um único conditional
+type FirstAndRest<T extends any[]> =
+  T extends [infer First, ...infer Rest]
+    ? { first: First; rest: Rest }
+    : never;
+
+type Result = FirstAndRest<[string, number, boolean]>;
+// { first: string; rest: [number, boolean] }
+```
+
+## Padrão: Unwrap de Wrappers Genéricos
+
+```typescript
+// Remover qualquer "wrapper" de um tipo
+type Unwrap<T> =
+  T extends Promise<infer U> ? U :
+  T extends Array<infer U> ? U :
+  T extends Set<infer U> ? U :
+  T extends Map<any, infer V> ? V :
+  T;
+
+type A = Unwrap<Promise<string>>;    // string
+type B = Unwrap<number[]>;           // number
+type C = Unwrap<Set<boolean>>;       // boolean
+type D = Unwrap<Map<string, Date>>;  // Date
+type E = Unwrap<string>;             // string — passthrough
+```
+
+## Padrão: ConstructorParameters e InstanceType
+
+```typescript
+// Extrair parâmetros do constructor
+type MyConstructorParameters<T extends new (...args: any) => any> =
+  T extends new (...args: infer P) => any ? P : never;
+
+// Extrair o tipo da instância
+type MyInstanceType<T extends new (...args: any) => any> =
+  T extends new (...args: any) => infer R ? R : never;
+
+class HttpClient {
+  constructor(baseUrl: string, timeout: number) {}
+  get(path: string): Promise<Response> { return fetch(baseUrl + path); }
+}
+
+type HttpCtorParams = MyConstructorParameters<typeof HttpClient>;
+// [baseUrl: string, timeout: number]
+
+type HttpInstance = MyInstanceType<typeof HttpClient>;
+// HttpClient
+```
+
+## Gotcha: infer só no Branch True
+
+`infer` só pode aparecer dentro do branch que depende do conditional — você não pode usar uma variável `infer` antes de ter verificado o padrão:
+
+```typescript
+// ERRO — não pode usar infer fora do conditional
+// type Bad<T> = infer R extends string ? R : never; // inválido
+
+// CORRETO — infer dentro do extends
+type Good<T> = T extends infer R ? R : never; // equivale a T (identidade)
+```
+
+## Padrão Avançado: OmitNested
+
+```typescript
+// Omitir propriedades de objetos aninhados
+type DeepOmit<T, K extends string> =
+  T extends object
+    ? { [P in keyof T as P extends K ? never : P]: DeepOmit<T[P], K> }
+    : T;
+
+interface Nested {
+  id: string;
+  user: {
+    id: string;
+    name: string;
+    password: string;
+  };
+}
+
+type Safe = DeepOmit<Nested, 'password'>;
+// { id: string; user: { id: string; name: string } }
+```
+
+**`infer` é a peça que falta para completar o toolkit de type-level programming: com ele, você pode extrair qualquer parte de qualquer tipo composto e usar em outro tipo — criando transformações sofisticadas sem nenhum overhead em runtime.**

@@ -1,1 +1,194 @@
-# Conteúdo em breve
+# Higher-Kinded Types — Simulação em TypeScript
+
+Higher-Kinded Types (HKT) são "tipos de tipos" — abstrações sobre construtores de tipo como `Array<_>`, `Promise<_>`, `Option<_>`. TypeScript não tem HKT nativamente, mas padrões de encoding permitem simular o comportamento.
+
+## O Problema: Abstrair sobre Construtores de Tipo
+
+Em linguagens com HKT (Haskell, Scala, PureScript), você pode escrever:
+
+```
+-- Haskell: Functor abstrai sobre qualquer F que aceita um tipo
+class Functor f where
+  fmap :: (a -> b) -> f a -> f b
+```
+
+Em TypeScript, você não pode escrever:
+
+```typescript
+// INVÁLIDO — TypeScript não aceita "type constructors" como parâmetros
+interface Functor<F<_>> {
+  map<A, B>(fa: F<A>, f: (a: A) => B): F<B>;
+}
+```
+
+## Encoding HKT com Interface Merging
+
+O padrão mais usado em TypeScript usa uma "URI registry" para mapear strings a tipos:
+
+```typescript
+// Step 1: Declarar a registry (vazia por padrão)
+interface HKT {
+  readonly _URI: unique symbol;
+  readonly _A: unknown;
+}
+
+// Step 2: Tipo para aplicar um constructor a um argumento
+type Apply<F extends keyof URItoKind<any>, A> = URItoKind<A>[F];
+
+// Step 3: A registry real (preenchida por módulos)
+interface URItoKind<A> {}
+```
+
+```typescript
+// Registrar Array:
+interface URItoKind<A> {
+  Array: Array<A>;
+}
+
+// Registrar Maybe:
+type Maybe<A> = { tag: 'Nothing' } | { tag: 'Just'; value: A };
+interface URItoKind<A> {
+  Maybe: Maybe<A>;
+}
+```
+
+## Functor via HKT Encoding
+
+```typescript
+interface Functor<F extends keyof URItoKind<any>> {
+  map<A, B>(fa: Apply<F, A>, f: (a: A) => B): Apply<F, B>;
+}
+
+// Implementação para Array:
+const ArrayFunctor: Functor<'Array'> = {
+  map: (fa, f) => fa.map(f)
+};
+
+// Implementação para Maybe:
+const MaybeFunctor: Functor<'Maybe'> = {
+  map: (fa, f) =>
+    fa.tag === 'Nothing'
+      ? { tag: 'Nothing' }
+      : { tag: 'Just', value: f(fa.value) }
+};
+
+// Função genérica que funciona com qualquer Functor:
+function double<F extends keyof URItoKind<number>>(
+  functor: Functor<F>,
+  fa: Apply<F, number>
+): Apply<F, number> {
+  return functor.map(fa, x => x * 2);
+}
+
+double(ArrayFunctor, [1, 2, 3]);         // [2, 4, 6]
+double(MaybeFunctor, { tag: 'Just', value: 5 }); // { tag: 'Just', value: 10 }
+```
+
+## Monad — Encadeamento de Efeitos
+
+```typescript
+interface Monad<F extends keyof URItoKind<any>> extends Functor<F> {
+  of<A>(a: A): Apply<F, A>;
+  chain<A, B>(fa: Apply<F, A>, f: (a: A) => Apply<F, B>): Apply<F, B>;
+}
+
+const MaybeMonad: Monad<'Maybe'> = {
+  ...MaybeFunctor,
+  of: (a) => ({ tag: 'Just', value: a }),
+  chain: (fa, f) =>
+    fa.tag === 'Nothing' ? { tag: 'Nothing' } : f(fa.value)
+};
+
+// Encadeamento seguro (como optional chaining mas explícito):
+function safeDiv(a: number, b: number): Maybe<number> {
+  return b === 0 ? { tag: 'Nothing' } : { tag: 'Just', value: a / b };
+}
+
+const result = MaybeMonad.chain(
+  MaybeMonad.chain({ tag: 'Just', value: 10 }, x => safeDiv(x, 2)),
+  x => safeDiv(x, 0)
+);
+// { tag: 'Nothing' } — 0 propagou
+```
+
+## Abordagem Alternativa: Type Classes via Objetos
+
+Uma abordagem mais simples e idiomática em TypeScript:
+
+```typescript
+// "Type class" como interface de objeto (dictionary passing)
+interface Container<T> {
+  map<U>(f: (value: T) => U): Container<U>;
+  flatMap<U>(f: (value: T) => Container<U>): Container<U>;
+}
+
+// Implementação concreta
+class Result<T, E> implements Container<T> {
+  constructor(
+    private readonly _value: T | null,
+    private readonly _error: E | null
+  ) {}
+
+  static ok<T, E>(value: T): Result<T, E> {
+    return new Result<T, E>(value, null);
+  }
+
+  static err<T, E>(error: E): Result<T, E> {
+    return new Result<T, E>(null, error);
+  }
+
+  map<U>(f: (value: T) => U): Result<U, E> {
+    if (this._error !== null) return Result.err(this._error);
+    return Result.ok(f(this._value!));
+  }
+
+  flatMap<U>(f: (value: T) => Result<U, E>): Result<U, E> {
+    if (this._error !== null) return Result.err(this._error);
+    return f(this._value!);
+  }
+}
+```
+
+## Padrão: fp-ts e Libraries Funcionais
+
+A biblioteca `fp-ts` usa precisamente o encoding HKT descrito acima. Se você trabalha com fp-ts, este padrão é o que `URItoKind` e `HKT` fazem:
+
+```typescript
+// Padrão fp-ts (simplificado):
+import { pipe } from 'fp-ts/function';
+import * as O from 'fp-ts/Option';
+
+const result = pipe(
+  O.some(42),
+  O.map(x => x * 2),
+  O.filter(x => x > 50),
+  O.getOrElse(() => 0)
+); // 84
+```
+
+## Quando HKT Vale a Pena em TypeScript
+
+**Vale:** Quando você está construindo uma biblioteca que precisa ser polimórfica sobre containers (como fp-ts, io-ts, Effect).
+
+**Não vale:** Para aplicações normais. O encoding é verboso, os erros são crípticos, e a maioria dos casos pode ser resolvida com:
+1. Generics simples + overloads
+2. Interfaces com métodos (como `Container<T>` acima)
+3. Pattern matching explícito
+
+```typescript
+// Na prática, isso é mais claro que HKT para a maioria dos casos:
+function mapMaybe<A, B>(maybe: Maybe<A>, f: (a: A) => B): Maybe<B> {
+  return maybe.tag === 'Nothing'
+    ? { tag: 'Nothing' }
+    : { tag: 'Just', value: f(maybe.value) };
+}
+```
+
+## Limitações Reais do TypeScript para HKT
+
+1. Não há `kind` system — `Array<_>` não é um tipo de primeira classe
+2. Inference com HKT encoding é fraca — frequentemente precisa de anotações manuais
+3. Erros de tipo são difíceis de entender quando envolve `Apply<F, A>`
+4. Performance do type checker degradada com muitos níveis de indireção
+
+**HKT em TypeScript é possível mas custoso. O padrão de URI registry funciona mas vale apenas em contextos de infraestrutura de biblioteca. Para aplicações, prefira generics diretos, interfaces concretas, e pattern matching explícito — a clareza supera a abstração.**

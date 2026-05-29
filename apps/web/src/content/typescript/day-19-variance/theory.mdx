@@ -1,1 +1,170 @@
-# Conteúdo em breve
+# Variância em TypeScript
+
+Variância descreve como a relação de subtipos entre tipos compostos se relaciona com a relação de subtipos dos tipos que os compõem. É um conceito fundamental para entender por que alguns tipos aceitam (ou rejeitam) atribuições que parecem deveriam funcionar.
+
+## O Problema: Relacionamentos de Tipo
+
+Dado que `Dog extends Animal` (Dog é subtipo de Animal):
+
+- `Dog[]` é subtipo de `Animal[]`? **Sim** — covariante
+- `(animal: Animal) => void` é subtipo de `(dog: Dog) => void`? **Sim** — contravariante
+- `Cell<Dog>` é subtipo de `Cell<Animal>`? **Depende da implementação**
+
+## Covariância — Segue a Direção do Subtipo
+
+Um tipo `F<T>` é **covariante** em `T` quando `T1 extends T2` implica `F<T1> extends F<T2>`.
+
+```typescript
+class Animal { name: string = ''; }
+class Dog extends Animal { bark(): void {} }
+
+// Arrays são covariantes (read-mostly)
+const dogs: Dog[] = [new Dog()];
+const animals: Animal[] = dogs; // ✓ — Dog[] é subtipo de Animal[]
+
+// Leitura é segura:
+const a: Animal = animals[0]; // ✓ — Dog satisfaz Animal
+
+// Mas escrita é insegura (TypeScript DEVERIA rejeitar, mas não rejeita por design):
+animals.push(new Animal()); // ✓ runtime, mas dogs[1] agora é Animal, não Dog!
+```
+
+Arrays em TypeScript são covariantes por conveniência — é uma escolha pragmática.
+
+## Contravariância — Inverte a Direção do Subtipo
+
+Um tipo `F<T>` é **contravariante** em `T` quando `T1 extends T2` implica `F<T2> extends F<T1>` (inversão!).
+
+Funções são contravariantes nos **parâmetros** e covariantes no **retorno**:
+
+```typescript
+type Handler<T> = (value: T) => void;
+
+const animalHandler: Handler<Animal> = (a) => { console.log(a.name); };
+const dogHandler: Handler<Dog> = (d) => { d.bark(); };
+
+// Animal handler funciona onde Dog handler é esperado:
+function processdog(handler: Handler<Dog>) { handler(new Dog()); }
+processdog(animalHandler); // ✓ — animalHandler aceita Dog (e mais)
+
+// Dog handler NÃO funciona onde Animal handler é esperado:
+function processAnimal(handler: Handler<Animal>) { handler(new Animal()); }
+processAnimal(dogHandler); // ✗ — dogHandler precisaria de .bark() que Animal não tem
+```
+
+**Por quê?** `Handler<Animal>` pode lidar com qualquer Animal (incluindo Dog). Mas `Handler<Dog>` só sabe lidar com Dogs — não pode substituir um handler genérico de Animal.
+
+## Invariância — Sem Subtipos
+
+Um tipo `F<T>` é **invariante** em `T` quando nem `F<T1> extends F<T2>` nem `F<T2> extends F<T1>` (mesmo com `T1 extends T2`).
+
+```typescript
+// Cell mutável — invariante
+interface Cell<T> {
+  get(): T;
+  set(value: T): void;
+}
+
+const dogCell: Cell<Dog> = { get: () => new Dog(), set: (d) => {} };
+const animalCell: Cell<Animal> = dogCell; // ✗ — inseguro!
+// Se fosse permitido: animalCell.set(new Animal()) — mas dogCell espera Dog!
+```
+
+## Modificadores `in` e `out` — TypeScript 4.7+
+
+TypeScript 4.7 introduziu anotações explícitas de variância:
+
+```typescript
+// out T = covariante (só aparece em posição de saída)
+interface Producer<out T> {
+  produce(): T;
+}
+
+// in T = contravariante (só aparece em posição de entrada)
+interface Consumer<in T> {
+  consume(value: T): void;
+}
+
+// in out T = invariante (aparece em ambas as posições)
+interface Transformer<in out T> {
+  transform(input: T): T;
+}
+```
+
+```typescript
+// Com anotação explícita:
+class ProducerImpl<out T> {
+  constructor(private value: T) {}
+  produce(): T { return this.value; }
+  // set(v: T): void {} — ERRO! T em posição "in" viola "out T"
+}
+
+const dogProducer: ProducerImpl<Dog> = new ProducerImpl(new Dog());
+const animalProducer: ProducerImpl<Animal> = dogProducer; // ✓ — covariante
+```
+
+## Bivarância em Métodos vs Propriedades de Função
+
+TypeScript tem comportamento diferente para métodos e propriedades de função:
+
+```typescript
+interface BivariantMethod {
+  method(arg: Dog): void; // bivariante — aceita Dog ou Animal como argumento
+}
+
+interface StrictFunction {
+  fn: (arg: Dog) => void; // contravariante estrito com strictFunctionTypes
+}
+```
+
+```typescript
+// Com strictFunctionTypes: true (padrão com strict):
+type MethodType = { method(arg: Dog): void };
+type FnType = { fn: (arg: Dog) => void };
+
+const animalImpl: MethodType = { method: (a: Animal) => {} }; // ✓ — bivariant method
+const animalFn: FnType = { fn: (a: Animal) => {} }; // ✓ — fn é contravariante, Animal > Dog
+
+// MAS:
+const narrowFn: FnType = { fn: (a: { bark(): void }) => {} }; // ✓
+const narrowMethod: MethodType = { method: (a: { bark(): void }) => {} }; // ✓ — bivariant
+```
+
+A bivarância em métodos existe por compatibilidade histórica. Com `strictFunctionTypes: true`, function properties têm checagem mais estrita.
+
+## Variância na Prática: Promise e Array
+
+```typescript
+// Promise<T> é covariante em T (só produz T, nunca consome)
+const dogPromise: Promise<Dog> = Promise.resolve(new Dog());
+const animalPromise: Promise<Animal> = dogPromise; // ✓
+
+// ReadonlyArray<T> é covariante (só lê)
+const readonlyDogs: ReadonlyArray<Dog> = [new Dog()];
+const readonlyAnimals: ReadonlyArray<Animal> = readonlyDogs; // ✓
+
+// Array<T> deveria ser invariante (lê e escreve) mas TypeScript aceita como covariante
+// por conveniência — trade-off pragmático
+```
+
+## Por Que Isso Importa na Prática
+
+```typescript
+// Erro clássico: callback contravariante
+type EventHandler<T> = (event: T) => void;
+
+interface SpecificEvent { type: 'click'; x: number; y: number }
+interface BaseEvent { type: string }
+
+const specificHandler: EventHandler<SpecificEvent> = (e) => console.log(e.x);
+const baseHandler: EventHandler<BaseEvent> = (e) => console.log(e.type);
+
+// Qual pode substituir qual?
+function triggerSpecific(h: EventHandler<SpecificEvent>) { h({ type: 'click', x: 0, y: 0 }); }
+function triggerBase(h: EventHandler<BaseEvent>) { h({ type: 'keydown' }); }
+
+triggerSpecific(baseHandler);   // ✓ — baseHandler aceita qualquer BaseEvent (inclui SpecificEvent)
+triggerBase(specificHandler); // ✗ — specificHandler precisa de .x e .y, mas BaseEvent não garante
+```
+
+**Entender variância permite prever quando o TypeScript aceita ou rejeita atribuições de tipos genéricos — especialmente em callbacks, event handlers e containers. A regra prática: posições de saída são covariantes (seguem o subtipo), posições de entrada são contravariantes (invertem).**

@@ -1,1 +1,97 @@
-{"lessonId": "day-21", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-21",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `const opts = { timeout: 5000, unknownProp: true }; fetch('/api', opts)` NÃO emite erro de excess property, mas `fetch('/api', { timeout: 5000, unknownProp: true })` emite?",
+      "options": [
+        "É um bug do TypeScript — ambos deveriam emitir ou não emitir",
+        "Freshness checking: objetos literais recém-criados ('fresh') passam por excess property check. Quando atribuído a uma variável, o objeto perde o 'frescor' — TypeScript trata como um tipo com propriedades extras válidas para múltiplos usos. O inline literal é definitivamente para aquele contexto específico",
+        "A variável `opts` tem tipo implícito `any`, o que desabilita a verificação",
+        "TypeScript só verifica excess properties no nível de arquivo, não em funções"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Freshness checking é intencional: um objeto literal inline quase sempre é criado para aquele propósito específico — uma propriedade extra provavelmente é um typo. Um objeto em variável pode ter sido criado para múltiplos propósitos ou implementar uma interface maior. A distinção permite `const req: RequestInit = { ...baseOptions, headers: { auth: token } }` sem erro mesmo que `req` tenha campos extras — útil para composição de objetos. Comportamento documentado desde TypeScript 1.6."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que acontece com o tipo de `let x = 'hello'` vs `const x = 'hello'`, e por quê?",
+      "options": [
+        "Ambos têm tipo `'hello'` — TypeScript sempre preserva string literals",
+        "`let x = 'hello'` tem tipo `string` (widened); `const x = 'hello'` tem tipo `'hello'` (literal). Porque `let` pode ser reatribuído — TypeScript amplia para o tipo que pode satisfazer qualquer futuro valor. `const` não pode ser reatribuído — o literal é a única identidade possível",
+        "`let x = 'hello'` tem tipo `'hello'`; `const x = 'hello'` tem tipo `string`",
+        "Ambos têm tipo `string` — TypeScript nunca infere tipos literais"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Widening é guiado por mutabilidade. `let x = 'hello'` pode receber `x = 'world'` depois — TypeScript precisa de um tipo que aceite ambos (`string`). `const x = 'hello'` não pode ser reatribuído — o tipo pode (e deve) ser o literal `'hello'`. Isso é especialmente importante para discriminated unions: `const status = 'active'` tem tipo `'active'`; `let status = 'active'` tem tipo `string` e não funcionaria como discriminante."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como o TypeScript determina o tipo de `x` após `if (typeof x !== 'boolean') { ... }` dado `x: string | number | boolean`?",
+      "options": [
+        "`x` permanece `string | number | boolean` — TypeScript não analisa condicionais negativas",
+        "Dentro do bloco: `x` é `string | number` — o CFA elimina `boolean` porque `typeof x !== 'boolean'` é verdadeiro, então `boolean` não pode ser o tipo correto",
+        "Dentro do bloco: `x` é `boolean` — a negação inverte o narrowing",
+        "TypeScript não suporta narrowing com `!==`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Control Flow Analysis (CFA) entende condicionais negativas: `typeof x !== 'boolean'` = 'x não é boolean', então dentro do bloco, TypeScript remove `boolean` da union → `string | number`. O mesmo princípio aplica-se a `x !== null`, `!Array.isArray(x)`, `!(x instanceof Error)`, etc. O CFA mantém um estado de 'tipo corrente' para cada variável em cada ponto do código, atualizado por cada condição. Após o `if`, o tipo volta ao original (ou ao refinamento do else, se houver)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre os tipos `object`, `{}` e `Object` (maiúsculo) em TypeScript?",
+      "options": [
+        "São sinônimos — representam o mesmo conjunto de valores",
+        "`object` (minúsculo) = tipos não-primitivos (arrays, funções, objetos). `{}` = qualquer coisa exceto `null` e `undefined` (inclui primitivos!). `Object` (maiúsculo) ≈ `{}` mas com métodos de `Object.prototype`. Prefer `object` para 'não-primitivo', `unknown` para 'qualquer coisa'",
+        "`object` e `Object` são iguais; `{}` só aceita objetos vazios",
+        "`Object` é o tipo de base para todos os tipos TypeScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`object = tipos não-primitivos`: `object` não aceita `string`, `number`, `boolean`, `symbol`, `bigint`. `{} = qualquer não-nulo-não-undefined`: aceita `string`, `number` — surpreendente! `typeof null === 'object'` em JS, mas TypeScript exclui `null` de `{}` corretamente. `Object` é quase idêntico a `{}` com métodos como `.toString()`. Na prática: use `object` quando quer 'não primitivo', use `Record<string, unknown>` para 'objeto com chaves dinâmicas', e evite `Object` e `{}` como tipos de parâmetro."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `let x: string; if (Math.random() > 0.5) { x = 'hello'; } console.log(x)` emite erro, mas `let x: string; if (Math.random() > 0.5) { x = 'hello'; } else { x = 'world'; } console.log(x)` não emite?",
+      "options": [
+        "É um bug — ambos deveriam funcionar, `x` pode ser definido",
+        "Definite Assignment Analysis: o TypeScript verifica que `x` é definitivamente atribuído em TODOS os branches antes de ser usado. No primeiro caso, o `if` sem `else` pode não executar — `x` pode chegar ao `console.log` sem atribuição. No segundo, com `if/else`, ambos os branches atribuem `x` — definitivamente definido",
+        "O TypeScript não analisa condicionais com `Math.random()` — é não-determinístico",
+        "O erro ocorre porque o TypeScript não pode inferir o tipo de `x` dentro do `if`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Definite Assignment Analysis (DAA) é parte do CFA. O TypeScript analisa todos os possíveis caminhos de execução antes do uso de `x`. Com só `if`: caminho 1 = atribuição + uso (ok), caminho 2 = pula o if + uso diretamente (erro: `x` não atribuído). Com `if/else`: todos os caminhos atribuem `x` antes do `console.log` → definitivamente atribuído. Esse recurso previne bugs de 'variável usada antes de ser inicializada'. `strictPropertyInitialization` aplica o mesmo princípio a propriedades de classes."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que `const arr = ['a', 'b', 'c']` tem tipo `string[]` e não `('a' | 'b' | 'c')[]`?",
+      "options": [
+        "TypeScript preserva literais em arrays — `arr` tem tipo `('a' | 'b' | 'c')[]`",
+        "Widening em arrays: TypeScript amplia os elementos literais para seus tipos primitivos. `'a'` → `string`. O array é mutável (`const` não torna os elementos readonly), então os elementos poderiam ser substituídos por qualquer `string`. Use `as const` para preservar: `const arr = ['a', 'b', 'c'] as const` → `readonly ['a', 'b', 'c']`",
+        "Apenas arrays com `as const` têm tipo literal — todos os outros têm tipo `any[]`",
+        "TypeScript preserva literais apenas para arrays de 3 ou menos elementos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`const arr = ['a', 'b']` — `const` impede que `arr` seja reatribuído a outro array, mas não impede `arr.push('c')` ou `arr[0] = 'z'`. Como os elementos são mutáveis, TypeScript amplia para `string[]`. `as const` cria um tuple readonly com tipos literais: `readonly ['a', 'b', 'c']`. Isso é essencial para padrões como `const ROLES = ['admin', 'user'] as const` → `type Role = typeof ROLES[number]` = `'admin' | 'user'`."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Em subtipagem estrutural, por que `class Circle { x: number; y: number; radius: number }` é atribuível a `interface Point2D { x: number; y: number }` mesmo sem `implements Point2D`?",
+      "options": [
+        "É um erro do TypeScript — classes devem declarar explicitamente suas interfaces",
+        "TypeScript usa subtipagem estrutural: um tipo é subtipo de outro se tiver pelo menos as mesmas propriedades com tipos compatíveis. `Circle` tem `x: number` e `y: number` (e mais) — portanto satisfaz `Point2D` estruturalmente, sem declaração explícita",
+        "Funciona apenas porque `Circle` tem propriedades com os mesmos nomes — se renomear `x` para `posX`, pararia de funcionar",
+        "Classes em TypeScript são sempre compatíveis com interfaces — é um comportamento especial"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Subtipagem estrutural é o alicerce do TypeScript. Em nominal typing (Java, C#), `class Circle` precisaria de `implements Point2D` explícito. Em TypeScript, o que importa é a estrutura: 'tem x: number? tem y: number? então satisfaz Point2D'. Isso é intencional para modelar o duck typing do JavaScript. A terceira opção está parcialmente correta — SE renomear para `posX`, de fato pararia de funcionar. Mas isso é a feature, não um bug: o contrato estrutural é exatamente o nome e tipo das propriedades."
+    }
+  ]
+}

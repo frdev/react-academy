@@ -1,1 +1,97 @@
-{"lessonId": "day-20", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-20",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que TypeScript não suporta Higher-Kinded Types nativamente, ao contrário de Haskell ou Scala?",
+      "options": [
+        "TypeScript suporta HKT nativamente desde a versão 4.0",
+        "O sistema de tipos do TypeScript não tem um 'kind system' — tipos de ordem superior como `Array<_>` não são tipos de primeira classe que podem ser passados como parâmetros. TypeScript lida com tipos e type constructors de forma uniforme sem a distinção de kinds",
+        "HKT foi considerado e rejeitado por ser incompatível com JavaScript",
+        "TypeScript tem HKT, mas apenas para classes, não para interfaces"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em Haskell, `Array` (sem parâmetro) tem kind `* -> *` — é uma função de tipo. TypeScript não distingue entre tipos `*` e type constructors `* -> *`. Você não pode escrever `interface Functor<F<_>>` porque `F<_>` não é sintaxe válida — TypeScript não aceita 'tipo de tipo' como parâmetro. O workaround padrão (URI registry) usa string keys como identificadores de type constructors, com interface merging para o mapeamento `string → tipo aplicado`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "No padrão de HKT encoding com `interface URItoKind<A>`, por que interface merging é essencial?",
+      "options": [
+        "Interface merging é usada apenas para compatibilidade com módulos antigos",
+        "A registry começa vazia (`interface URItoKind<A> {}`). Cada módulo que implementa um container (Array, Maybe, Result) ADICIONA sua entrada à registry via merging: `interface URItoKind<A> { Array: Array<A> }`. Sem merging, cada adição sobrescreveria a anterior — apenas o último container registrado existiria",
+        "Interface merging cria uma cópia da interface para cada módulo",
+        "O merging é necessário apenas quando há mais de 10 containers registrados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Interface merging (declaration merging) é um recurso único do TypeScript que permite múltiplas declarações da mesma interface serem combinadas. Módulo A declara `interface URItoKind<A> { Array: Array<A> }`, módulo B declara `interface URItoKind<A> { Maybe: Maybe<A> }` — o TypeScript merge: `{ Array: Array<A>; Maybe: Maybe<A> }`. É o mecanismo exato pelo qual fp-ts funciona — cada módulo (`fp-ts/Option`, `fp-ts/Array`, etc.) registra seu URI na mesma interface global."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `type Apply<F extends keyof URItoKind<any>, A> = URItoKind<A>[F]` faz?",
+      "options": [
+        "Aplica uma função JavaScript ao tipo A",
+        "Aplica o type constructor identificado por `F` ao tipo `A` — `Apply<'Array', string>` = `URItoKind<string>['Array']` = `Array<string>`. É o mecanismo que simula `F<A>` sem suporte nativo a HKT",
+        "Cria uma nova instância do tipo `F` com valor `A`",
+        "`Apply` funciona apenas com types que têm exatamente um parâmetro de tipo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`URItoKind<A>[F]` é indexed access na interface com `A` instanciado. Para `Apply<'Maybe', number>`: `URItoKind<number>['Maybe']` = `Maybe<number>`. Isso efetivamente 'aplica' o type constructor `Maybe` ao tipo `number`. A chave `F extends keyof URItoKind<any>` garante que só URIs registrados são aceitos — se você tentar `Apply<'Unregistered', string>`, o TypeScript emite erro em compile time."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Uma função `function double<F extends keyof URItoKind<number>>(functor: Functor<F>, fa: Apply<F, number>): Apply<F, number>` é chamada com `double(ArrayFunctor, [1, 2, 3])`. O que acontece com a inferência de tipos?",
+      "options": [
+        "TypeScript não consegue inferir `F` — é necessário anotação manual `double<'Array'>(...)`",
+        "TypeScript infere `F = 'Array'` a partir do tipo de `ArrayFunctor: Functor<'Array'>` — então `Apply<'Array', number>` = `Array<number>`. O argumento `[1, 2, 3]` é verificado como `number[]`, e o retorno é `Array<number>`. A inferência funciona através da cadeia URI → Apply",
+        "TypeScript infere `F = any` porque a registry usa `any`",
+        "A inferência funciona apenas se `[1, 2, 3]` for anotado explicitamente como `number[]`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TypeScript infere `F` a partir do tipo do `functor`: `Functor<'Array'>` → `F = 'Array'`. Com `F` conhecido, `Apply<'Array', number>` = `URItoKind<number>['Array']` = `Array<number>`. O type checker verifica que `[1, 2, 3]` é `number[]` e que o retorno é `number[]`. A cadeia de inferência funciona, mas pode quebrar em casos mais complexos com múltiplos parâmetros de tipo ou contraints compostas — muitas vezes precisando de anotações manuais."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que a abordagem de `interface Container<T> { map<U>(f: (value: T) => U): Container<U> }` tem uma limitação importante comparada ao HKT encoding?",
+      "options": [
+        "Não tem limitações — é superior ao HKT encoding",
+        "O tipo de retorno `Container<U>` perde a informação do tipo concreto — `Result<T, E>.map()` retorna `Container<U>`, não `Result<U, E>`. Você perde o tipo de erro `E` e não consegue encadear operações específicas de `Result` no resultado",
+        "A interface `Container` não pode ser implementada por classes",
+        "`map` retorna `Container<U>` apenas se `U extends T`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `interface Container<T>`, `Result<T, E>.map(f: T => U)` retorna `Container<U>` — não `Result<U, E>`. Você perde o tipo de erro genérico `E`. Para recuperar, precisaria de cast ou método específico `mapResult`. HKT encoding preserva: `map<A, B>(fa: Apply<F, A>, f: A => B): Apply<F, B>` — com `F = 'Result'`, retorna `Result<B, E>` se a registry mapear corretamente. Essa perda de precisão é a principal razão pela qual `fp-ts` usa HKT em vez de interfaces simples."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Quando vale a pena usar HKT encoding em TypeScript versus simplesmente escrever funções concretas para cada tipo?",
+      "options": [
+        "HKT encoding sempre vale — é mais elegante e escalável",
+        "HKT encoding vale quando você está construindo infraestrutura de biblioteca que precisa ser polimórfica sobre containers desconhecidos. Para aplicações, funções concretas (`mapArray`, `mapMaybe`) são mais legíveis, têm melhores mensagens de erro, e não exigem conhecimento do encoding",
+        "HKT encoding não tem casos de uso válidos em TypeScript — use classes",
+        "HKT é recomendado apenas para projetos com mais de 50 módulos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A regra prática: use HKT encoding quando você está escrevendo código que é genérico sobre o tipo de container E esse container é fornecido por terceiros (usuários da sua biblioteca). `fp-ts` usa HKT porque permite que usuários registrem seus próprios containers e usem as utilidades genéricas. Para uma aplicação, escrever `mapMaybe<A, B>(m: Maybe<A>, f: (a: A) => B): Maybe<B>` é mais claro, mais fácil de debugar, e tem melhores mensagens de erro do que o encoding com URIs e Apply."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O tipo `Monad<F>` estende `Functor<F>` e adiciona `of` e `chain`. Por que `chain` (também chamado `flatMap`) é necessário além de `map`?",
+      "options": [
+        "`chain` é apenas um alias para `map` com diferente convenção de nome",
+        "`map(fa, f: A => B): F<B>` — `f` retorna um valor simples. `chain(fa, f: A => F<B>): F<B>` — `f` retorna um container. Sem `chain`, encadear funções que retornam containers aninharia: `map(fa, x => F<B>)` retornaria `F<F<B>>` em vez de `F<B>`",
+        "`chain` funciona apenas com containers que têm exatamente um valor",
+        "`map` e `chain` são intercambiáveis — use o que preferir"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se `f: A => Maybe<B>` e você usa `map(maybe, f)`, obtém `Maybe<Maybe<B>>` — aninhado. Para 'achatar', você precisa de `chain` (= `flatMap`): recebe `Maybe<A>`, aplica `f: A => Maybe<B>`, retorna `Maybe<B>` (não `Maybe<Maybe<B>>`). Exemplo: `chain(getUser(id), user => getPermissions(user.roleId))` — ambas as operações podem retornar `Nothing`. Com `map` ficaria `Maybe<Maybe<Permission[]>>`; com `chain` fica `Maybe<Permission[]>`. É o mecanismo de composição sequencial de efeitos."
+    }
+  ]
+}

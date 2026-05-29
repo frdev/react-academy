@@ -1,1 +1,205 @@
-# Conteúdo em breve
+# Conditional Types
+
+Conditional types permitem que o TypeScript tome decisões no nível de tipos: "se `T` estende `U`, então `X`; caso contrário, `Y`". É a estrutura `if/else` do sistema de tipos.
+
+## Sintaxe Fundamental
+
+```typescript
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<string>;   // true
+type B = IsString<number>;   // false
+type C = IsString<'hello'>;  // true — 'hello' extends string
+```
+
+A expressão `T extends U` é uma checagem de atribuibilidade: "um valor do tipo `T` pode ser atribuído a `U`?".
+
+## Conditional Types com Generics
+
+Conditional types brilham quando `T` é um parâmetro de tipo:
+
+```typescript
+type NonNullable<T> = T extends null | undefined ? never : T;
+
+type A = NonNullable<string | null>;      // string
+type B = NonNullable<number | undefined>; // number
+type C = NonNullable<null>;              // never
+```
+
+Isso é exatamente como `NonNullable` está implementado na biblioteca padrão do TypeScript.
+
+## Distributividade sobre Unions
+
+Quando `T` é um **naked type parameter** (sem wrappers), o conditional type distribui sobre unions:
+
+```typescript
+type ToArray<T> = T extends unknown ? T[] : never;
+
+type Result = ToArray<string | number>;
+// Distribui: ToArray<string> | ToArray<number>
+// = string[] | number[]
+```
+
+**Sem distribuição** (wrapped):
+
+```typescript
+type NoDistrib<T> = [T] extends [unknown] ? T[] : never;
+
+type Result = NoDistrib<string | number>;
+// [string | number] extends [unknown] → true
+// = (string | number)[]  — um array da union, não union de arrays
+```
+
+Use `[T] extends [U]` quando você NÃO quer distribuição.
+
+## Extract e Exclude — Implementação Manual
+
+```typescript
+// Manter apenas membros de T que estendem U
+type Extract<T, U> = T extends U ? T : never;
+
+// Remover membros de T que estendem U
+type Exclude<T, U> = T extends U ? never : T;
+
+type Status = 'loading' | 'success' | 'error' | 'idle';
+
+type ActiveStatus = Extract<Status, 'loading' | 'success'>;
+// 'loading' | 'success'
+
+type ErrorOrIdle = Exclude<Status, 'loading' | 'success'>;
+// 'error' | 'idle'
+```
+
+A distributividade é o que faz isso funcionar: `T extends U ? T : never` — para cada membro de `T`, mantém se extends `U`, senão `never`. `never` é removido de unions automaticamente.
+
+## Conditional Types Aninhados
+
+```typescript
+type TypeName<T> =
+  T extends string ? 'string' :
+  T extends number ? 'number' :
+  T extends boolean ? 'boolean' :
+  T extends undefined ? 'undefined' :
+  T extends null ? 'null' :
+  T extends Function ? 'function' :
+  'object';
+
+type A = TypeName<string[]>; // 'object'
+type B = TypeName<() => void>; // 'function'
+type C = TypeName<42>; // 'number'
+```
+
+## Padrão: Filtrando Keys por Tipo de Valor
+
+Conditional types combinados com `keyof` e mapped types:
+
+```typescript
+// Pegar apenas as chaves de T cujos valores são string
+type StringKeys<T> = {
+  [K in keyof T]: T[K] extends string ? K : never;
+}[keyof T];
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  age: number;
+}
+
+type UserStringKeys = StringKeys<User>; // 'name' | 'email'
+```
+
+Explicação: o mapped type cria `{ id: never; name: 'name'; email: 'email'; age: never }`. O `[keyof T]` extrai a union dos valores: `never | 'name' | 'email' | never` = `'name' | 'email'`.
+
+## Conditional Types em Overloads
+
+Uma aplicação poderosa é criar funções com tipos correlacionados:
+
+```typescript
+type Flatten<T> = T extends Array<infer Item> ? Item : T;
+// (infer será detalhado amanhã no Day 16)
+
+function flatten<T>(arr: T[]): Flatten<T>[];
+function flatten<T>(arr: T[]): unknown[] {
+  return arr.flat();
+}
+```
+
+## Exemplos da Biblioteca Padrão
+
+Os tipos utilitários mais avançados do TypeScript usam conditional types:
+
+```typescript
+// ReturnType — extrai o tipo de retorno de uma função
+type ReturnType<T extends (...args: any) => any> =
+  T extends (...args: any) => infer R ? R : any;
+
+// Parameters — extrai os tipos dos parâmetros
+type Parameters<T extends (...args: any) => any> =
+  T extends (...args: infer P) => any ? P : never;
+
+// Awaited — unwraps Promises recursivamente (TS 4.5+)
+type Awaited<T> =
+  T extends null | undefined ? T :
+  T extends object & { then(onfulfilled: infer F, ...args: any): any } ?
+    F extends ((value: infer V, ...args: any) => any) ?
+      Awaited<V> :
+      never :
+  T;
+```
+
+## NonNullable Customizado — Casos Avançados
+
+```typescript
+// Remove null e undefined de forma profunda em propriedades opcionais
+type StrictRequired<T> = {
+  [K in keyof T]-?: NonNullable<T[K]>;
+};
+
+interface Config {
+  host?: string;
+  port?: number;
+  debug?: boolean;
+}
+
+type ResolvedConfig = StrictRequired<Config>;
+// { host: string; port: number; debug: boolean }
+```
+
+## Gotcha: Conditional Types Diferidos
+
+Quando o parâmetro de tipo ainda não é conhecido, TypeScript **adia** a avaliação:
+
+```typescript
+function process<T>(value: T): T extends string ? number : boolean {
+  // TypeScript não sabe qual branch seguir dentro da função
+  // porque T não está resolvido ainda
+  if (typeof value === 'string') {
+    return value.length as any; // precisa de cast
+  }
+  return true as any;
+}
+```
+
+Isso é uma limitação real: dentro de funções genéricas, você frequentemente precisa de `as any` ou sobrecarga explícita. Conditional types são mais poderosos em contextos de tipo do que em implementações.
+
+## Padrão: IsNever e IsUnion
+
+```typescript
+// Checar se T é never
+type IsNever<T> = [T] extends [never] ? true : false;
+// Por que [T]? Sem wrapper, never distribui e sempre retorna never
+
+type A = IsNever<never>;  // true
+type B = IsNever<string>; // false
+type C = IsNever<0>;      // false
+
+// Checar se T é uma union (tem mais de um membro)
+type IsUnion<T, U = T> = T extends U
+  ? [U] extends [T]
+    ? false
+    : true
+  : never;
+```
+
+**Conditional types transformam o sistema de tipos do TypeScript em uma linguagem de programação funcional — você pode expressar lógica condicional complexa inteiramente no nível de tipos, sem nenhum código em runtime.**

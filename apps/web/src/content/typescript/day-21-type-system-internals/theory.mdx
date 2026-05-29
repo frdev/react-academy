@@ -1,1 +1,237 @@
-# Conteúdo em breve
+# Type System Internals
+
+Entender como o sistema de tipos do TypeScript funciona internamente explica muitos comportamentos que parecem "mágicos" — por que excess property checks só ocorrem em alguns contextos, por que literals são ampliados em certas situações, e como o compilador rastreia o fluxo de execução.
+
+## Subtipagem Estrutural — O Fundamento
+
+TypeScript usa subtipagem **estrutural** (duck typing): um tipo `A` é subtipo de `B` se `A` tem pelo menos todas as propriedades de `B` com tipos compatíveis.
+
+```typescript
+interface Point2D { x: number; y: number }
+interface Point3D { x: number; y: number; z: number }
+
+const p3: Point3D = { x: 1, y: 2, z: 3 };
+const p2: Point2D = p3; // ✓ — Point3D tem x e y (e mais)
+
+// Não há declaração explícita de herança necessária
+class Circle {
+  constructor(public x: number, public y: number, public radius: number) {}
+}
+
+function movePoint(p: Point2D): void {}
+movePoint(new Circle(0, 0, 5)); // ✓ — Circle tem x e y
+```
+
+## Freshness Checking — Excess Property Checks
+
+Objetos **recém-criados** (fresh) passam por verificação de propriedades extras. Objetos **atribuídos a uma variável** não:
+
+```typescript
+interface Options {
+  timeout: number;
+  retries?: number;
+}
+
+// ✗ ERRO — excess property check em fresh object literal
+fetch('/api', { timeout: 5000, maxRedirects: 3 });
+//                              ^^^^^^^^^^ Object literal may only specify known properties
+
+// ✓ SEM ERRO — atribuído a variável, freshness se perde
+const opts = { timeout: 5000, maxRedirects: 3 };
+fetch('/api', opts); // ok — estruturalmente compatível
+```
+
+**Por quê?** Fresh objects são provavelmente erros de typo. Objetos em variáveis podem ter sido criados para múltiplos propósitos.
+
+```typescript
+// Excesso em return também é verificado:
+function getOptions(): Options {
+  return { timeout: 5000, maxRedirects: 3 }; // ✗ ERRO
+}
+
+function getOptions(): Options {
+  const opts = { timeout: 5000, maxRedirects: 3 };
+  return opts; // ✓ — não fresh
+}
+```
+
+## Widening — Ampliação de Tipos Literais
+
+TypeScript amplia literais para seus tipos primitivos em certas situações:
+
+```typescript
+// Widening em variáveis mutáveis:
+let x = 'hello'; // tipo: string (ampliado de 'hello')
+const y = 'hello'; // tipo: 'hello' (literal — const não amplia)
+
+// Widening em arrays:
+const arr = ['a', 'b']; // tipo: string[] (não ('a' | 'b')[])
+const constArr = ['a', 'b'] as const; // tipo: readonly ['a', 'b']
+
+// Widening em objetos:
+const obj = { status: 'active' }; // tipo: { status: string }
+const constObj = { status: 'active' } as const; // tipo: { readonly status: 'active' }
+```
+
+**Regra:** `let` → widening; `const` com primitivo → literal; `const` com objeto → sem widening (exceto `as const`).
+
+## Control Flow Analysis — Análise de Fluxo
+
+O TypeScript rastreia o tipo de uma variável ao longo das branches de código:
+
+```typescript
+function process(value: string | number | null) {
+  // Aqui: string | number | null
+
+  if (value === null) {
+    // Aqui: null
+    return;
+  }
+
+  // Aqui: string | number (null foi eliminado pelo return)
+
+  if (typeof value === 'string') {
+    // Aqui: string
+    console.log(value.toUpperCase());
+  } else {
+    // Aqui: number
+    console.log(value.toFixed(2));
+  }
+}
+```
+
+### Definite Assignment
+
+```typescript
+let x: string;
+
+if (Math.random() > 0.5) {
+  x = 'hello';
+} else {
+  x = 'world';
+}
+
+console.log(x); // ✓ — TypeScript sabe que x foi definido em todos os branches
+
+// Mas:
+let y: string;
+if (Math.random() > 0.5) {
+  y = 'hello';
+}
+console.log(y); // ✗ — Variable 'y' is used before being assigned
+```
+
+### CFA através de Chamadas de Função
+
+```typescript
+function assertDefined<T>(value: T | undefined): asserts value is T {
+  if (value === undefined) throw new Error('Expected defined value');
+}
+
+let name: string | undefined = getName();
+assertDefined(name);
+// Após a chamada: TypeScript sabe que name é string
+console.log(name.toUpperCase()); // ✓
+```
+
+## Type Narrowing — Mecanismo Interno
+
+O compilador mantém um "tipo corrente" para cada variável em cada ponto do código. Narrowing atualiza esse tipo:
+
+```typescript
+function example(x: string | number | boolean) {
+  // x: string | number | boolean
+
+  if (typeof x !== 'boolean') {
+    // x: string | number
+    if (x > 0) {
+      // x: string | number — > funciona em ambos
+    }
+  }
+
+  // x: string | number | boolean — volta ao original após o bloco
+}
+```
+
+### Narrowing por Discriminante
+
+```typescript
+type Shape =
+  | { kind: 'circle'; radius: number }
+  | { kind: 'square'; side: number };
+
+function area(s: Shape): number {
+  switch (s.kind) {
+    case 'circle': return Math.PI * s.radius ** 2; // s: { kind: 'circle'; radius: number }
+    case 'square': return s.side ** 2; // s: { kind: 'square'; side: number }
+  }
+}
+```
+
+## Assignability Rules — Quando A é Atribuível a B
+
+1. `never` é atribuível a qualquer tipo
+2. Qualquer tipo é atribuível a `unknown`
+3. Qualquer tipo é atribuível a `any`, e `any` é atribuível a qualquer tipo
+4. Um literal é atribuível ao seu tipo primitivo (`'hello'` → `string`)
+5. Um tipo com mais propriedades é atribuível a um tipo com menos (structural)
+6. Uma união `A | B` não é atribuível a `A` (sem narrowing)
+7. `A` é atribuível a `A | B` (sempre)
+
+```typescript
+// Regras em ação:
+const a: unknown = 42; // ✓ — 4
+const b: never = 42 as never; // ✓ — 1 (gambiarra, mas válido)
+const c: string = 'literal'; // ✓ — 4
+
+let d: string | number = 42;
+const e: number = d; // ✗ — 6 (d pode ser string)
+if (typeof d === 'number') {
+  const f: number = d; // ✓ — narrowing resolve
+}
+```
+
+## Tipo `object`, `{}` e `Object` — Diferenças Sutis
+
+```typescript
+// object (minúsculo): qualquer não-primitivo
+const a: object = {}; // ✓
+const b: object = 42; // ✗ — number é primitivo
+
+// {} (empty object): qualquer coisa exceto null e undefined
+const c: {} = 42; // ✓
+const d: {} = 'hello'; // ✓
+const e: {} = null; // ✗
+
+// Object (maiúsculo): similar a {}, mas inclui methods de Object.prototype
+// Evite usar Object (maiúsculo) — prefira {} ou object
+```
+
+## Variance e Assignability em Funções
+
+```typescript
+// Retorno é covariante — retornar subtipo é seguro
+type F1 = () => Animal;
+type F2 = () => Dog; // F2 extends F1? SIM — Dog é subtipo de Animal
+
+// Parâmetro é contravariante — aceitar supertipo é seguro
+type G1 = (x: Dog) => void;
+type G2 = (x: Animal) => void; // G2 extends G1? SIM — Animal é supertipo de Dog
+```
+
+## Literal Inference em Generics
+
+```typescript
+// Sem constraint, T é ampliado:
+function identity<T>(x: T): T { return x; }
+const v1 = identity('hello'); // T inferred as string (widened)
+
+// Com constraint de string, preserva literal:
+function id<T extends string>(x: T): T { return x; }
+const v2 = id('hello'); // T inferred as 'hello' (literal)
+
+// Explicit annotation preserva literal:
+const v3 = identity<'hello'>('hello'); // T = 'hello'
+```
+
+**Entender os internals do sistema de tipos transforma erros crípticos em diagnósticos claros: excess property checks explicam por que um objeto literal falha mas uma variável não; widening explica por que `let x = 'a'` não tem tipo `'a'`; CFA explica por que o TypeScript sabe o tipo após um guard. O compilador é um sistema formal coerente — uma vez que você conhece suas regras, o comportamento se torna previsível.**

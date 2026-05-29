@@ -1,1 +1,214 @@
-# Conteúdo em breve
+# Template Literal Types Avançados
+
+No Day 12 cobrimos o básico de template literal types. Aqui vamos mais fundo: parsing de strings no nível de tipos, `Split`, `Join`, e extração de segmentos de path.
+
+## Recap: Distribuição e Introspection Básica
+
+```typescript
+type Greet<T extends string> = `Hello, ${T}!`;
+type G = Greet<'World' | 'TypeScript'>; // 'Hello, World!' | 'Hello, TypeScript!'
+
+// Extraindo com infer (do Day 16):
+type StripPrefix<S extends string, P extends string> =
+  S extends `${P}${infer Rest}` ? Rest : S;
+
+type Clean = StripPrefix<'onSubmit', 'on'>; // 'Submit'
+```
+
+## Split<S, D> — Dividir String por Delimitador
+
+```typescript
+type Split<S extends string, D extends string> =
+  S extends `${infer Head}${D}${infer Tail}`
+    ? [Head, ...Split<Tail, D>]
+    : [S];
+
+type Parts = Split<'a.b.c', '.'>;
+// ['a', 'b', 'c']
+
+type Segments = Split<'users/123/posts', '/'>;
+// ['users', '123', 'posts']
+
+type Single = Split<'hello', '.'>;
+// ['hello'] — sem delimitador, retorna array com o string original
+```
+
+A recursão constrói o tuple progressivamente: `[Head, ...Split<Tail, D>]`.
+
+## Join<T, D> — Inverso de Split
+
+```typescript
+type Join<T extends string[], D extends string> =
+  T extends []
+    ? ''
+    : T extends [infer Only extends string]
+      ? Only
+      : T extends [infer First extends string, ...infer Rest extends string[]]
+        ? `${First}${D}${Join<Rest, D>}`
+        : string;
+
+type Path = Join<['users', '123', 'posts'], '/'>;
+// 'users/123/posts'
+
+type Dotted = Join<['a', 'b', 'c'], '.'>;
+// 'a.b.c'
+```
+
+## PathKeys — Extraindo Keys de um Path de Objeto
+
+```typescript
+type PathKeys<T, Prefix extends string = ''> =
+  T extends object
+    ? {
+        [K in keyof T & string]:
+          Prefix extends ''
+            ? K | PathKeys<T[K], K>
+            : `${Prefix}.${K}` | PathKeys<T[K], `${Prefix}.${K}`>
+      }[keyof T & string]
+    : never;
+
+interface Config {
+  server: {
+    host: string;
+    port: number;
+  };
+  db: {
+    url: string;
+    name: string;
+  };
+}
+
+type Keys = PathKeys<Config>;
+// 'server' | 'server.host' | 'server.port' | 'db' | 'db.url' | 'db.name'
+```
+
+## PathValue — Obter o Tipo num Caminho
+
+```typescript
+type PathValue<T, P extends string> =
+  P extends `${infer Key}.${infer Rest}`
+    ? Key extends keyof T
+      ? PathValue<T[Key], Rest>
+      : never
+    : P extends keyof T
+      ? T[P]
+      : never;
+
+type A = PathValue<Config, 'server.host'>; // string
+type B = PathValue<Config, 'db.url'>;      // string
+type C = PathValue<Config, 'server'>;      // { host: string; port: number }
+type D = PathValue<Config, 'x.y'>;         // never
+```
+
+Combinado com `PathKeys`, você tem um getter totalmente type-safe:
+
+```typescript
+function get<T, P extends PathKeys<T> & string>(
+  obj: T,
+  path: P
+): PathValue<T, P> {
+  return path.split('.').reduce((acc, key) => (acc as any)[key], obj) as any;
+}
+
+const config: Config = { server: { host: 'localhost', port: 3000 }, db: { url: '...', name: 'mydb' } };
+
+const host = get(config, 'server.host'); // tipo: string
+const port = get(config, 'server.port'); // tipo: number
+// get(config, 'server.xyz'); // ERRO — 'server.xyz' não é PathKeys<Config>
+```
+
+## CamelCase e PascalCase — Conversão de Case
+
+```typescript
+type CamelCase<S extends string> =
+  S extends `${infer Head}_${infer Rest}`
+    ? `${Head}${CamelCase<Capitalize<Rest>>}`
+    : S;
+
+type CC = CamelCase<'hello_world_foo'>; // 'helloWorldFoo'
+
+type PascalCase<S extends string> = Capitalize<CamelCase<S>>;
+type PC = PascalCase<'hello_world'>; // 'HelloWorld'
+
+// snake_case de camelCase:
+type SnakeCase<S extends string> =
+  S extends `${infer Head}${infer Tail}`
+    ? Head extends Uppercase<Head>
+      ? Head extends Lowercase<Head>
+        ? `${Head}${SnakeCase<Tail>}` // não é letra — mantém
+        : `_${Lowercase<Head>}${SnakeCase<Tail>}` // letra maiúscula → _lower
+      : `${Head}${SnakeCase<Tail>}`
+    : S;
+```
+
+## Parsing de Route Params
+
+```typescript
+// Extrair parâmetros de rotas Express-style: '/users/:id/posts/:postId'
+type RouteParams<S extends string> =
+  S extends `${string}:${infer Param}/${infer Rest}`
+    ? Param | RouteParams<`/${Rest}`>
+    : S extends `${string}:${infer Param}`
+      ? Param
+      : never;
+
+type Params = RouteParams<'/users/:id/posts/:postId'>;
+// 'id' | 'postId'
+
+type RouterHandler<Route extends string> = (
+  params: Record<RouteParams<Route>, string>
+) => void;
+
+const handler: RouterHandler<'/users/:id/posts/:postId'> = (params) => {
+  const { id, postId } = params; // totalmente tipado!
+};
+```
+
+## Trim — Remover Espaços
+
+```typescript
+type TrimLeft<S extends string> =
+  S extends ` ${infer Rest}` ? TrimLeft<Rest> : S;
+
+type TrimRight<S extends string> =
+  S extends `${infer Rest} ` ? TrimRight<Rest> : S;
+
+type Trim<S extends string> = TrimLeft<TrimRight<S>>;
+
+type A = Trim<'  hello  '>; // 'hello'
+type B = Trim<'  a b  '>;   // 'a b' — espaços internos preservados
+```
+
+## Replace e ReplaceAll
+
+```typescript
+type Replace<
+  S extends string,
+  From extends string,
+  To extends string
+> = S extends `${infer Left}${From}${infer Right}`
+  ? `${Left}${To}${Right}`
+  : S;
+
+type ReplaceAll<
+  S extends string,
+  From extends string,
+  To extends string
+> = From extends ''
+  ? S
+  : S extends `${infer Left}${From}${infer Right}`
+    ? ReplaceAll<`${Left}${To}${Right}`, From, To>
+    : S;
+
+type R1 = Replace<'foo.bar.baz', '.', '/'>; // 'foo/bar.baz' — primeira ocorrência
+type R2 = ReplaceAll<'foo.bar.baz', '.', '/'>; // 'foo/bar/baz' — todas
+```
+
+## Limitações Práticas
+
+1. **Performance**: Strings longas com muita recursão são lentas para o type checker
+2. **Erros crípticos**: `Type instantiation is excessively deep` quando a recursão não termina
+3. **Números em strings**: `Split<'1.2.3', '.'>` retorna `['1', '2', '3']` — são strings, não números
+4. **Case sensitivity**: `infer` é sensível a maiúsculas; patterns como `${infer X}` capturam exatamente o que está no tipo
+
+**Template literal types avançados transformam strings em estruturas de dados tipo-seguras — desde paths de objeto até parâmetros de rotas. O padrão `Split` + `PathValue` é amplamente usado em bibliotecas como tRPC, Zod e React Hook Form para fornecer autocompletion e type safety para strings com estrutura.**

@@ -1,1 +1,97 @@
-{"lessonId": "day-15", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-15",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `type IsString<T> = T extends string ? true : false` produz para `IsString<'hello' | number>`?",
+      "options": [
+        "`true | false` — distribui sobre a union: `IsString<'hello'>` = `true`, `IsString<number>` = `false`",
+        "`false` — `'hello' | number` não é inteiramente string",
+        "`boolean` — TypeScript colapsa `true | false` para `boolean`",
+        "ERRO — conditional types não funcionam com unions"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Conditional types com naked type parameters distribuem sobre unions. Para `IsString<'hello' | number>`: distribui em `IsString<'hello'> | IsString<number>` = `true | false`. TypeScript NÃO colapsa automaticamente `true | false` para `boolean` — eles são tipos distintos. Para prevenir distribuição, use `[T] extends [string] ? true : false` — isso avaliaria `['hello' | number] extends [string]` = `false`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `type F<T> = T extends unknown ? T[] : never` e `type G<T> = [T] extends [unknown] ? T[] : never` para `F<string | number>`?",
+      "options": [
+        "São idênticos — `unknown` é superconjunto de tudo, sempre true",
+        "`F<string | number>` = `string[] | number[]` (distribui); `G<string | number>` = `(string | number)[]` (não distribui — `[T]` previne distribuição)",
+        "`G` é inválido — `[T]` não pode ser usado em conditional types",
+        "`F` = `(string | number)[]`; `G` = `string[] | number[]` — o oposto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`F<T>` usa naked type parameter `T` — distribui: `F<string | number>` = `F<string> | F<number>` = `string[] | number[]`. `G<T>` usa `[T]` (wrapped) — NÃO distribui: `[string | number] extends [unknown]` avalia como um único tipo = `(string | number)[]`. Usar `[T]` é o padrão canônico para prevenir distribuição quando você quer tratar a union como um único tipo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como `type Extract<T, U> = T extends U ? T : never` extrai membros de uma union?",
+      "options": [
+        "TypeScript itera sobre `T` e mantém os membros que são subtipos de `U`, graças à distributividade sobre unions — `never` é automaticamente removido de unions",
+        "Extract usa lógica especial do compilador — não é implementável com conditional types normais",
+        "Extract retorna a intersecção de `T` e `U`",
+        "Extract funciona apenas com string unions, não com tipos arbitrários"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Para `Extract<'a' | 'b' | 'c', 'a' | 'c'>`: distribui em `('a' extends 'a' | 'c' ? 'a' : never) | ('b' extends 'a' | 'c' ? 'b' : never) | ('c' extends 'a' | 'c' ? 'c' : never)` = `'a' | never | 'c'` = `'a' | 'c'`. `never` é o 'elemento neutro' de unions — `A | never` = `A`. Exatamente assim está implementado na lib padrão."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que o padrão `{ [K in keyof T]: T[K] extends string ? K : never }[keyof T]` produz?",
+      "options": [
+        "Um objeto com apenas as propriedades de `T` cujos valores são string",
+        "A union das chaves de `T` cujos valores são string — o `[keyof T]` extrai a union dos valores do mapped type",
+        "ERRO — indexed access em mapped types não é válido",
+        "A union dos valores de `T` que são string"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Passo a passo com `T = { id: number; name: string; email: string }`: (1) O mapped type cria `{ id: never; name: 'name'; email: 'email' }` — para campos string, a chave vira um literal; senão, `never`. (2) `[keyof T]` = indexed access com a union de todas as chaves = extrai a union dos valores = `never | 'name' | 'email'` = `'name' | 'email'`. É o padrão para extrair chaves por tipo de valor."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `type IsNever<T> = [T] extends [never] ? true : false` usa `[T]` em vez de `T extends never`?",
+      "options": [
+        "É apenas estilo — ambas as formas são equivalentes",
+        "Sem `[T]`, `T extends never` distribui sobre o tipo `never`: distribui sobre zero membros = retorna `never` (não `true`). Com `[T]`, a distribuição é prevenida — `[never] extends [never]` avalia corretamente como `true`",
+        "`[T]` é necessário porque `never` não pode aparecer em conditional types",
+        "A versão com `[T]` funciona apenas em TS 4.0+"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Distribuição sobre `never` retorna `never` (produto cartesiano de zero membros). `never extends never ? true : false` = distribui = `never`. Por isso `IsNever<never>` sem wrapper retornaria `never` em vez de `true`. Com `[never] extends [never]`: `[never]` é um tuple — a avaliação é `true`. Este é um gotcha clássico: sempre use `[T] extends [never]` para verificar se um tipo é `never`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que conditional types dentro de funções genéricas frequentemente precisam de `as any` na implementação?",
+      "options": [
+        "É um bug do TypeScript — não deveria ser necessário",
+        "Dentro da função, `T` ainda não está resolvido — o TypeScript adia a avaliação do conditional type e não consegue verificar se o valor retornado é compatível com o branch correto. O `as any` (ou `as` mais específico) é necessário para contornar o tipo deferido",
+        "`as any` é necessário apenas quando `T` é `unknown`",
+        "Conditional types em funções genéricas não funcionam — use overloads sempre"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O TypeScript avalia conditional types quando os parâmetros de tipo são conhecidos. Dentro de uma função genérica, `T` é ainda abstrato — o compilador não sabe qual branch do conditional vai ser verdadeiro. Então o tipo de retorno `T extends string ? number : boolean` fica 'deferido'. A implementação retorna um valor concreto que o compilador não consegue verificar contra o tipo deferido — daí o `as any` ou overloads explícitos (que especificam branches concretos)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Como `NonNullable<T>` é implementado com conditional types, e por que `T extends null | undefined ? never : T` funciona?",
+      "options": [
+        "É implementado com mapped types, não conditional types",
+        "`T extends null | undefined ? never : T` distribui sobre `T`: para cada membro de `T`, se é `null` ou `undefined`, retorna `never`; senão, retorna o membro. `never` é removido da union — resultado: `T` sem `null` e `undefined`",
+        "Funciona apenas para tipos simples — não distribui corretamente sobre unions complexas",
+        "`never` não pode ser usado no branch true de conditional types"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Para `NonNullable<string | null | undefined>`: distribui em `(string extends null | undefined ? never : string) | (null extends null | undefined ? never : null) | (undefined extends null | undefined ? never : undefined)` = `string | never | never` = `string`. A chave é que `never` é o elemento neutro de unions — qualquer coisa unida com `never` desaparece. Este padrão de 'filter via never' é usado em toda a stdlib do TypeScript."
+    }
+  ]
+}

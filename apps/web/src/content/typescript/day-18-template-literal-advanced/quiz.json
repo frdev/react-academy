@@ -1,1 +1,97 @@
-{"lessonId": "day-18", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-18",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `type Split<S extends string, D extends string> = S extends \\`${infer Head}${D}${infer Tail}\\` ? [Head, ...Split<Tail, D>] : [S]` produz para `Split<'a.b.c', '.'>`?",
+      "options": [
+        "`['a', 'b', 'c']` — divide pelo delimitador recursivamente",
+        "`['a', 'b.c']` — apenas a primeira ocorrência é dividida",
+        "`['a', '.', 'b', '.', 'c']` — inclui os delimitadores",
+        "ERRO — `infer` não funciona com template literals recursivos"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Passo a passo: `'a.b.c'` bate com `` `${infer Head}.${infer Tail}` `` → `Head = 'a'`, `Tail = 'b.c'`. Retorna `['a', ...Split<'b.c', '.'>]`. `Split<'b.c', '.'>`: `Head = 'b'`, `Tail = 'c'` → `['b', ...Split<'c', '.'>]`. `Split<'c', '.'>`: `'c'` não bate com `` `.` `` → `['c']`. Resultado final: `['a', 'b', 'c']`. O `...Split<Tail, D>` usa rest spread para construir o tuple recursivamente."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como o tipo `PathKeys<T>` que gera `'server' | 'server.host' | 'server.port'` a partir de um objeto aninhado é útil em prática?",
+      "options": [
+        "Apenas para documentação — não tem uso funcional",
+        "Permite criar funções `get(obj, path)` e `set(obj, path, value)` totalmente type-safe — o path é verificado em compile time, e o tipo de retorno é inferido automaticamente a partir do path. Autocompletion no editor mostra os paths válidos",
+        "Útil apenas para objetos com no máximo 2 níveis de profundidade",
+        "Funciona apenas com objetos que têm chaves string"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Combinado com `PathValue<T, P>`, você cria uma API `get(config, 'server.host')` onde: (1) o TypeScript verifica que `'server.host'` é um path válido em `Config`, (2) infere o tipo de retorno como `string` (não `unknown`), (3) o editor autocompleta os paths disponíveis. Usado em libs como Lodash types, React Hook Form (`register('user.email')`), e tRPC para path-based routing. É um dos usos mais práticos de template literal types avançados."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `type CamelCase<S extends string> = S extends \\`${infer Head}_${infer Rest}\\` ? \\`${Head}${CamelCase<Capitalize<Rest>>}\\` : S` produz para `CamelCase<'hello_world_foo'>`?",
+      "options": [
+        "`'HelloWorldFoo'` — capitaliza todos os segmentos incluindo o primeiro",
+        "`'helloWorldFoo'` — converte snake_case para camelCase mantendo o primeiro segmento minúsculo",
+        "`'hello_world_foo'` — pattern não bate",
+        "`'hello world foo'` — substitui underscores por espaços"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Passo a passo: `'hello_world_foo'` → `Head = 'hello'`, `Rest = 'world_foo'` → `` `hello${CamelCase<Capitalize<'world_foo'>>}` `` → `` `hello${CamelCase<'World_foo'>}` ``. `CamelCase<'World_foo'>`: `Head = 'World'`, `Rest = 'foo'` → `` `World${CamelCase<Capitalize<'foo'>>}` `` = `` `World${'Foo'}` `` = `'WorldFoo'`. Resultado: `'helloWorldFoo'`. `Capitalize<Rest>` capitaliza apenas o início de cada segmento após o underscore, preservando o primeiro segmento."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como `type RouteParams<S extends string> = S extends \\`${string}:${infer Param}/${infer Rest}\\` ? Param | RouteParams<\\`/${Rest}\\`> : S extends \\`${string}:${infer Param}\\` ? Param : never` extrai `'id' | 'postId'` de `'/users/:id/posts/:postId'`?",
+      "options": [
+        "O tipo não funciona — regex-style patterns não são suportados em template literals",
+        "O primeiro branch captura um param antes de `/`, recursa no resto. O segundo branch captura o último param (sem `/` depois). Para `'/users/:id/posts/:postId'`: primeiro branch → `Param = 'id'`, recursa em `'/posts/:postId'` → segundo branch → `Param = 'postId'`. Union: `'id' | 'postId'`",
+        "Captura apenas o primeiro parâmetro — `'id'`",
+        "Retorna `string` — não consegue extrair literais de strings com segmentos variáveis"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Análise: `'/users/:id/posts/:postId'` bate com `` `${string}:${infer Param}/${infer Rest}` `` → `Param = 'id'`, `Rest = 'posts/:postId'`. Recursa: `RouteParams<'/posts/:postId'>` bate com `` `${string}:${infer Param}` `` → `Param = 'postId'`. Union final: `'id' | 'postId'`. O `${string}` consome qualquer prefix antes do `:`. Esse padrão é a base do type-safe routing em libs como Next.js, TanStack Router e tRPC."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `type ReplaceAll<S extends string, From extends string, To extends string>` precisa para funcionar corretamente, e por que a verificação `From extends ''` é necessária?",
+      "options": [
+        "A verificação `From extends ''` não é necessária — é apenas uma otimização",
+        "Se `From = ''`, o pattern `` `${infer Left}${From}${infer Right}` `` batem em CADA posição da string (porque `''` aparece entre cada caractere), causando recursão infinita. A verificação `From extends '' ? S : ...` retorna `S` imediatamente para evitar esse loop",
+        "`From extends ''` verifica se a string a ser substituída é opcional",
+        "A verificação é necessária apenas para compatibilidade com TS versões antigas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "String vazia `''` é um 'separador' que aparece em toda string — `` `${infer L}${''}${infer R}` `` pode batem em qualquer ponto, criando infinitas sub-strings. Sem a guarda, `ReplaceAll<'abc', '', 'X'>` entraria em loop infinito tentando substituir em cada posição. A guarda `From extends '' ? S : ...` retorna `S` sem modificação para substituições de string vazia. É uma limitação conhecida de template literal types com pattern matching de strings vazias."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que template literal types avançados com muita recursão podem causar problemas em projetos reais, mesmo sem atingir o limite formal do TypeScript?",
+      "options": [
+        "Causam problemas apenas se os tipos são exportados",
+        "Mesmo abaixo do limite de instantiation, tipos com muita recursão tornam o type checker significativamente mais lento — cada uso do tipo (hover, autocomplete, verificação de assignment) pode levar centenas de milissegundos. Em projetos grandes com muitos usos, o IDE fica travando",
+        "Problemas de recursão só aparecem em runtime, não em desenvolvimento",
+        "O TypeScript otimiza automaticamente tipos recursivos simples — apenas os complexos são lentos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O TypeScript type checker é single-threaded e síncrono. Tipos como `PathKeys<DeepConfig>` com objetos muito aninhados podem levar muito tempo para resolver cada instância. Multiplique por 200 arquivos usando o tipo → editor lento, `tsc` lento, `--watch` lento. O `--extendedDiagnostics` mostra onde o tempo é gasto. Soluções: limitar profundidade, usar `interface` em vez de `type`, ou adicionar parâmetro de depth counter. Às vezes, aceitar `string` como tipo e validar em runtime é a escolha correta."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Dado `type Trim<S extends string> = TrimLeft<TrimRight<S>>`, qual é a limitação dessa implementação comparada a uma função JavaScript `str.trim()`?",
+      "options": [
+        "O tipo `Trim` só remove um espaço de cada lado",
+        "O tipo `Trim` funciona apenas em compile time com string literals conhecidos. `trim('  hello  ')` em runtime retorna `'hello'`, mas `Trim<string>` = `string` — não há informação de literal para transformar. Para variáveis com tipo `string` (não literal), o resultado é sempre `string` sem transformação",
+        "O tipo `Trim` remove espaços internos também — comportamento diferente do JS",
+        "O tipo `Trim` é idêntico ao `trim()` em todos os aspectos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Trim<'  hello  '>` = `'hello'` — funciona para string literals. Mas `Trim<string>` = `string` porque não há informação concreta para transformar. Em runtime, todas as transformações são perdidas (TypeScript é apagado). O uso correto: anotar o tipo de retorno de uma função que faz trim: `function trim<T extends string>(s: T): Trim<T>` — preserva o literal se `T` for um literal, retorna `string` se `T` for `string`. Este padrão é similar ao que `String.prototype.trim` faria se TypeScript soubesse o valor literal."
+    }
+  ]
+}

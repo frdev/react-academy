@@ -1,1 +1,97 @@
-{"lessonId": "day-19", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-19",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Dado que `Dog extends Animal`, por que `(animal: Animal) => void` é atribuível a `(dog: Dog) => void` (e não o contrário)?",
+      "options": [
+        "Não é atribuível — funções com parâmetros diferentes não são compatíveis",
+        "Porque uma função que aceita `Animal` (supertipo) é mais permissiva — pode ser chamada com `Dog` com segurança. Uma função que aceita `Dog` (subtipo) precisa de propriedades específicas de Dog que `Animal` pode não ter — não pode substituir onde `Animal` é esperado",
+        "Porque `Dog` tem mais propriedades que `Animal` — o parâmetro mais específico vence",
+        "Funções são covariantes nos parâmetros, não contravariantes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Contravariância de parâmetros: se você tem uma função esperada `(dog: Dog) => void` e quer substituí-la por `(animal: Animal) => void`, a função substituta precisa funcionar quando receber um `Dog`. Uma função que aceita `Animal` funciona para qualquer `Animal` (incluindo `Dog`). Uma função que aceita `Dog` espera `dog.bark()` — se receber um `Animal` simples que não tem `bark()`, quebra. A substituição segura vai do específico para o geral nos parâmetros."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que o modificador `out T` (TypeScript 4.7+) em `interface Producer<out T>` garante e previne?",
+      "options": [
+        "`out T` é apenas documentação — não afeta a verificação de tipos",
+        "`out T` garante que `T` só aparece em posição de saída (retorno, propriedade para leitura). Previne que `T` apareça em posição de entrada (parâmetro). Isso permite ao TypeScript tratar `Producer<Dog>` como subtipo de `Producer<Animal>` (covariância), e o compilador verifica que a implementação realmente respeita isso",
+        "`out T` torna `T` uma propriedade obrigatória de retorno",
+        "`out T` funciona apenas com interfaces, não com classes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`out T` = 'T só sai desta interface'. Como T só é produzido (nunca consumido), `Producer<Dog>` pode ser usado onde `Producer<Animal>` é esperado — qualquer `Dog` satisfaz `Animal`. Se você tentasse adicionar um método `set(value: T): void` a `interface Producer<out T>`, o TypeScript emitiria ERRO: `T` aparece em posição `in` (parâmetro), violando a anotação `out`. As anotações servem como documentação E verificação da implementação."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que arrays em TypeScript são tratados como covariantes (aceita `Dog[]` onde `Animal[]` é esperado) mesmo que isso seja tecnicamente inseguro?",
+      "options": [
+        "Arrays em TypeScript são invariantes — a premissa da questão está incorreta",
+        "É uma escolha pragmática: arrays covariantes permitem código comum como `function printAll(items: Animal[])` aceitar `Dog[]` sem cast. O caso inseguro (push de Animal em Dog[]) é raro e considerado aceitável — a utilidade supera a segurança teórica",
+        "Arrays são covariantes porque só podem ser lidos, nunca escritos",
+        "TypeScript herdou o comportamento covariante de arrays de Java por compatibilidade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Esta é uma decisão de design documentada pelo time do TypeScript. Arrays deveriam ser invariantes (lê e escreve), mas invariância torna código comum difícil: `function log(items: object[])` não aceitaria `string[]`. O trade-off: aceitar covariância e confiar que programadores não farão `(dogArray as Animal[]).push(new Animal())`. TypeScript também não herdou de Java — foi uma decisão consciente para balance entre segurança e usabilidade. `ReadonlyArray<T>` é genuinamente covariante e mais seguro."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença de comportamento entre `interface Bi { method(arg: Dog): void }` e `interface Strict { fn: (arg: Dog) => void }` com `strictFunctionTypes: true`?",
+      "options": [
+        "São idênticos com `strictFunctionTypes: true`",
+        "Métodos (`method(arg: Dog): void`) são checados de forma bivariante — aceitam tanto `(dog: Dog) => void` quanto `(animal: Animal) => void`. Propriedades de função (`fn: (arg: Dog) => void`) são checadas de forma contravariante com `strictFunctionTypes` — aceitam `(animal: Animal) => void` mas NÃO `(puppy: Puppy) => void` onde Puppy é mais específico que Dog",
+        "`strictFunctionTypes` torna ambos invariantes",
+        "Métodos são mais restritivos que propriedades de função"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Bivarância em métodos é uma legacy do TypeScript pré-`strictFunctionTypes`. Com `strict: true` (que inclui `strictFunctionTypes`): function properties (`fn: (x: T) => void`) são checadas de forma contravariante nos parâmetros — implementações devem aceitar supertipos. Métodos sintáticos (`method(x: T): void`) ainda são bivariantes por compatibilidade. Isso significa que você pode implementar um method com parâmetro mais específico sem erro — um comportamento que pode causar bugs sutis. Prefira function properties para checagem mais rigorosa."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `Promise<Dog>` é atribuível a `Promise<Animal>` (covariante), enquanto `(consumer: (value: Dog) => void) => void` NÃO é atribuível a `(consumer: (value: Animal) => void) => void`?",
+      "options": [
+        "Promise não segue as regras de variância normais — tem tratamento especial",
+        "Promise<T> só produz T (resolve), então é covariante. A função `(consumer: ...) => void` recebe um consumer como parâmetro (posição contravariante) — parâmetros são contravariantes, então o tipo do consumer (uma função) inverte novamente: contravariante de contravariante = covariante. Mas a questão mostra exatamente o oposto do que parece — a inversão dupla é confusa",
+        "Ambos são covariantes — Promise e callbacks seguem a mesma regra",
+        "Funções de callback são invariantes em TypeScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Promise<T> só tem `.then(onFulfilled: (value: T) => ...)` — T aparece apenas como saída do `onFulfilled`, mas como parâmetro, está em posição de entrada do callback (contravariante). Na prática, TypeScript trata Promise<T> como covariante porque as operações de leitura dominam. A função `(consumer: (value: Dog) => void) => void` tem `consumer` em posição de entrada (contravariante): aceitar `(consumer: (value: Animal) => void)` seria covariar, o que é inseguro — `consumer` pode chamar métodos específicos de `Animal` que `Dog` satisfaz, mas a inversão precisa ser cuidadosa."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual tipo TypeScript usa covariância, contravariância ou invariância para o parâmetro de tipo em `interface Transformer<T> { transform(input: T): T }`?",
+      "options": [
+        "Covariante — como T é o tipo de retorno, segue a direção do subtipo",
+        "Invariante — `T` aparece em posição de entrada (parâmetro de `transform`) E posição de saída (tipo de retorno). Um tipo deve ser exatamente `T`, não super nem subtipo",
+        "Contravariante — porque T aparece como parâmetro, a inversão domina",
+        "Bivariante — métodos em interfaces são sempre bivariantes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`transform(input: T): T` — `T` em posição de entrada (parâmetro) E saída (retorno). Entrada = contravariante; saída = covariante. Quando ambos, o resultado é invariância: para ser atribuível, `T` deve ser exatamente compatível — nem mais específico nem mais geral. Com `in out T` (TS 4.7), você poderia anotar isso explicitamente: `interface Transformer<in out T>`. Na prática, isso significa `Transformer<Dog>` não é subtipo nem supertipo de `Transformer<Animal>` — são incompatíveis sem o tipo exato."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "No contexto prático de event handlers, por que `addEventListener('click', (e: Event) => void)` deveria aceitar um handler tipado como `(e: MouseEvent) => void`?",
+      "options": [
+        "Deveria — `MouseEvent extends Event`, então é covariante e seguro",
+        "NÃO deveria aceitar — é contravariante. O handler recebe o evento (posição de entrada), então deve aceitar SUPERTIPOS, não subtipos. `(e: MouseEvent) => void` espera propriedades específicas de `MouseEvent` (`.clientX`, etc.) mas `addEventListener` pode chamar o handler com qualquer `Event` que não tenha essas propriedades",
+        "Deveria aceitar porque JavaScript não valida os tipos dos eventos em runtime",
+        "Depende de `strictFunctionTypes` — com strict desabilitado, aceita; com strict ativado, rejeita"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Contravariância em ação: um event handler está em posição de INPUT (será chamado pelo browser com um evento). Para ser seguro, o handler deve aceitar pelo menos o tipo fornecido pelo browser (`Event`). Se o handler espera `MouseEvent` mas recebe um `KeyboardEvent` (que não tem `.clientX`), acessa propriedades inexistentes. Handlers corretos: `(e: Event) => void` (aceita qualquer evento) ou `(e: MouseEvent) => void` apenas para eventos especificamente tipados como `MouseEvent`. TypeScript com `strictFunctionTypes` aplica isso automaticamente."
+    }
+  ]
+}

@@ -1,1 +1,97 @@
-{"lessonId": "day-17", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-17",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `interface TreeNode<T> { value: T; children: TreeNode<T>[] }` funciona, mas `type TreeNode<T> = { value: T; children: TreeNode<T>[] }` causava problemas antes do TypeScript 3.7?",
+      "options": [
+        "Interfaces e type aliases têm o mesmo comportamento — ambos sempre funcionaram",
+        "Interfaces são avaliadas preguiçosamente (lazy) — a referência recursiva em `children` é resolvida apenas quando o tipo é instanciado. Type aliases (antes de TS 3.7) eram avaliados eagerly — a referência circular causava loop infinito no type checker",
+        "Type aliases nunca suportam recursão — apenas interfaces",
+        "A diferença é apenas de sintaxe — o compilador trata ambos identicamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A distinção fundamental: interfaces são como declarações de classe — o tipo é 'registrado' e referências a ele são resolvidas apenas quando necessário. Type aliases eram expandidos inline, o que causava recursão infinita na expansão. O TypeScript 3.7 introduziu suporte a tipos recursivos em type aliases via detecção de ciclos. Hoje ambos funcionam, mas interfaces ainda têm melhor performance para tipos recursivos porque o TypeScript não precisa expandir o alias repetidamente."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "No tipo `type DeepReadonly<T> = T extends (infer Item)[] ? ReadonlyArray<DeepReadonly<Item>> : T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> } : T`, por que o check de array vem ANTES do check de objeto?",
+      "options": [
+        "Por performance — arrays são mais comuns que objetos",
+        "Arrays são subtipos de `object` em TypeScript. Se verificarmos `T extends object` primeiro, arrays seriam tratados como objetos — `{ readonly [K in keyof T] }` produziria propriedades numéricas como readonly, mas não `ReadonlyArray`. A ordem garante que arrays usem `ReadonlyArray<DeepReadonly<Item>>`",
+        "A ordem não importa — conditional types são avaliados em paralelo",
+        "Arrays não são subtipos de object em TypeScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em TypeScript, `typeof [] === 'object'` em runtime, e `[] extends object` é `true` em tipos. Se `object` viesse primeiro: `string[]` → `{ readonly [K in keyof string[]]: DeepReadonly<string[][K]> }` — produziria propriedades como `readonly 0: string`, `readonly length: number`, `readonly push: (...)`, etc. — tecnicamente funciona mas perde a semântica de `ReadonlyArray`. A ordem correta: array → objeto genérico → primitivo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `DeepPartial<T>` e `Partial<T>` aplicados a `interface Settings { db: { host: string; port: number } }`?",
+      "options": [
+        "São idênticos para este caso",
+        "`Partial<Settings>` = `{ db?: { host: string; port: number } }` — db inteiro é opcional, mas se fornecido, deve ter host e port. `DeepPartial<Settings>` = `{ db?: { host?: string; port?: number } }` — db e seus campos são todos opcionais",
+        "`DeepPartial` é mais restritivo que `Partial`",
+        "`Partial<Settings>` torna db e seus campos opcionais — comportamento idêntico ao DeepPartial"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Partial` opera em um único nível — apenas as propriedades diretas de `T` ficam opcionais. `{ db: { host: string; port: number } }` → `{ db?: { host: string; port: number } }`. Se você fornecer `db`, ainda precisa de `host` e `port`. `DeepPartial` recursivamente aplica `Partial` a todos os níveis: `{ db?: { host?: string; port?: number } }`. Útil para patches de estado: você pode passar `{ db: { port: 5433 } }` sem precisar fornecer `host`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que acontece quando um tipo recursivo ultrapassa o limite de profundidade do TypeScript?",
+      "options": [
+        "O TypeScript para de compilar o arquivo inteiro",
+        "O TypeScript emite o erro `'Type instantiation is excessively deep and possibly infinite'` e retorna `any` para o tipo problemático — a compilação continua, mas o tipo perde segurança",
+        "O TypeScript para de instanciar o tipo após 100 níveis e retorna o último tipo válido",
+        "O compilador entra em loop infinito — é necessário matar o processo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O TypeScript tem um limite de profundidade de recursão para evitar loops infinitos no type checker. Quando atingido, emite `'Type instantiation is excessively deep and possibly infinite'` e substitui o tipo por `any`. A compilação não para, mas você perde type safety naquele ponto. O limite foi aumentado no TS 4.5+. Para tipos que precisam de profundidade controlada, use o padrão 'depth counter' com tuple: `Acc extends T[] = []` e check `Acc['length'] extends N`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `interface FastTree<T> { value: T; children: FastTree<T>[] }` tem melhor performance que `type SlowTree<T> = { value: T } & { children: SlowTree<T>[] }` em bases de código grandes?",
+      "options": [
+        "Interface e type alias têm performance idêntica no type checker",
+        "Interfaces são avaliadas preguiçosamente e cacheadas pelo tipo nomeado. Type aliases com `&` (intersection) são expandidos inline em cada uso — o TypeScript precisa resolver a intersection toda vez que o tipo é referenciado, multiplicando o trabalho",
+        "A diferença de performance é apenas em runtime, não em compile time",
+        "Type aliases com `&` são proibidos em tipos recursivos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O TypeScript cacheia a resolução de interfaces pelo seu nome — se `FastTree<string>` já foi resolvido, o resultado é reutilizado. Type aliases com `&` forçam o compilador a expandir e resolver a intersection em cada ponto de uso. Em tipos recursivos, isso pode multiplicar exponencialmente o trabalho. Regra prática: para tipos recursivos e tipos que são instanciados muitas vezes, prefira `interface` sobre `type` com intersections."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O tipo `type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue }` é válido em TypeScript moderno. Qual é a limitação mais importante desse tipo?",
+      "options": [
+        "Não permite arrays aninhados",
+        "`JSONValue[]` e `{ [key: string]: JSONValue }` aceitam qualquer `JSONValue` como elemento/valor — mas o type checker não verifica que objetos JSON reais (vindos de `JSON.parse`) satisfazem esse tipo sem cast. `JSON.parse` retorna `any`, então você ainda precisa de validação em runtime (Zod, etc.) para ter garantias reais",
+        "Não suporta objetos com chaves numéricas",
+        "O tipo não aceita `undefined` — mas JSON suporta campos undefined"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`JSON.parse('...')` retorna `any` em TypeScript — o compilador não pode verificar que o resultado satisfaz `JSONValue` sem um cast ou runtime check. O tipo `JSONValue` é útil para documentar intenção e checar valores que você CONSTRÓI no código (ex: uma variável que você atribui como `JSONValue` deve aceitar apenas tipos JSON-compatíveis). Para dados externos, use bibliotecas de validação. Nota: `undefined` não é válido em JSON — correto que `JSONValue` não o inclua."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Como o padrão `type Repeat<T, N extends number, Acc extends T[] = []> = Acc['length'] extends N ? Acc : Repeat<T, N, [...Acc, T]>` controla a profundidade da recursão?",
+      "options": [
+        "Usa um contador de inteiro que é decrementado a cada chamada recursiva",
+        "Usa `Acc` (um tuple acumulador) como 'contador' — `Acc['length']` fornece o comprimento atual como tipo numérico literal. A recursão para quando `Acc['length'] extends N` (chegou na quantidade desejada)",
+        "O TypeScript conta automaticamente as recursões e limita a N",
+        "O padrão não funciona — TypeScript não suporta comparação de `length` em tipos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O truque: tuples têm `length` como tipo literal numérico. `['a', 'b']['length']` = `2`. Então, começando com `Acc = []` (length = 0), cada recursão adiciona um `T` ao tuple: `[T]` (length = 1), `[T, T]` (length = 2), etc. Quando `Acc['length'] extends N`, paramos. Isso converte a contagem de tipos (difícil em TS) em comparação de `length` (fácil). Padrão usado em `TupleOf<T, N>`, `Range<From, To>`, e outras utilidades que precisam de recursão limitada."
+    }
+  ]
+}

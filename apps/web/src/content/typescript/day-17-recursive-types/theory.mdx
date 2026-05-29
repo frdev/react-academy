@@ -1,1 +1,257 @@
-# Conteúdo em breve
+# Recursive Types
+
+Tipos recursivos são tipos que se referenciam a si mesmos em sua definição. O TypeScript suporta recursão em tipos desde a versão 3.7, com melhorias significativas na 4.1 (conditional types recursivos).
+
+## Referência Direta em Type Aliases
+
+```typescript
+// Antes de TS 3.7, isso causava erro. Agora funciona:
+type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JSONValue[]
+  | { [key: string]: JSONValue };
+
+const data: JSONValue = {
+  name: 'Ana',
+  age: 30,
+  tags: ['admin', 'active'],
+  config: { theme: 'dark', nested: { value: 42 } }
+};
+```
+
+`JSONValue` se referencia a si mesmo como elemento de array e como valor de objeto — estrutura arbitrariamente profunda.
+
+## TreeNode — Estrutura de Árvore
+
+```typescript
+interface TreeNode<T> {
+  value: T;
+  children: TreeNode<T>[];
+}
+
+const tree: TreeNode<string> = {
+  value: 'root',
+  children: [
+    {
+      value: 'child1',
+      children: [
+        { value: 'leaf', children: [] }
+      ]
+    },
+    { value: 'child2', children: [] }
+  ]
+};
+```
+
+Interfaces aceitam recursão diretamente — `children: TreeNode<T>[]` funciona porque interfaces são preguiçosamente avaliadas.
+
+## DeepReadonly — Readonly Recursivo
+
+```typescript
+type DeepReadonly<T> =
+  T extends (infer Item)[]
+    ? ReadonlyArray<DeepReadonly<Item>>
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+interface Config {
+  server: {
+    host: string;
+    ports: number[];
+  };
+  features: {
+    auth: boolean;
+  };
+}
+
+type FrozenConfig = DeepReadonly<Config>;
+// {
+//   readonly server: {
+//     readonly host: string;
+//     readonly ports: readonly number[];
+//   };
+//   readonly features: {
+//     readonly auth: boolean;
+//   };
+// }
+```
+
+O condicional verifica arrays primeiro (para usar `ReadonlyArray`), depois objetos, depois primitivos (passthrough).
+
+## DeepPartial — Partial Recursivo
+
+```typescript
+type DeepPartial<T> =
+  T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T;
+
+interface UserSettings {
+  profile: {
+    name: string;
+    bio: string;
+    avatar: { url: string; alt: string };
+  };
+  preferences: {
+    theme: 'light' | 'dark';
+    language: string;
+  };
+}
+
+type PartialSettings = DeepPartial<UserSettings>;
+// Todos os campos em todos os níveis são opcionais
+// Útil para patches/updates de estado profundo
+
+function updateSettings(
+  current: UserSettings,
+  patch: DeepPartial<UserSettings>
+): UserSettings {
+  return deepMerge(current, patch);
+}
+```
+
+## DeepRequired — Required Recursivo
+
+```typescript
+type DeepRequired<T> =
+  T extends object
+    ? { [K in keyof T]-?: DeepRequired<NonNullable<T[K]>> }
+    : NonNullable<T>;
+```
+
+`-?` remove opcionalidade, `NonNullable` remove `null | undefined` dos valores.
+
+## Flatten — Nivelar Arrays Aninhados
+
+```typescript
+type Flatten<T> =
+  T extends Array<infer Item>
+    ? Flatten<Item>
+    : T;
+
+type A = Flatten<string[][]>;      // string
+type B = Flatten<number[][][]>;    // number
+type C = Flatten<(string | number)[]>; // string | number
+type D = Flatten<string>;           // string — não é array
+```
+
+## Depth Limits — O Problema da Recursão Infinita
+
+O TypeScript limita a profundidade de recursão de tipos. A partir do TS 4.5, o limite foi aumentado mas ainda existe:
+
+```typescript
+// Isso funciona até uma profundidade razoável:
+type NestedArray = number[][][][][][][][]; // ok
+
+// Mas conditional types recursivos têm limite mais baixo:
+// TypeScript emitirá: "Type instantiation is excessively deep and possibly infinite"
+// se a recursão não convergir
+
+// Solução: adicionar um "depth counter" com tuple:
+type Repeat<T, N extends number, Acc extends T[] = []> =
+  Acc['length'] extends N
+    ? Acc
+    : Repeat<T, N, [...Acc, T]>;
+
+type ThreeStrings = Repeat<string, 3>; // [string, string, string]
+```
+
+## Padrão: Linked List
+
+```typescript
+type ListNode<T> =
+  | { kind: 'empty' }
+  | { kind: 'node'; value: T; next: ListNode<T> };
+
+function prepend<T>(value: T, list: ListNode<T>): ListNode<T> {
+  return { kind: 'node', value, next: list };
+}
+
+function toArray<T>(list: ListNode<T>): T[] {
+  if (list.kind === 'empty') return [];
+  return [list.value, ...toArray(list.next)];
+}
+```
+
+## Padrão: Nested Routes / Paths
+
+```typescript
+type NestedRoutes = {
+  path: string;
+  children?: NestedRoutes[];
+};
+
+const routes: NestedRoutes[] = [
+  {
+    path: '/dashboard',
+    children: [
+      { path: '/dashboard/stats' },
+      {
+        path: '/dashboard/users',
+        children: [{ path: '/dashboard/users/:id' }]
+      }
+    ]
+  }
+];
+```
+
+## Cautela: Tipos Recursivos e Performance
+
+Tipos recursivos podem tornar o type checker significativamente mais lento, especialmente quando:
+
+1. A recursão é condicional e o TypeScript precisa avaliar muitos casos
+2. O tipo é instantiado com estruturas muito profundas
+3. Há múltiplas instâncias do tipo recursivo no mesmo arquivo
+
+**Sinais de problema:**
+- Erros `Type instantiation is excessively deep`
+- IDE lenta ao hover sobre o tipo
+- `tsc` demora muito em um arquivo específico
+
+**Mitigações:**
+```typescript
+// Em vez de conditional type recursivo, use interface recursiva quando possível
+// Interface é avaliada preguiçosamente — melhor performance
+
+// Menos eficiente:
+type SlowTree<T> = { value: T } & { children: SlowTree<T>[] };
+
+// Mais eficiente:
+interface FastTree<T> {
+  value: T;
+  children: FastTree<T>[];
+}
+```
+
+## Padrão Real: EventEmitter Type-Safe
+
+```typescript
+type EventMap = { [event: string]: any[] };
+
+type TypedEventEmitter<Events extends EventMap> = {
+  on<K extends keyof Events>(
+    event: K,
+    handler: (...args: Events[K]) => void
+  ): void;
+  emit<K extends keyof Events>(
+    event: K,
+    ...args: Events[K]
+  ): void;
+};
+
+type AppEvents = {
+  'user:login': [userId: string, timestamp: number];
+  'user:logout': [userId: string];
+  'data:update': [key: string, value: JSONValue];
+};
+
+declare const emitter: TypedEventEmitter<AppEvents>;
+emitter.on('user:login', (userId, timestamp) => { /* ... */ });
+emitter.emit('data:update', 'theme', 'dark');
+```
+
+**Tipos recursivos são essenciais para modelar estruturas de dados arbitrariamente profundas — JSON, árvores, listas encadeadas — de forma type-safe. O segredo está em escolher interfaces sobre type aliases sempre que possível, e usar depth limiters quando a profundidade precisa ser controlada.**

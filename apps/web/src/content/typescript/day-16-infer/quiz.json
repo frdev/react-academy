@@ -1,1 +1,97 @@
-{"lessonId": "day-16", "passingScore": 70, "questions": []}
+{
+  "lessonId": "day-16",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `type Unpack<T> = T extends Array<infer Item> ? Item : T` produz para `Unpack<(string | number)[]>`?",
+      "options": [
+        "`string[] | number[]` — distribui sobre os elementos",
+        "`string | number` — `(string | number)[]` extends `Array<infer Item>` com `Item = string | number`",
+        "`string` — apenas o primeiro tipo do array é capturado",
+        "ERRO — `infer` não funciona com unions no array"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`(string | number)[]` é `Array<string | number>`. O pattern `Array<infer Item>` bate e captura `Item = string | number`. Retorna `string | number`. Não há distribuição aqui porque a union está DENTRO do array, não em `T` diretamente. Se fosse `T = string[] | number[]`, aí distribuiria: `Unpack<string[]> | Unpack<number[]>` = `string | number` (mesmo resultado nesse caso, mas pelo mecanismo de distribuição)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `type MyAwaited<T> = T extends Promise<infer Inner> ? MyAwaited<Inner> : T` precisa ser recursivo?",
+      "options": [
+        "Não precisa ser recursivo — `Promise<infer Inner>` já resolve todos os níveis",
+        "Para lidar com `Promise<Promise<T>>`: sem recursão, o resultado seria `Promise<T>` (um nível desempacotado); com recursão, chega até `T`",
+        "A recursão é necessária apenas para compatibilidade com código legado",
+        "TypeScript exige recursão em todos os usos de `infer`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem recursão: `MyAwaited<Promise<Promise<string>>>` → captura `Inner = Promise<string>` → retorna `Promise<string>` (não completamente desempacotado). Com recursão: `MyAwaited<Promise<Promise<string>>>` → `Inner = Promise<string>` → `MyAwaited<Promise<string>>` → `Inner = string` → `MyAwaited<string>` → `string` (T não é Promise, retorna T). A versão na lib padrão do TS 4.5+ é ainda mais robusta: lida com thenables arbitrários, não só `Promise`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `type Last<T extends any[]> = T extends [...any[], infer L] ? L : never` produz para `Last<[string, number, boolean]>`?",
+      "options": [
+        "`string` — `infer L` captura o primeiro elemento",
+        "`boolean` — `[...any[], infer L]` captura o último elemento com rest na posição inicial",
+        "`[string, number, boolean]` — o pattern não combina com tuples",
+        "ERRO — rest elements só podem aparecer no final de tuples"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`[...any[], infer L]` usa rest elements com `infer` no final: o `...any[]` consome todos os elementos exceto o último, `L` captura o último. Para `[string, number, boolean]`: `...any[]` = `[string, number]`, `L = boolean`. TypeScript 4.0+ permite rest elements em posições não-finais de tuples, habilitando patterns como `Head<T> = T extends [infer H, ...any[]] ? H : never`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Dado `type ExtractEvent<T extends string> = T extends \\`on${infer E}\\` ? E : never`, o que produz para `'onClick' | 'onFocus' | 'submit'`?",
+      "options": [
+        "`'click' | 'focus'` — extrai e faz lowercase automaticamente",
+        "`'Click' | 'Focus'` — extrai o texto após 'on', mantendo a capitalização original",
+        "`'onClick' | 'onFocus'` — retorna as strings que batem com o pattern",
+        "`never` — template literal types não distribuem sobre unions"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Distribui: para `'onClick'`: `'onClick' extends \\`on${infer E}\\`` → `E = 'Click'` (capital C). Para `'onFocus'`: `E = 'Focus'`. Para `'submit'`: pattern não bate → `never`. Resultado: `'Click' | 'Focus' | never` = `'Click' | 'Focus'`. `infer E` captura exatamente o texto restante — se o original é `'onClick'`, então após remover `'on'` temos `'Click'`. Para obter lowercase, use `Uncapitalize<E>`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `infer` só pode aparecer no branch `true` de um conditional type (`T extends U ? infer...` funciona, mas `U extends T ? infer...` não para capturar de T)?",
+      "options": [
+        "`infer` pode aparecer em qualquer posição de um conditional type",
+        "`infer` captura tipos que são determinados pelo processo de matching — aparece na posição `U` (o tipo contra o qual T é verificado). `infer R` na posição `extends U` cria uma variável de tipo que o TypeScript resolve para que o conditional seja verdadeiro. No branch `false`, a variável inferida não tem binding",
+        "`infer` não pode ser usado com generics",
+        "`infer` é apenas açúcar sintático para `unknown`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A sintaxe é `T extends [pattern com infer R] ? usar R : ...`. O `infer R` aparece na parte direita do `extends` — o TypeScript tenta encontrar um valor para `R` que torna `T extends [pattern]` verdadeiro. No branch `true`, `R` está vinculado. No branch `false`, `R` não existe porque o pattern não bateu. Por isso você só pode usar `R` no branch `? R : never` (true branch), não no `never : R` (false branch)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como `type MyParameters<T extends (...args: any) => any> = T extends (...args: infer P) => any ? P : never` captura os tipos dos parâmetros?",
+      "options": [
+        "Retorna um array de `unknown` — TypeScript não pode inferir tipos de parâmetros",
+        "`...args: infer P` captura o tipo do rest parameter — que é o tuple de todos os parâmetros. `P` = `[param1Type, param2Type, ...]` com labels preservados",
+        "`P` = `unknown[]` — os tipos individuais são perdidos",
+        "Funciona apenas para funções com até 3 parâmetros"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Para `(name: string, age: number) => void`: `...args: infer P` captura `P = [name: string, age: number]` — um tuple com tipos e labels. TypeScript preserva os nomes dos parâmetros em tuples. `Parameters<typeof fn>` retorna esse tuple, que você pode usar para criar wrappers: `(...args: Parameters<typeof fn>) => ReturnType<typeof fn>`. Os labels no tuple (`[name: string, age: number]`) aparecem como sugestões no autocomplete."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que `type Unwrap<T> = T extends Promise<infer U> ? U : T extends Array<infer U> ? U : T` não consegue fazer, e por quê?",
+      "options": [
+        "Não consegue lidar com `null` e `undefined`",
+        "Não desempacota recursivamente — `Unwrap<Promise<Promise<string>>>` retorna `Promise<string>`, não `string`. Também não lida com `Set<Promise<string>>` — o `infer U` de `Set<infer U>` captura `Promise<string>`, que não é mais desempacotado",
+        "Funciona corretamente para todos os casos — não há limitação",
+        "Não consegue lidar com tipos genéricos — só funciona com tipos concretos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Unwrap<Promise<Promise<string>>>` → `U = Promise<string>` → retorna `Promise<string>` (um nível). Para desempacotar completamente, adicione recursão: `type Unwrap<T> = T extends Promise<infer U> ? Unwrap<U> : T extends Array<infer U> ? Unwrap<U> : T`. Também, a ordem dos checks importa — se `Promise<string>` fosse também um `Array` (não é, mas em casos similares), a ordem determina qual branch vence. A versão recursiva resolve corretamente `Promise<Promise<Promise<string>>>` → `string`."
+    }
+  ]
+}
