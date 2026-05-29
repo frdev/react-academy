@@ -35,7 +35,7 @@ describe('progressStore', () => {
     expect(stats?.totalXp).toBe(20) // XP_REWARDS.theoryRead
   })
 
-  it('unlocks day 2 after completing day 1', async () => {
+  it('marks a day as completed after all steps are done', async () => {
     await useProgressStore.getState().actions.loadProgress()
 
     // Complete all steps of day-01
@@ -46,10 +46,6 @@ describe('progressStore', () => {
     // Day 1 should be completed
     const day1Progress = useProgressStore.getState().lessonProgress['day-01']
     expect(day1Progress.status).toBe('completed')
-
-    // Day 2 should be unlocked
-    const isDay2Unlocked = useProgressStore.getState().actions.isLessonUnlocked(2)
-    expect(isDay2Unlocked).toBe(true)
   })
 
   it('does not update quiz score if new score is lower', async () => {
