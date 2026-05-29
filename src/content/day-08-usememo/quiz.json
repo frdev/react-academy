@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-08",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Em quais situações useMemo é genuinamente útil?",
+      "options": [
+        "Sempre que você tiver uma função dentro do componente",
+        "Para computações caras e para estabilizar referências de objetos/arrays passados como props",
+        "Para evitar que o componente re-renderize quando as props mudarem",
+        "Para substituir useState em casos onde o estado não precisa de re-render"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useMemo tem dois casos de uso reais: (1) computações genuinamente caras que você não quer repetir a cada render, e (2) estabilizar a referência de objetos/arrays passados como props para componentes memoizados com React.memo. Para valores simples ou componentes não memoizados, o overhead do useMemo supera o benefício."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que acontece quando você passa um array vazio [] como dependências do useMemo?",
+      "options": [
+        "O valor é recalculado a cada render, como se não houvesse useMemo",
+        "O código não compila — useMemo precisa de pelo menos uma dependência",
+        "A computação executa uma vez no mount e nunca é recalculada",
+        "A computação executa a cada mudança de props, independente das dependências"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Um array vazio [] diz ao React: 'não dependo de nada externo — calcule uma vez e nunca recalcule'. A computação roda no primeiro render e o resultado é reutilizado indefinidamente. É equivalente a uma constante calculada dentro do componente, mas persistida entre renders."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "useMemo é uma garantia de performance do React?",
+      "options": [
+        "Sim, o React sempre evita recalcular quando as deps não mudam",
+        "Não, o React pode descartar valores memoizados e recalcular quando necessário",
+        "Sim, desde que o array de dependências esteja correto",
+        "Não, useMemo só funciona em produção, não em desenvolvimento"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useMemo é uma 'dica de otimização', não uma garantia. O React pode descartar valores memoizados em situações como pressão de memória ou no futuro com otimizações do compilador. Você deve escrever código que funcione corretamente mesmo se o useMemo for ignorado — ele só deve afetar performance, nunca correção."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Verdadeiro ou Falso: Usar useMemo em todos os valores calculados dentro de um componente é uma boa prática de performance.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. useMemo tem custo: memória para armazenar o valor anterior e tempo para comparar dependências a cada render. Para operações simples como multiplicação ou concatenação de strings, esse overhead supera o custo da computação em si. Use useMemo apenas para computações demonstravelmente caras ou para resolver problemas de igualdade referencial específicos."
+    }
+  ]
+}

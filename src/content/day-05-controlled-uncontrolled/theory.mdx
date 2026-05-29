@@ -1,0 +1,223 @@
+# Controlled vs Uncontrolled Components
+
+## A Questão da Fonte de Verdade
+
+Todo input de formulário tem um valor. A questão é: **quem controla esse valor?**
+
+- **Controlled Component**: o React (via state) é a fonte de verdade. O valor do input é sempre igual ao state.
+- **Uncontrolled Component**: o DOM é a fonte de verdade. O React lê o valor quando precisa, via ref.
+
+Esta distinção afeta performance, validação, e como você integra com bibliotecas de formulário.
+
+---
+
+## Controlled Components
+
+Em um controlled component, você vincula o valor do input ao state do React e atualiza o state em cada keystroke:
+
+```jsx
+function SearchForm() {
+  const [query, setQuery] = useState('')
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    console.log('Pesquisando por:', query)
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={query}              // React controla o valor
+        onChange={e => setQuery(e.target.value)}  // Atualiza estado a cada keystroke
+        placeholder="Pesquisar..."
+      />
+      <button type="submit">Pesquisar</button>
+    </form>
+  )
+}
+```
+
+**O que acontece a cada keystroke:**
+1. Usuário digita → evento `onChange` dispara
+2. `setQuery` é chamado → React re-renderiza
+3. Input recebe `value={query}` atualizado → DOM reflete o novo valor
+
+O DOM nunca "controla" o valor — o React sempre sobrescreve com o valor do state.
+
+**Por que passar `value` sem `onChange` causa um input somente-leitura:**
+Se você passa `value` mas não `onChange`, o React torna o input read-only de fato (o valor sempre volta para o state, que nunca muda). Você verá um warning no console: "You provided a `value` prop without an `onChange` handler."
+
+---
+
+## Uncontrolled Components
+
+Em um uncontrolled component, você não controla o valor via state. O input se comporta como qualquer input HTML normal — o DOM mantém o valor. Quando precisa do valor, você o lê via ref:
+
+```jsx
+function SearchForm() {
+  const inputRef = useRef(null)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    // Lê o valor do DOM quando necessário (no submit)
+    console.log('Pesquisando por:', inputRef.current.value)
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        ref={inputRef}
+        defaultValue=""         // Valor inicial (não controlado)
+        placeholder="Pesquisar..."
+      />
+      <button type="submit">Pesquisar</button>
+    </form>
+  )
+}
+```
+
+**`defaultValue` vs `value`:**
+- `value` = controlled (React controla o valor, DOM reflete state)
+- `defaultValue` = uncontrolled (React apenas define o valor inicial, DOM controla depois)
+
+---
+
+## Trade-offs: Quando Usar Cada Abordagem
+
+### Controlled — Melhor para:
+
+**Validação em tempo real:**
+```jsx
+const [email, setEmail] = useState('')
+const isValid = email.includes('@')
+
+<input
+  value={email}
+  onChange={e => setEmail(e.target.value)}
+  style={{ borderColor: isValid ? 'green' : 'red' }}
+/>
+```
+
+**Transformação de input:**
+```jsx
+// Formata CPF enquanto o usuário digita
+const handleChange = (e) => {
+  const raw = e.target.value.replace(/\D/g, '')
+  const formatted = raw.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  setCpf(formatted)
+}
+```
+
+**Sincronização entre inputs:**
+```jsx
+// Dois campos sempre iguais (ex: confirmação de senha)
+<input value={password} onChange={e => setPassword(e.target.value)} />
+<input value={password} readOnly />
+```
+
+**Desabilitar botão de submit até form ser válido:**
+```jsx
+<button disabled={!isFormValid}>Enviar</button>
+```
+
+### Uncontrolled — Melhor para:
+
+**Formulários simples sem validação em tempo real:**
+```jsx
+function SimpleContactForm() {
+  const nameRef = useRef(null)
+  const emailRef = useRef(null)
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    submitForm({
+      name: nameRef.current.value,
+      email: emailRef.current.value,
+    })
+  }
+  // Sem re-render a cada keystroke — menos overhead
+}
+```
+
+**Inputs de arquivo:**
+```jsx
+// Inputs do tipo file SÃO SEMPRE uncontrolled
+// Você não pode controlar o value de um input[type="file"] via React
+const fileRef = useRef(null)
+const file = fileRef.current?.files[0]
+```
+
+**Integração com bibliotecas DOM que controlam o input internamente:**
+Alguns rich text editors (Quill, Slate) ou componentes de data picker gerenciam seu próprio estado DOM — tentar controlá-los via React causa conflitos.
+
+---
+
+## Por Que React Hook Form Usa Uncontrolled por Padrão
+
+O React Hook Form é a biblioteca de formulários mais popular do ecossistema React. Ela usa inputs **uncontrolled** por padrão por uma razão simples: **performance**.
+
+Em um formulário controlled com 20 campos, cada keystroke trigera um re-render do componente. Com useForm do RHF:
+
+```jsx
+import { useForm } from 'react-hook-form'
+
+function RegistrationForm() {
+  const { register, handleSubmit, formState: { errors } } = useForm()
+
+  const onSubmit = (data) => console.log(data)
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {/* register() retorna ref + event handlers que RHF gerencia internamente */}
+      <input {...register('email', { required: true, pattern: /\S+@\S+/ })} />
+      {errors.email && <span>Email inválido</span>}
+      <button type="submit">Enviar</button>
+    </form>
+  )
+}
+```
+
+O RHF registra o input via ref, lê os valores diretamente do DOM via ref, e só trigera re-render quando há validação a exibir ou no submit. Para formulários grandes, isso pode eliminar centenas de re-renders por sessão.
+
+> **Para engenheiros Angular:** O Angular usa reactive forms (FormControl/FormGroup) que são sempre controlled — o FormControl é a fonte de verdade. A diferença é que o Angular foi projetado para isso desde o início, enquanto no React a escolha entre controlled/uncontrolled é explícita. O Angular também tem equivalente ao React Hook Form na performance via ChangeDetectionStrategy.OnPush nos form components.
+
+---
+
+## Resetar Formulários
+
+**Controlled — reset via state:**
+```jsx
+function handleReset() {
+  setName('')
+  setEmail('')
+  setAge(0)
+  // Cada campo que precisa ser resetado requer um setState
+}
+```
+
+**Uncontrolled — reset via ref ou key:**
+```jsx
+// Opção 1: reset via ref
+function handleReset() {
+  formRef.current.reset() // API nativa do HTMLFormElement
+}
+
+// Opção 2: remontar o formulário inteiro com key
+const [formKey, setFormKey] = useState(0)
+function handleReset() {
+  setFormKey(k => k + 1) // Desmonta e remonta o form, resetando tudo
+}
+
+<form key={formKey}>...</form>
+```
+
+---
+
+## Key Takeaways
+
+1. **Controlled**: React (state) é a fonte de verdade — ideal para validação em tempo real, transformação de input e sincronização entre campos.
+2. **Uncontrolled**: DOM é a fonte de verdade — ideal para formulários simples, inputs de arquivo, e alta performance.
+3. **`value` = controlled**; **`defaultValue` = uncontrolled**. Nunca misture os dois no mesmo input.
+4. **Inputs `type="file"` são sempre uncontrolled** — o React não pode controlar o valor por razões de segurança.
+5. **React Hook Form usa uncontrolled por padrão** para evitar re-renders a cada keystroke — mas suporta modo controlled via `useController` quando necessário.
+6. Você pode "resetar" um formulário uncontrolled mudando sua `key` — o React desmonta e remonta tudo.

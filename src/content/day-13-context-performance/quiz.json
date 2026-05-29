@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-13",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que todos os consumidores de um Context re-renderizam quando o valor do Provider muda?",
+      "options": [
+        "Porque o React re-renderiza toda a árvore em qualquer mudança de estado",
+        "Porque o React usa Object.is para comparar o valor do Context — um objeto novo sempre é 'diferente'",
+        "Porque Context não suporta React.memo em componentes consumidores",
+        "Porque useContext bypassa o sistema de reconciliação do React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O React compara o valor atual do Provider com o anterior usando Object.is (equivalente a ===). Se você passa um objeto literal no value do Provider — como value={{ user, theme }} — um novo objeto é criado a cada render do Provider, e Object.is retorna false mesmo se os dados forem idênticos. Isso notifica todos os consumidores para re-renderizar."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a estratégia mais eficaz para evitar re-renders desnecessários causados por Context?",
+      "options": [
+        "Usar React.memo em todos os componentes da aplicação",
+        "Dividir contextos por frequência de mudança, para que consumidores só re-renderizem quando os dados que usam mudarem",
+        "Substituir useContext por prop drilling em componentes críticos",
+        "Aumentar o número de Providers aninhados para distribuir o estado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Dividir contextos é a solução mais eficaz: um AuthContext separado de ThemeContext separado de NotificationsContext. Quando as notificações mudam, apenas os consumidores de NotificationsContext re-renderizam — ThemeButton (que consume ThemeContext) não é afetado. Isso é mais eficaz que useMemo no value porque evita que a mudança se propague para consumidores não relacionados."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como useMemo no valor do Provider ajuda com performance de Context?",
+      "options": [
+        "Impede que o Provider re-renderize quando o estado muda",
+        "Garante que o valor do Context só tenha uma nova referência quando as dependências especificadas mudarem",
+        "Faz com que os consumidores usem memoização interna automaticamente",
+        "Reduz o número de vezes que o Provider precisa ser criado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useMemo no value do Provider cria um novo objeto apenas quando as dependências mudam. Se o Provider re-renderizar por alguma razão não relacionada (ex: o componente pai renderizou), o value mantém a mesma referência — e o React entende que o Context não mudou, evitando re-renders em todos os consumidores."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Para qual tipo de dado o Context é mais adequado?",
+      "options": [
+        "Dados de formulário com muitas atualizações por interação",
+        "Estado de UI local como qual tab está ativa em um componente específico",
+        "Dados globais de baixa frequência de mudança como tema, autenticação e locale",
+        "Dados que precisam de atualizações em tempo real como feeds de notícias"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Context funciona bem para dados globais que mudam raramente: tema (dark/light), dados do usuário autenticado, idioma/locale, feature flags. Nesses casos, re-renders ocasionais são aceitáveis. Para dados de formulário, UI local, ou atualizações frequentes, o Context causa re-renders desnecessários em toda a árvore de consumidores — use estado local ou stores externas como Zustand."
+    }
+  ]
+}

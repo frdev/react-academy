@@ -1,0 +1,14 @@
+{
+  "id": "day-19",
+  "day": 19,
+  "week": 3,
+  "title": "Global State",
+  "slug": "global-state",
+  "topics": ["zustand", "global state", "slices", "devtools", "context vs zustand"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-13"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 130
+}

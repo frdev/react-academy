@@ -1,0 +1,259 @@
+# Render Props e HOC: Padrões de Reutilização Pré-Hooks
+
+## Contexto Histórico
+
+Antes dos hooks (React < 16.8, lançado em fevereiro de 2019), o React não tinha uma forma elegante de reutilizar lógica stateful entre componentes de função. As duas soluções da época foram **Render Props** e **Higher-Order Components (HOC)**. Entendê-los é importante por três razões:
+
+1. Você vai encontrá-los em codebases legadas
+2. Alguns casos de uso ainda os justificam
+3. Eles ilustram os problemas que os hooks resolvem — e ajudam a entender *por que* os hooks são como são
+
+---
+
+## Render Props
+
+O padrão Render Prop resolve um problema: como um componente pode compartilhar **lógica stateful** com componentes arbitrários sem saber de antemão o que renderizar?
+
+A solução: ao invés de renderizar JSX fixo, o componente chama uma **função passada como prop** e renderiza o resultado. Quem passa a função decide o que exibir.
+
+```jsx
+// Um componente que rastreia a posição do mouse — lógica reutilizável
+function MouseTracker({ render }) {
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+
+  function handleMouseMove(e) {
+    setPosition({ x: e.clientX, y: e.clientY })
+  }
+
+  return (
+    <div style={{ height: '100vh' }} onMouseMove={handleMouseMove}>
+      {/* Chama a função prop com o estado atual — o caller decide o que renderizar */}
+      {render(position)}
+    </div>
+  )
+}
+
+// Uso 1: exibir coordenadas
+<MouseTracker render={({ x, y }) => (
+  <p>Mouse em: {x}, {y}</p>
+)} />
+
+// Uso 2: mover um elemento com o mouse
+<MouseTracker render={({ x, y }) => (
+  <img
+    src="/cursor-follower.png"
+    style={{ position: 'absolute', left: x, top: y }}
+  />
+)} />
+```
+
+**A prop não precisa se chamar `render` — é apenas uma convenção.** Usar `children` como função também é comum:
+
+```jsx
+<MouseTracker>
+  {({ x, y }) => <p>Mouse em: {x}, {y}</p>}
+</MouseTracker>
+
+// O componente leria: {children(position)} ao invés de {render(position)}
+```
+
+---
+
+## Higher-Order Components (HOC)
+
+Um HOC é uma **função que recebe um componente e retorna um novo componente** com capacidades adicionadas. É o padrão de decoradores aplicado a componentes React.
+
+```javascript
+// Assinatura genérica de um HOC
+function withSomething(WrappedComponent) {
+  // Retorna um novo componente
+  return function Enhanced(props) {
+    // Lógica adicional aqui
+    const extra = useSomething()
+    
+    // Renderiza o componente original com as props originais + extras
+    return <WrappedComponent {...props} extra={extra} />
+  }
+}
+```
+
+### Exemplos Práticos
+
+**withAuth — redireciona usuários não autenticados:**
+```jsx
+function withAuth(WrappedComponent) {
+  return function AuthGuard(props) {
+    const { isAuthenticated, isLoading } = useAuth()
+    
+    if (isLoading) return <Spinner />
+    if (!isAuthenticated) return <Navigate to="/login" />
+    
+    return <WrappedComponent {...props} />
+  }
+}
+
+// Uso
+const ProtectedDashboard = withAuth(Dashboard)
+const ProtectedSettings = withAuth(Settings)
+```
+
+**withTheme — injeta o tema atual:**
+```jsx
+function withTheme(WrappedComponent) {
+  return function Themed(props) {
+    const theme = useTheme() // Context ou store
+    return <WrappedComponent {...props} theme={theme} />
+  }
+}
+```
+
+**withLogging — loga renders para debugging:**
+```jsx
+function withLogging(WrappedComponent) {
+  return function Logged(props) {
+    console.log(`[${WrappedComponent.name}] renderizando`, props)
+    return <WrappedComponent {...props} />
+  }
+}
+```
+
+---
+
+## Por Que Hooks Substituíram a Maioria dos Casos de Uso
+
+O mesmo `MouseTracker` com Render Prop pode ser reescrito como um hook — muito mais limpo:
+
+```jsx
+// Hook — extrai a lógica sem precisar de componente wrapper
+function useMousePosition() {
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+
+  useEffect(() => {
+    function handleMouseMove(e) {
+      setPosition({ x: e.clientX, y: e.clientY })
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
+
+  return position
+}
+
+// Uso — sem wrapper, sem nesting, muito mais legível
+function CoordinatesDisplay() {
+  const { x, y } = useMousePosition()
+  return <p>Mouse em: {x}, {y}</p>
+}
+
+function CursorFollower() {
+  const { x, y } = useMousePosition()
+  return <img src="/icon.png" style={{ position: 'absolute', left: x, top: y }} />
+}
+```
+
+**Problemas que hooks resolvem:**
+
+| Problema | Render Props | HOC | Hooks |
+|----------|-------------|-----|-------|
+| Nesting excessivo ("wrapper hell") | Causa | Causa | Resolve |
+| Colisão de props | Não | Sim | Resolve |
+| Tipo inferido corretamente em TypeScript | Difícil | Difícil | Fácil |
+| Composição de múltiplas lógicas | Complexo | Complexo | Simples |
+| Acesso ao ciclo de vida | Via estado | Via estado | useEffect |
+
+**"Wrapper hell" com HOCs:**
+```jsx
+// Antes dos hooks — difícil de debugar no DevTools
+export default withRouter(withAuth(withTheme(withLogging(Dashboard))))
+
+// Depois dos hooks — composição simples
+function Dashboard() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuth()
+  const theme = useTheme()
+  // ...
+}
+```
+
+---
+
+## Quando HOCs e Render Props Ainda São Úteis Hoje
+
+Apesar dos hooks, há casos onde esses padrões ainda fazem sentido:
+
+### 1. Componentes de Classe (sem opção de hooks)
+Se você trabalha com código legado em class components, HOCs e Render Props são as únicas opções para reutilização de lógica:
+
+```jsx
+// HOC para injetar funcionalidade em um class component legado
+class LegacyWidget extends React.Component {
+  render() {
+    return <div>...</div>
+  }
+}
+
+export default withAuth(LegacyWidget)
+```
+
+### 2. Bibliotecas de Terceiros
+Algumas bibliotecas populares ainda expõem HOCs ou Render Props:
+- `react-router-dom` expôs `withRouter` (agora tem hooks, mas HOC existe para compatibilidade)
+- `formik` ainda expõe `<Field render={...} />` além de hooks
+- Algumas bibliotecas de animação usam Render Props para controle preciso de timing
+
+### 3. Cross-cutting Concerns em Nível de Componente
+HOCs ainda são úteis quando você precisa aplicar comportamento a uma classe inteira de componentes sem modificar cada um — especialmente em configurações de storybook, error boundaries, ou logging de performance.
+
+---
+
+## Pitfalls de HOCs
+
+### 1. Colisão de Props
+```jsx
+function withUser(WrappedComponent) {
+  return function(props) {
+    const user = useCurrentUser()
+    // Se props já tem uma prop "user", ela será sobrescrita!
+    return <WrappedComponent {...props} user={user} />
+  }
+}
+```
+
+### 2. displayName Perdido no DevTools
+```jsx
+function withAuth(WrappedComponent) {
+  function AuthGuard(props) { ... }
+  
+  // Sem isso, o DevTools mostra "AuthGuard" para todos os HOCs
+  AuthGuard.displayName = `withAuth(${WrappedComponent.displayName || WrappedComponent.name})`
+  
+  return AuthGuard
+}
+```
+
+### 3. Refs Não Passam Transparentemente
+Por padrão, refs no componente HOC apontam para o wrapper, não para o componente interno. A solução é `React.forwardRef`:
+
+```jsx
+function withAuth(WrappedComponent) {
+  const AuthGuard = React.forwardRef((props, ref) => {
+    const { isAuthenticated } = useAuth()
+    if (!isAuthenticated) return <Redirect to="/login" />
+    return <WrappedComponent {...props} ref={ref} />
+  })
+  
+  AuthGuard.displayName = `withAuth(${WrappedComponent.name})`
+  return AuthGuard
+}
+```
+
+---
+
+## Key Takeaways
+
+1. **Render Props** = passar uma função como prop que retorna JSX — o componente pai provê lógica/estado, o caller decide o que renderizar.
+2. **HOC** = função que recebe um componente e retorna um novo componente aprimorado.
+3. **Ambos resolvem o mesmo problema**: compartilhar lógica stateful sem duplicação, antes dos hooks existirem.
+4. **Hooks substituíram a maioria dos casos de uso** — mais legíveis, sem wrapper hell, sem colisão de props, melhor TypeScript.
+5. **Ainda úteis** para class components legados, algumas APIs de libs de terceiros, e cross-cutting concerns em nível de componente.
+6. **Pitfalls de HOCs**: colisão de props, displayName perdido no DevTools, refs que não passam transparentemente (requer `React.forwardRef`).

@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-24",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o mecanismo pelo qual Suspense detecta que um componente está 'esperando' por trabalho assíncrono?",
+      "options": [
+        "O componente retorna null enquanto os dados não chegam",
+        "O componente lança (throw) uma Promise durante a renderização — React captura essa Promise e exibe o fallback",
+        "O componente usa um hook especial `useSuspending()` para sinalizar o estado de espera",
+        "Suspense monitora o estado do useEffect e exibe o fallback enquanto há efeitos pendentes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O mecanismo interno do Suspense é baseado em 'throwing a promise'. Quando um componente precisa de dados que ainda não chegaram, a biblioteca (React.lazy, TanStack Query com suspense, etc.) lança uma Promise. React captura essa exceção especial no boundary Suspense mais próximo, exibe o fallback, e quando a Promise resolve, tenta renderizar o componente novamente. Você raramente implementa isso diretamente — bibliotecas fazem por você."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que acontece quando você aninhar múltiplos <Suspense> boundaries em vez de usar apenas um no topo da aplicação?",
+      "options": [
+        "Erro — apenas um Suspense é permitido por aplicação React",
+        "Performance piora porque React precisa gerenciar múltiplos boundaries",
+        "Partes independentes da UI podem mostrar seus próprios skeletons sem bloquear umas às outras — granularidade de loading",
+        "O fallback do Suspense mais interno é ignorado em favor do mais externo"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Suspense boundaries aninhados permitem granularidade fina no controle de loading states. Se você tem Sidebar + Feed + Widget cada um com seu próprio Suspense, eles carregam independentemente. A Sidebar pode aparecer enquanto o Feed ainda está carregando. Com um único Suspense no topo, qualquer componente que 'suspender' esconde a página inteira atrás do fallback — péssima UX. Aninhamento é a abordagem recomendada para UIs complexas."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é a estratégia correta ao usar Suspense com dados que podem falhar (erro de rede, API indisponível)?",
+      "options": [
+        "Suspense captura tanto estados de loading quanto de erro — use apenas o fallback prop",
+        "Adicione try/catch dentro do componente que usa os dados",
+        "Envolva o Suspense com um ErrorBoundary — Suspense trata loading, ErrorBoundary trata erros",
+        "Use o prop onError do Suspense para capturar falhas"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Suspense e ErrorBoundary têm responsabilidades distintas e complementares. Suspense lida exclusivamente com o estado de 'aguardando dados' (loading). Quando uma Promise é rejeitada (erro), Suspense não captura — o erro propaga para cima até um ErrorBoundary. A combinação correta: `<ErrorBoundary fallback={<Error />}><Suspense fallback={<Skeleton />}><DataComponent /></Suspense></ErrorBoundary>`. Suspense não tem prop `onError` — isso é deliberado no design do React."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença entre usar `isLoading` do useQuery e `useSuspenseQuery` com `<Suspense>`?",
+      "options": [
+        "useSuspenseQuery é mais lento porque requer re-renderização adicional",
+        "Com useSuspenseQuery, o componente assume que os dados sempre existem — o estado de loading é tratado pelo Suspense pai, simplificando o código do componente",
+        "isLoading só funciona com React 17, enquanto useSuspenseQuery requer React 19",
+        "Não há diferença funcional — são apenas estilos diferentes de escrever o mesmo código"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Esta é a diferença fundamental: com `useQuery`, você escreve `if (isLoading) return <Skeleton />; if (error) return <Error />; return <UI data={data} />` dentro do componente. Com `useSuspenseQuery`, o componente simplesmente usa `data` sem verificações — `data` NUNCA é undefined quando o componente renderiza porque o Suspense garante que ele só renderiza após os dados chegarem. O loading vai para o Suspense pai, o erro vai para o ErrorBoundary. Componentes mais simples e mais compostos."
+    }
+  ]
+}

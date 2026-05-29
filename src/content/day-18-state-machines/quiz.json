@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-18",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que são 'estados impossíveis' e por que boolean flags os criam?",
+      "options": [
+        "Estados que o JavaScript não consegue representar em memória",
+        "Combinações de booleans que nunca deveriam existir simultaneamente, como isLoading=true e isError=true ao mesmo tempo",
+        "Estados que causam erro de runtime no React",
+        "Variáveis de estado que nunca mudam após a inicialização"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com boolean flags, o espaço de estados possíveis é 2^n. Com 3 booleans (isLoading, isError, hasData), existem 8 combinações — mas a maioria não faz sentido: isLoading=true e isError=true ao mesmo tempo? isLoading=true e hasData=true? Em vez de 4 estados legítimos (idle, loading, success, error), você tem 8 estados representáveis, alguns impossíveis de tratar corretamente. State machines modelam explicitamente só os estados válidos."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a vantagem principal de modelar UI como uma state machine?",
+      "options": [
+        "State machines são mais rápidas que useState em benchmarks",
+        "Eliminam estados impossíveis ao tornar os estados e transições explícitos e exaustivos",
+        "State machines permitem usar useReducer sem importar a função",
+        "Facilitam a integração com APIs REST"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com uma state machine, você declara: os estados possíveis são IDLE | LOADING | SUCCESS | ERROR. Cada estado aceita apenas certas transições. É impossível estar em SUCCESS e LOADING ao mesmo tempo — não existe essa combinação no modelo. O código de renderização fica mais simples: cada estado tem exatamente um branch de UI, sem combinações de booleans para checar. TypeScript com union types reforça isso em tempo de compilação."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como useReducer implementa uma state machine simples?",
+      "options": [
+        "useReducer só funciona com arrays, não com objetos de estado",
+        "O reducer define as transições válidas: dado o estado atual e uma action, retorna o próximo estado — ignorando actions inválidas para o estado atual",
+        "useReducer cria automaticamente guards para cada transição",
+        "useReducer é equivalente a XState sem as visualizações"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um reducer é essencialmente uma função de transição: (currentState, action) => nextState. Se o estado é 'loading' e chega uma action 'FETCH_START', o reducer pode ignorá-la — você não sai de loading para loading. Se chega 'FETCH_SUCCESS', transita para success com os dados. Se chega 'FETCH_ERROR', transita para error. O switch/case do reducer é o diagrama de transições explicitado em código. É uma state machine simples sem a formalidade do XState."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quando XState é a escolha certa em vez de useReducer?",
+      "options": [
+        "Sempre que o projeto usa TypeScript",
+        "Para máquinas com múltiplos estados paralelos, estados aninhados (hierárquicos), guards complexos, ou quando a visualização do diagrama de estados agrega valor para a equipe",
+        "Quando o componente tem mais de 100 linhas de código",
+        "Apenas em projetos que usam Next.js"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useReducer é suficiente para state machines simples (3-5 estados, transições diretas). XState vale quando a máquina tem estados paralelos (duas sub-máquinas rodando independentemente), estados hierárquicos (substates), guards (transições condicionais), ou invoked services (promises/observables como parte da máquina). Outro benefício do XState: o visualizador de estados gera diagramas automáticos — valioso para comunicar comportamento complexo com designers e outros engenheiros."
+    }
+  ]
+}

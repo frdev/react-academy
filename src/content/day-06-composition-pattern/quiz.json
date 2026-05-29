@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é um componente de 'contenção' (containment) no React?",
+      "options": [
+        "Um componente que previne re-renders desnecessários com React.memo",
+        "Um componente que não conhece seus filhos com antecedência e usa children para renderizar conteúdo arbitrário",
+        "Um componente que encapsula lógica de formulário",
+        "Um componente que contém apenas elementos DOM nativos sem outros componentes React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um componente de contenção (containment) é aquele que não sabe antecipadamente quais filhos receberá — ele provê estrutura/estilo e usa `children` para renderizar qualquer conteúdo. Exemplos: Card, Dialog, Panel, Layout. Isso os torna altamente reutilizáveis pois não assumem nada sobre o conteúdo interno."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como implementar 'named slots' (múltiplas áreas de conteúdo) em React?",
+      "options": [
+        "Usando ng-content select no template JSX",
+        "Passando JSX como props com nomes diferentes (ex: header={<Nav />} footer={<Footer />})",
+        "Usando portais do React (createPortal)",
+        "Com o atributo slot= no JSX, como no Web Components"
+      ],
+      "correctAnswer": 1,
+      "explanation": "No React, named slots são implementados passando JSX como props. Como props podem receber qualquer valor JavaScript — incluindo elementos React — você pode ter `<Layout header={<Nav />} sidebar={<Filters />}>conteúdo</Layout>`. O componente Layout recebe e renderiza cada prop no lugar adequado. É a alternativa React ao `<ng-content select='[header]'>` do Angular."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "No React, é uma boa prática criar componentes UI que herdam de outros componentes React para reutilizar comportamento.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. O React recomenda explicitamente composição em vez de herança para reutilização de UI. Em vez de `class SuccessButton extends Button`, você compõe: `function SuccessButton(props) { return <Button color='green' {...props} /> }`. Herança de UI cria acoplamento rígido; composição é flexível e permite reutilização sem dependências implícitas."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O padrão Compound Component (ex: Accordion com AccordionItem) usa qual mecanismo para compartilhar estado entre os sub-componentes?",
+      "options": [
+        "Props drilling — o estado é passado de AccordionItem para Accordion via callback",
+        "Variáveis globais no módulo JavaScript",
+        "Context — o Accordion provê o estado via Provider e os filhos consomem via useContext",
+        "Refs compartilhadas entre os componentes"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O padrão Compound Component usa Context para compartilhar estado implicitamente entre componentes relacionados. O componente pai (Accordion) cria um Context com createContext, envolve os filhos em um Provider com o estado compartilhado, e os filhos (AccordionItem) consomem esse estado via useContext. Isso cria uma API expressiva e encapsulada — o consumidor não precisa gerenciar o estado manualmente."
+    }
+  ]
+}

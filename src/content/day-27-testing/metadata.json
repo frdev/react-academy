@@ -1,0 +1,14 @@
+{
+  "id": "day-27",
+  "day": 27,
+  "week": 4,
+  "title": "Testing React",
+  "slug": "testing",
+  "topics": ["Vitest", "Testing Library", "user-event", "MSW", "testing philosophy"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 70,
+  "prerequisites": ["day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 130
+}

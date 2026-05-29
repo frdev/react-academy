@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é um React Element?",
+      "options": [
+        "Uma instância de componente armazenada no DOM",
+        "Um objeto JavaScript simples que descreve o que deve ser renderizado",
+        "Uma classe que herda de React.Component",
+        "Um nó do DOM real gerenciado pelo React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um React Element é apenas um objeto JavaScript simples e imutável que descreve o que deve ser renderizado — seu tipo, props e filhos. Criá-lo não cria nada no DOM. É um descritor, não uma instância."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Para o que o JSX é compilado?",
+      "options": [
+        "Chamadas diretas a APIs do DOM como document.createElement",
+        "Chamadas a React.createElement (ou jsx() do novo JSX transform)",
+        "Templates HTML processados pelo browser",
+        "Classes TypeScript com decorators"
+      ],
+      "correctAnswer": 1,
+      "explanation": "JSX é açúcar sintático. O compilador (Babel/SWC) transforma cada tag JSX em uma chamada a React.createElement() ou, com o novo JSX transform do React 17+, em chamadas ao jsx() importado de 'react/jsx-runtime'. O resultado é um React Element — um objeto JS simples."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "O Virtual DOM do React é intrinsecamente mais rápido que manipulação direta do DOM.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. O Virtual DOM adiciona overhead: criar objetos React Element a cada render, comparar árvores (reconciliation), e calcular diff. O real benefício é previsibilidade, batching de atualizações, modelo declarativo e portabilidade (React Native, React Three Fiber). Para apps simples, manipulação direta de DOM pode ser mais rápida."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que acontece se você tentar acessar props.key dentro de um componente?",
+      "options": [
+        "Você recebe a key que foi passada para o componente normalmente",
+        "O React lança um warning mas a key é acessível",
+        "props.key é sempre undefined — o React consome key antes de criar o elemento",
+        "Você recebe a key apenas se o componente estiver dentro de uma lista"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A prop `key` é especial: o React a consome internamente durante a reconciliação e ela nunca é repassada ao componente como prop. Dentro do componente, `props.key` é sempre `undefined`. Se você precisa do valor da key dentro do componente, passe-o como uma prop separada com outro nome."
+    }
+  ]
+}

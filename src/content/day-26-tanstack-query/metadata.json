@@ -1,0 +1,14 @@
+{
+  "id": "day-26",
+  "day": 26,
+  "week": 4,
+  "title": "TanStack Query",
+  "slug": "tanstack-query",
+  "topics": ["useQuery", "useMutation", "queryKey", "cache", "invalidation", "optimistic updates"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 70,
+  "prerequisites": ["day-20"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 150
+}

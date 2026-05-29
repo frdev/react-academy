@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-20",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental entre estado do cliente e estado do servidor?",
+      "options": [
+        "Estado do servidor usa REST; estado do cliente usa GraphQL",
+        "Estado do cliente pertence ao browser e é síncrono; estado do servidor vive remotamente, é assíncrono, pode ficar desatualizado e precisa de cache e sincronização",
+        "Estado do servidor é sempre global; estado do cliente pode ser local",
+        "Não há diferença — ambos podem ser gerenciados com useState"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Estado do cliente (isModalOpen, selectedTab) é síncrono, você controla quando muda, e nunca fica desatualizado inesperadamente. Estado do servidor (lista de usuários, perfil do usuário logado) vive em um banco de dados remoto, chega de forma assíncrona, pode ser alterado por outros clientes enquanto você o exibe, e precisa de cache para evitar requests desnecessários. São problemas fundamentalmente diferentes que justificam ferramentas diferentes."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Para que serve o queryKey no TanStack Query?",
+      "options": [
+        "É o endpoint da API que será chamado automaticamente",
+        "É o identificador único do cache — queries com o mesmo queryKey compartilham dados em cache e são deduplicadas automaticamente",
+        "É o nome da variável onde o resultado será armazenado",
+        "É apenas uma convenção de nomenclatura sem impacto técnico"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O queryKey é a chave do cache. Se dois componentes chamam useQuery({ queryKey: ['users', userId] }), o TanStack Query reconhece que são a mesma query e faz apenas um request — os dois compartilham o mesmo dado em cache. Quando userId muda, a queryKey muda, e uma nova entrada de cache é criada. Para invalidação, você usa queryClient.invalidateQueries({ queryKey: ['users'] }) — invalida todos os caches cujo queryKey começa com 'users'."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que significa a estratégia 'stale-while-revalidate' no TanStack Query?",
+      "options": [
+        "Dados antigos são deletados antes de buscar dados novos",
+        "Dados em cache são exibidos imediatamente (mesmo que desatualizados) enquanto um fetch em background busca dados frescos — sem loading state visível para o usuário",
+        "A query aguarda os dados ficarem stale antes de executar",
+        "É uma estratégia que força o cache a expirar a cada 5 minutos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Stale-while-revalidate é uma estratégia de UX: quando você acessa uma página, os dados do cache são exibidos imediatamente (zero loading time), enquanto o TanStack Query silenciosamente refaz o fetch em background. Quando os dados frescos chegam, a UI é atualizada. O usuário vê conteúdo instantaneamente — sem loading spinner — e os dados se tornam frescos em background. É controlado por staleTime: quanto tempo os dados são considerados 'frescos' antes de precisar revalidar."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quando você deve invalidar o cache após uma mutation?",
+      "options": [
+        "Nunca — o TanStack Query invalida automaticamente após cada mutation",
+        "Sempre que uma operação de escrita (POST, PUT, DELETE) altera dados que outras queries estão exibindo, para garantir que a UI reflita o estado atual do servidor",
+        "Apenas quando a mutation retorna um erro",
+        "Apenas para mutations que afetam mais de 10 registros"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Após uma mutation bem-sucedida (criar um usuário, atualizar um post, deletar um item), o cache da query que lista esses dados está desatualizado. Você invalida chamando queryClient.invalidateQueries({ queryKey: ['users'] }) no callback onSuccess da useMutation. Isso dispara um refetch automático. Alternativa para UX ainda melhor: optimistic updates — atualizar o cache antes da mutation completar e reverter em caso de erro, dando resposta imediata ao usuário."
+    }
+  ]
+}

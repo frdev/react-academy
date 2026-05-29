@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-27",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual query do Testing Library deve ter prioridade ao buscar elementos em testes?",
+      "options": [
+        "getByTestId — é a mais estável porque data-testid nunca muda",
+        "getByClassName — reflete a estrutura CSS do componente",
+        "getByRole — reflete como elementos são percebidos por tecnologias assistivas e como usuários os identificam semanticamente",
+        "getBySelector — permite queries CSS complexas para qualquer elemento"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A hierarquia de queries do Testing Library coloca `getByRole` no topo porque: 1) reflete como leitores de tela e usuários identificam elementos (um botão com texto 'Salvar' é um botão de salvar, independente de implementação), 2) obriga a escrever HTML semântico para os testes funcionarem — teste e acessibilidade se reforçam, 3) é resiliente a refatorações (mudar de `<div className='btn'>` para `<button>` não quebra o teste). `getByTestId` é o último recurso — indica que o elemento não tem semântica suficiente para ser encontrado de outra forma."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `userEvent.type(input, 'alice@example.com')` é preferível a `fireEvent.change(input, { target: { value: 'alice@example.com' } })`?",
+      "options": [
+        "userEvent é mais rápido de executar do que fireEvent",
+        "userEvent simula interação humana real (foco, keydown/keyup por caractere, blur), detectando bugs que fireEvent.change — que dispara apenas o evento change — não detectaria",
+        "fireEvent está deprecated e não funciona mais",
+        "userEvent funciona com async/await, fireEvent não suporta código assíncrono"
+      ],
+      "correctAnswer": 1,
+      "explanation": "fireEvent.change dispara apenas o evento 'change' no elemento — é artificial. Nenhum humano digita acionando apenas um evento change. userEvent.type simula: foco no elemento, keydown/keypress/keyup para cada caractere, evento input, evento change ao final. Isso detecta bugs reais: componentes que validam no keyUp mas não no change, validadores que esperam eventos específicos, componentes que só respondem a eventos de teclado. Como regra: sempre prefira userEvent; use fireEvent apenas para eventos muito específicos que userEvent não cobre."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que você deve prioritariamente testar em um componente React?",
+      "options": [
+        "Cada linha de código — coverage de 100% garante qualidade",
+        "O estado interno do componente — valores de variáveis após interações",
+        "Comportamentos críticos do ponto de vista do usuário: fluxos principais, estados condicionais (loading, erro, vazio), interações que disparam mudanças visíveis",
+        "Todos os métodos e hooks utilizados internamente"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Testes valiosos são aqueles que falham quando o comportamento muda de formas que importam para o usuário, e não quebram durante refatorações internas. Priorize: 1) fluxos críticos de negócio (login, checkout, criação de dados), 2) estados edge case (lista vazia, erro de rede, loading longo), 3) interações que disparam consequências (form submit, botões de ação). Evite: testar estado interno (quebra na refatoração), testar implementações de bibliotecas, buscar 100% de coverage (leva a testes que testam o próprio mock)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que usar MSW (Mock Service Worker) em vez de mockar `fetch` ou `axios` diretamente nos testes?",
+      "options": [
+        "MSW é mais rápido que mockar fetch diretamente",
+        "MSW intercepta requests no nível de rede, tornando os mocks mais realistas e independentes de implementação — seus testes não sabem se você usa fetch, axios ou qualquer outra biblioteca HTTP",
+        "fetch não pode ser mockado em ambientes de teste",
+        "MSW permite testes sem conexão de rede, enquanto mockar fetch requer internet"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Mockar `fetch` diretamente amarra o teste à implementação: `vi.spyOn(global, 'fetch').mockResolvedValue(...)`. Se você trocar de fetch para axios, o teste quebra — não porque o comportamento mudou, mas porque o mock assumia `fetch`. MSW intercepta no nível de Service Worker / Node interceptor: o componente faz uma requisição normal, MSW intercepta e responde com o mock. Isso testa o fluxo completo incluindo headers, status codes e parsing de resposta, e funciona independente de qual biblioteca HTTP você usa. Os handlers MSW são reutilizáveis entre testes e em desenvolvimento."
+    }
+  ]
+}

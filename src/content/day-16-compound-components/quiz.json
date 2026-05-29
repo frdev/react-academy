@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-16",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual problema os Compound Components resolvem em comparação com componentes com muitas props?",
+      "options": [
+        "Eles eliminam a necessidade de TypeScript para tipagem",
+        "Eles trocam prop explosion e estrutura rígida por uma API flexível onde o consumidor controla a composição",
+        "Eles evitam re-renders desnecessários automaticamente",
+        "Eles substituem a necessidade de hooks customizados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um componente com muitas props tem dois problemas: 'prop explosion' (muitos parâmetros para configurar cada detalhe) e estrutura rígida (o consumidor não pode reordenar ou omitir partes). Compound Components resolvem isso: em vez de <Select options={...} label={...} placeholder={...} footer={...}>, você escreve <Select><Select.Label /><Select.Option /><Select.Footer /></Select>. O consumidor decide o que incluir e em que ordem."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como o estado é compartilhado implicitamente entre componentes pai e filhos no padrão Compound Components?",
+      "options": [
+        "Via props passadas explicitamente de pai para filho",
+        "Via variáveis globais no módulo JavaScript",
+        "Via React Context criado pelo componente pai e consumido pelos filhos",
+        "Via refs passadas para cada filho individualmente"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O componente pai cria um Context com createContext() e provê o estado compartilhado via Provider. Os componentes filhos (como Tabs.Tab, Accordion.Item) usam useContext() para acessar esse estado sem que o consumidor precise passar props manualmente. Esse é o 'estado implícito' — o consumidor não vê a mecânica de comunicação, só a API de composição. É exatamente o que torna a API elegante."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que significa e como se implementa a 'dot notation' em Compound Components?",
+      "options": [
+        "É uma convenção de nomenclatura de arquivos, como 'Tabs.tsx' e 'Tab.tsx'",
+        "São subcomponentes atribuídos como propriedades do componente pai, permitindo uso como <Tabs.Tab>",
+        "É a forma de acessar Context com useContext() usando dot notation",
+        "É um padrão do TypeScript para tipar componentes com generics"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Dot notation é quando você atribui subcomponentes como propriedades do componente pai: Tabs.Tab = TabItem; Tabs.Panel = TabPanel. Isso permite o uso <Tabs.Tab> no JSX — visualmente deixa claro que TabItem faz parte do sistema de Tabs, e agrupa tudo sob um único namespace. No TypeScript, você declara o tipo: type TabsComponent = typeof Tabs & { Tab: typeof TabItem; Panel: typeof TabPanel }."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quando você NÃO deve usar o padrão Compound Components?",
+      "options": [
+        "Quando o componente precisa de TypeScript",
+        "Quando o componente é simples e não tem subpartes que o consumidor precise controlar independentemente",
+        "Quando o componente é usado em mais de um lugar na aplicação",
+        "Quando o projeto usa Vite em vez de Create React App"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Compound Components adicionam complexidade (Context, múltiplos subcomponentes, tipagem TypeScript mais elaborada). Para um botão simples ou um input sem variações de composição, esse padrão é overkill. Use-o quando o consumidor genuinamente precisa controlar a estrutura interna do componente — decidir quais partes incluir, em que ordem, ou intercalar elementos entre elas. Se uma API de props simples atende, prefira-a."
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+# Render Cycle: Como o React Decide o Que Mostrar
+
+## Introdução
+
+Uma das perguntas mais fundamentais sobre o React é: *quando* e *como* ele atualiza a tela? Para um engenheiro que vem do Angular, a intuição inicial pode ser "o framework observa meus dados e atualiza o template". O React funciona de forma diferente — e entender essa diferença vai mudar como você escreve componentes.
+
+O React divide o processo de atualização da UI em três fases distintas: **Trigger**, **Render** e **Commit**. Após o Commit, o browser realiza o **Paint**. Cada fase tem responsabilidades claras e entender os limites entre elas é essencial para evitar bugs sutis e escrever código performático.
+
+---
+
+## Fase 1: Trigger — O Que Aciona um Re-render?
+
+O ciclo começa quando algo informa ao React que ele precisa reconsiderar o que exibir. Existem quatro situações que acionam esse processo:
+
+### 1. Render Inicial
+Quando sua aplicação é carregada pela primeira vez, o React renderiza a árvore completa de componentes a partir do componente raiz. Isso é o único momento onde você não precisa de nenhuma mudança — o React simplesmente renderiza tudo.
+
+### 2. Atualização de Estado (useState / useReducer)
+```javascript
+const [count, setCount] = useState(0)
+
+// Chamar setCount trigera um re-render
+setCount(count + 1)
+```
+
+Quando você chama o setter de `useState` ou o `dispatch` de `useReducer`, o React agenda um re-render para aquele componente. Importante: o React não atualiza o estado *imediatamente*. Ele enfileira a atualização e processa em lote (batching) quando possível.
+
+### 3. Re-render do Componente Pai
+Quando um componente pai re-renderiza, por padrão **todos os seus filhos também re-renderizam**, independentemente de suas props terem mudado. Isso surpreende muitos desenvolvedores. O React assume que se o pai mudou, os filhos podem ter mudado também. `React.memo` permite otimizar isso.
+
+### 4. Mudança de Context
+Se um componente consome um Context via `useContext` e o valor daquele contexto muda, o componente será re-renderizado.
+
+> **Para engenheiros Angular:** No Angular, o mecanismo de detecção de mudanças (Change Detection) tem duas estratégias: `Default` (verifica toda a árvore por zona, usando Zone.js) e `OnPush` (verifica apenas se as referências das inputs mudaram ou se um evento interno ocorreu). O React não usa Zone.js e não tem um "loop" de detecção de mudanças — em vez disso, as mudanças são explicitamente declaradas via chamadas de setter. Isso torna o fluxo mais previsível: sem mágica de monkey-patching de async APIs.
+
+---
+
+## Fase 2: Render — React Chama Sua Função
+
+Após o Trigger, o React entra na fase de **Render**. Nesta fase, o React chama a função do seu componente para descobrir o que deve ser exibido.
+
+```javascript
+function Counter() {
+  const [count, setCount] = useState(0)
+  
+  // O React chama essa função durante a fase Render
+  // O retorno descreve o que deve aparecer na tela
+  return (
+    <div>
+      <p>Contagem: {count}</p>
+      <button onClick={() => setCount(count + 1)}>+1</button>
+    </div>
+  )
+}
+```
+
+**Características críticas da fase Render:**
+
+1. **É puramente computacional** — nenhuma modificação no DOM real acontece aqui.
+2. **Deve ser pura** — a mesma entrada (props + state) deve sempre produzir o mesmo JSX. Efeitos colaterais na fase render causam bugs difíceis de rastrear.
+3. **Pode ser descartada** — em React 18 com Concurrent Mode, o React pode iniciar uma renderização e abandoná-la se algo mais urgente aparecer. Por isso, impureza na fase render é ainda mais problemática.
+
+O React processa a árvore de cima para baixo: renderiza o pai, depois renderiza os filhos, e assim por diante. O resultado é uma nova representação em memória da árvore — uma nova **Fiber Tree** — que será comparada com a árvore anterior.
+
+Essa comparação é a **reconciliação** (assunto do Dia 2), onde o React calcula o mínimo de mudanças necessárias no DOM.
+
+---
+
+## Fase 3: Commit — Atualizando o DOM Real
+
+Após a fase Render calcular o que precisa mudar, o React entra na fase de **Commit** para aplicar essas mudanças no DOM real. O Commit é dividido em três sub-fases internas:
+
+### beforeMutation
+O React lê o layout atual do DOM antes de fazer qualquer mudança. Isso é usado internamente para algumas medições.
+
+### mutation
+Esta é a sub-fase onde o React efetivamente **modifica o DOM** — inserindo, removendo e atualizando elementos. Após esta sub-fase, as mudanças já estão no DOM mas o browser ainda não pintou.
+
+### layout
+Aqui o React executa os efeitos de `useLayoutEffect`. Esses efeitos rodam de forma síncrona *após* as mutações do DOM mas *antes* do browser pintar. Isso permite ler medidas do layout (como `getBoundingClientRect()`) sem causar flicker visual.
+
+```javascript
+useLayoutEffect(() => {
+  // Roda ANTES do browser pintar
+  // Ideal para leitura de layout/medições DOM
+  const rect = ref.current.getBoundingClientRect()
+  console.log('Altura:', rect.height)
+}, [])
+
+useEffect(() => {
+  // Roda APÓS o browser pintar
+  // Ideal para efeitos que não afetam layout
+  fetch('/api/data').then(...)
+}, [])
+```
+
+---
+
+## Browser Paint — Fora do Controle do React
+
+Após o Commit, o browser decide quando pintar a tela. Isso é gerenciado pelo próprio browser, não pelo React. O browser geralmente pinta antes do próximo frame (60fps = ~16ms por frame).
+
+Somente **após o Paint**, o React executa os efeitos de `useEffect`. Isso significa que `useEffect` é assíncrono em relação à renderização visual.
+
+```
+Trigger → Render → Commit (beforeMutation → mutation → layout) → [useLayoutEffect] → Paint → [useEffect]
+```
+
+---
+
+## Erros Comuns
+
+### Confundir "renderizar" com "atualizar o DOM"
+Renderizar é apenas o React chamar sua função de componente. O DOM só é atualizado na fase Commit. Um componente pode re-renderizar muitas vezes sem que nenhuma mudança visível aconteça (se o output for idêntico).
+
+### Acreditar que setState é síncrono
+```javascript
+const [count, setCount] = useState(0)
+
+function handleClick() {
+  setCount(count + 1)
+  console.log(count) // Ainda é 0! O estado só muda no próximo render
+}
+```
+
+O estado não muda imediatamente — ele é uma "snapshot" do momento da renderização atual.
+
+### Pensar que variáveis locais persistem entre renders
+```javascript
+function Component() {
+  let localVar = 0 // Recriada a cada render — não persiste!
+  
+  // Para persistir sem re-render, use useRef
+  // Para persistir COM re-render, use useState
+}
+```
+
+---
+
+## Key Takeaways
+
+1. **Trigger** é o que inicia o ciclo: state update, re-render do pai, context change, ou render inicial.
+2. **Render** é puramente computacional — o React chama sua função e compara o resultado com o anterior. Nenhum DOM é tocado.
+3. **Commit** é onde o DOM real é atualizado. `useLayoutEffect` roda aqui, antes do Paint.
+4. **Paint** é feito pelo browser, fora do React. `useEffect` roda após o Paint.
+5. Re-render não significa DOM update — o React pode re-renderizar e descobrir que não há nada a mudar.
+6. Estado é uma snapshot: `setState` não atualiza a variável imediatamente.

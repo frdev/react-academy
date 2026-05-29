@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-30",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Quais conceitos das 4 semanas você aplicou no seu projeto? (Resposta livre — marque a opção que melhor descreve sua experiência)",
+      "options": [
+        "Apliquei poucos conceitos — ainda preciso revisar o material",
+        "Apliquei alguns conceitos, mas não os integrei — cada parte ficou isolada",
+        "Apliquei a maioria dos conceitos e os integrei de forma coesa — TanStack Query, hooks customizados, patterns e acessibilidade funcionando juntos",
+        "Não iniciei o projeto ainda"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O objetivo do projeto final é integração, não apenas aplicação isolada de cada conceito. Um projeto bem executado tem: dados buscados com TanStack Query (não fetch manual), estado complexo em useReducer (não múltiplos useState), componentes reutilizáveis via Compound Components, otimizações mensuráveis com React.memo + useCallback, lazy loading reduzindo o bundle inicial, e acessibilidade como qualidade de base. Se você chegou nesse nível, concluiu a Semana 4 com excelência."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em quais componentes do projeto você usou React.memo e por quê? (Resposta livre — marque a mais honesta)",
+      "options": [
+        "Em todos os componentes — mais memo é sempre melhor",
+        "Não usei — não vi necessidade",
+        "Usei em componentes de card/item de lista que re-renderizavam desnecessariamente quando filtros mudavam, combinado com useCallback nas funções passadas como props",
+        "Usei em componentes aleatórios sem medir se havia re-render real"
+      ],
+      "correctAnswer": 2,
+      "explanation": "React.memo tem maior valor em itens de lista ou cards que: 1) são renderizados muitas vezes (50+ instâncias), 2) recebem props estáveis (dados do item em si), 3) re-renderizam quando o pai muda por razões não relacionadas ao item. O erro mais comum é adicionar memo preventivamente em todo lugar — o overhead de comparação pode superar o benefício. O caminho correto: perfile com React DevTools para identificar re-renders desnecessários, depois aplique memo com useCallback/useMemo para estabilizar as props."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como você estruturou os filtros com useReducer no seu projeto? (Resposta livre)",
+      "options": [
+        "Usei useState separado para cada filtro — não apliquei useReducer",
+        "Usei useReducer com actions tipadas (SET_NAME, SET_CARGO, SET_ORDER) e extraí em um custom hook useUserFilters, com useMemo derivando a lista filtrada a partir do estado do reducer",
+        "Usei Context global para os filtros — não precisei de useReducer",
+        "Implementei os filtros no backend — não há filtragem no cliente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useReducer brilha quando múltiplos estados relacionados evoluem juntos. Com 3 filtros (nome, cargo, ordenação) em useState separados, você tem 3 estados independentes que precisam ser coordenados. Com useReducer, o estado é um objeto coeso `{ nameFilter, cargoFilter, order }` e cada action atualiza apenas o que precisa. O custom hook `useUserFilters` encapsula o reducer + o useMemo de filtragem, deixando o componente limpo. Este é um dos padrões mais importantes do projeto."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual aspecto do projeto você considera mais desafiador ou que apresentou maior aprendizado?",
+      "options": [
+        "Configuração inicial do projeto",
+        "Os optimistic updates com TanStack Query — coordenar onMutate, rollback em onError e invalidação em onSettled",
+        "Instalar as dependências",
+        "Criar os arquivos de componentes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Optimistic updates são genuinamente complexos porque requerem coordenar três fases: 1) onMutate — cancelar refetches pendentes, salvar snapshot, atualizar cache imediatamente; 2) onError — restaurar snapshot em caso de falha; 3) onSettled — invalidar para garantir consistência com o servidor. Cada passo tem propósito específico e a ordem importa. Se você implementou isso com confiança, você dominou um dos padrões mais avançados do TanStack Query. Se ainda não está confortável, revisitar o Dia 26 com esse projeto em mãos vai solidificar o entendimento."
+    }
+  ]
+}

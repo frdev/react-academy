@@ -1,0 +1,223 @@
+# Lazy Loading: Dividindo o Bundle para Carregar Menos
+
+> **Para engenheiros Angular:** `React.lazy` + `import()` dinâmico fazem o mesmo que `loadChildren` no Angular Router — carregam um módulo (ou componente) apenas quando necessário, reduzindo o bundle inicial. A diferença é que o Angular encapsula isso em módulos (NgModules ou standalone routes), enquanto o React é mais granular e explícito: você decide exatamente onde cortar o bundle.
+
+## Por Que Lazy Loading?
+
+Toda vez que seu app é aberto, o browser precisa baixar, parsear e executar o JavaScript da aplicação. Se você colocar tudo em um único bundle, o usuário espera por código que talvez nunca use.
+
+```
+Antes do lazy loading:
+bundle.js = 2MB (HomePage + AdminPage + Dashboard + Charts + Forms + ...)
+
+Após o lazy loading:
+main.js = 200KB (apenas o que é necessário para o primeiro carregamento)
+admin.js = 800KB (carregado apenas quando o usuário navega para /admin)
+charts.js = 400KB (carregado apenas quando o usuário acessa gráficos)
+```
+
+Isso melhora diretamente o **First Contentful Paint (FCP)** e **Time to Interactive (TTI)** — métricas que impactam conversão e SEO.
+
+---
+
+## React.lazy + dynamic import()
+
+A API é simples:
+
+```typescript
+import React, { lazy, Suspense } from 'react'
+
+// SEM lazy loading — tudo carregado imediatamente
+import AdminPage from './pages/AdminPage'
+
+// COM lazy loading — AdminPage só é baixado quando necessário
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+```
+
+O `import()` dinâmico é uma feature do JavaScript (não do React) que diz ao bundler: "corte o bundle aqui". React.lazy apenas envolve essa promise em algo que o React sabe como renderizar.
+
+**Requisito crítico:** O componente importado com `lazy()` deve ter um **export default**:
+
+```typescript
+// AdminPage.tsx — PRECISA de export default
+export default function AdminPage() {
+  return <div>Admin</div>
+}
+
+// Se o arquivo usa named exports, crie um wrapper:
+// Arquivo original: export function AdminPage() { ... }
+// Wrapper: export { AdminPage as default } from './AdminPage'
+```
+
+---
+
+## Suspense como Contêiner Obrigatório
+
+`React.lazy` deve ser usado dentro de um `<Suspense>`. O Suspense exibe o fallback enquanto o chunk está sendo baixado:
+
+```typescript
+function App() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <AdminPage />
+    </Suspense>
+  )
+}
+```
+
+Você aprenderá mais sobre Suspense no Dia 24. Por ora, entenda que é o "invólucro necessário".
+
+---
+
+## Splitting por Rota — O Mais Impactante
+
+A estratégia mais eficiente é dividir o bundle por rota. Páginas inteiras são o corte mais natural porque:
+
+1. O usuário nunca está em duas páginas ao mesmo tempo
+2. Cada rota já é uma fronteira lógica clara
+3. O impacto no bundle é máximo
+
+```typescript
+import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+
+const HomePage = lazy(() => import('./pages/HomePage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  )
+}
+```
+
+---
+
+## Splitting por Componente — Modais e Widgets Pesados
+
+Além de rotas, alguns componentes são candidatos excelentes ao lazy loading:
+
+```typescript
+// Modal de edição com um editor rico (Monaco Editor ~2MB)
+const RichTextEditor = lazy(() => import('./components/RichTextEditor'))
+
+function ArticleForm() {
+  const [showEditor, setShowEditor] = useState(false)
+
+  return (
+    <div>
+      <button onClick={() => setShowEditor(true)}>Abrir Editor</button>
+      {showEditor && (
+        <Suspense fallback={<EditorSkeleton />}>
+          <RichTextEditor />
+        </Suspense>
+      )}
+    </div>
+  )
+}
+```
+
+Bons candidatos para splitting por componente:
+- Modais pesados (nunca visíveis no carregamento inicial)
+- Dashboards de admin (usuário padrão nunca acessa)
+- Editores de texto ricos, gráficos interativos
+- Funcionalidades premium (carregadas apenas se usuário tem acesso)
+
+---
+
+## Nomeando Chunks no Vite
+
+Por padrão, Vite gera nomes como `AdminPage-BxYz7.js`. Você pode nomear chunks para facilitar o diagnóstico:
+
+```typescript
+const AdminPage = lazy(
+  () => import(/* @vite-ignore */ './pages/AdminPage')
+    // ou com webpackChunkName (funciona no Vite também):
+)
+
+// Forma com chunk name magic comment:
+const AdminPage = lazy(
+  () => import(/* webpackChunkName: "admin" */ './pages/AdminPage')
+)
+// Resultado: admin-BxYz7.js — muito mais legível no bundle analyzer
+```
+
+---
+
+## Bundle Analyzer: Veja o Que Você Está Carregando
+
+Instale o plugin para visualizar o bundle:
+
+```bash
+npm install -D rollup-plugin-visualizer
+```
+
+```typescript
+// vite.config.ts
+import { visualizer } from 'rollup-plugin-visualizer'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    visualizer({ open: true, gzipSize: true })
+  ]
+})
+```
+
+Execute `npm run build` e o browser abrirá um mapa visual mostrando quais dependências ocupam mais espaço.
+
+---
+
+## O Que NÃO Lazy Loading
+
+Nem tudo deve ser lazy. Evite lazy em:
+
+- **Componentes pequenos e simples**: o overhead de uma requisição HTTP adicional supera qualquer benefício
+- **Elementos sempre visíveis no primeiro carregamento**: Header, Footer, Hero — carregar lazy causaria flash de conteúdo
+- **Componentes usados em múltiplas rotas**: seriam baixados repetidamente e não ficam no cache da forma certa
+- **Componentes críticos para UX imediata**: formulários de login, botões de CTA principais
+
+---
+
+## Prefetching: Antecipando a Necessidade
+
+Você pode pré-carregar chunks antes do usuário navegar, para uma transição mais suave:
+
+```typescript
+// Pré-carrega AdminPage quando o usuário passa o mouse sobre o link
+function NavLink() {
+  const prefetch = () => import('./pages/AdminPage') // começa o download
+
+  return (
+    <Link to="/admin" onMouseEnter={prefetch}>
+      Admin
+    </Link>
+  )
+}
+```
+
+---
+
+## Resumo: Árvore de Decisão
+
+```
+Componente é grande? (> 20KB gzipped)
+├── SIM → Candidato a lazy loading
+│   ├── É uma página/rota? → lazy() + Suspense na rota
+│   ├── É um modal/drawer? → lazy() + Suspense condicional
+│   └── É sempre visível? → NÃO faça lazy
+└── NÃO → Deixe no bundle principal
+```
+
+Code splitting é uma das otimizações com maior ROI em aplicações React. Uma divisão estratégica por rota pode reduzir o bundle inicial em 60-80% em aplicações grandes.

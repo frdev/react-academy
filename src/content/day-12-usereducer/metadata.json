@@ -1,0 +1,14 @@
+{
+  "id": "day-12",
+  "day": 12,
+  "week": 2,
+  "title": "useReducer",
+  "slug": "usereducer",
+  "topics": ["useReducer", "dispatch", "action", "reducer", "complex state"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 120
+}

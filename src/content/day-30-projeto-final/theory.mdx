@@ -1,0 +1,148 @@
+# Projeto Final: React Patterns Showcase
+
+Parabéns — você chegou ao Dia 30. Durante 4 semanas você foi do ciclo de renderização ao gerenciamento de server state, de hooks personalizados a padrões de design avançados. Hoje você integra tudo.
+
+## O Que Você Vai Construir
+
+**React Patterns Showcase** — uma mini-aplicação que demonstra os principais conceitos das 4 semanas em um contexto coeso.
+
+---
+
+## Brief: Funcionalidades
+
+### 1. Lista de Usuários com TanStack Query
+- Busque uma lista de usuários de uma API (use `https://jsonplaceholder.typicode.com/users`)
+- Exiba em uma grade de cards
+- Envolva com `<ErrorBoundary>` para capturar falhas
+- Envolva com `<Suspense>` para exibir skeleton enquanto carrega
+
+### 2. Formulário de Criação com React Hook Form + Zod
+- Campos: nome (obrigatório), email (formato válido), cargo (enum: engineer | designer | manager)
+- Validação em tempo real com Zod schema
+- Ao submeter, adicione o usuário otimisticamente à lista (useMutation + optimistic update)
+- Feedback visual de sucesso/erro
+
+### 3. Tema com Context (Memoizado)
+- Toggle entre modo claro e escuro
+- Context com `useMemo` para o valor e `useCallback` para o toggle
+- Aplicado via classe CSS no elemento `<html>`
+
+### 4. Filtros com useReducer
+- Filtrar usuários por nome (texto) e cargo (select)
+- Ordenar por nome (asc/desc)
+- Lógica de filtros em um `useReducer` — não `useState` múltiplo
+- Extraia em um custom hook `useUserFilters`
+
+### 5. Página de Detalhe Lazy-Loaded
+- Rota `/users/:id` carregada com `React.lazy`
+- Exiba dados completos do usuário + posts (query paralela)
+- Suspense boundary na rota
+
+### 6. Tabs (Compound Component)
+- Componente `<Tabs>` usando o Compound Component pattern (Dia 16)
+- Abas: "Lista" e "Favoritos" (ou qualquer divisão que faça sentido)
+- Acessível: `role="tablist"`, `role="tab"`, `role="tabpanel"`, `aria-selected`
+
+---
+
+## O Que Será Avaliado
+
+Use esta checklist para auto-avaliação antes de considerar o projeto completo:
+
+### Fundamentos
+- [ ] Componentes organizados por feature, não por tipo (pasta `features/users`, não `components/`)
+- [ ] Sem prop drilling — Context onde necessário, composição onde possível
+- [ ] Nenhum `useEffect` para derivar estado — calcule durante o render
+
+### Performance
+- [ ] `React.memo` em pelo menos um componente de card (com justificativa no código)
+- [ ] `useCallback` estabilizando callbacks passados para componentes memoizados
+- [ ] `useMemo` para listas filtradas/ordenadas (cálculo caro que depende de filtros)
+- [ ] Lazy loading na rota de detalhe
+
+### Dados e Estado
+- [ ] TanStack Query com `queryKey` bem definido (inclui todos os parâmetros)
+- [ ] `staleTime` configurado (não use o padrão 0 para dados que raramente mudam)
+- [ ] `useMutation` com `onSuccess` invalidando queries
+- [ ] Optimistic update funcionando (mudança visível antes da confirmação)
+- [ ] Filtros em `useReducer`, não em múltiplos `useState`
+
+### Resiliência
+- [ ] `ErrorBoundary` em volta da lista de usuários
+- [ ] `Suspense` com skeleton (não spinner genérico)
+- [ ] Formulário com validação e mensagens de erro claras
+
+### Acessibilidade
+- [ ] Todas as interações funcionam via teclado
+- [ ] Imagens/ícones têm `alt`/`aria-label`
+- [ ] Formulário tem labels associados aos inputs
+- [ ] Tabs implementadas com ARIA correto
+
+### Código
+- [ ] Custom hook `useUserFilters` extrai lógica de filtros do componente
+- [ ] Compound component `<Tabs>` com API limpa (`<Tabs.List>`, `<Tabs.Tab>`, `<Tabs.Panel>`)
+- [ ] Sem `any` no TypeScript (use `unknown` e type guards quando necessário)
+
+---
+
+## Dicas por Área
+
+### TanStack Query
+Comece pelo `QueryClientProvider` e configure `defaultOptions` com `staleTime: 5 * 60 * 1000`. Teste no DevTools que o cache está funcionando (dados não são re-buscados ao trocar de aba e voltar dentro do staleTime).
+
+### Formulário
+Defina o schema Zod primeiro, depois extraia o tipo com `z.infer<typeof schema>`. Passe o schema para `zodResolver` do `@hookform/resolvers/zod`. Não esqueça `mode: 'onChange'` para feedback em tempo real.
+
+### Optimistic Update
+O fluxo é: `onMutate` → salva snapshot → atualiza cache → `onError` → restaura snapshot → `onSettled` → invalida. Não pule o `cancelQueries` no `onMutate` — evita que um refetch em andamento sobrescreva seu update otimístico.
+
+### useReducer para Filtros
+O reducer recebe actions como `{ type: 'SET_NAME', payload: string }` e `{ type: 'SET_ORDER', payload: 'asc' | 'desc' }`. A filtragem/ordenação acontece com `useMemo` derivando do estado do reducer.
+
+### Acessibilidade nas Tabs
+```html
+<div role="tablist" aria-label="Visualizações">
+  <button role="tab" aria-selected="true" aria-controls="panel-lista">Lista</button>
+  <button role="tab" aria-selected="false" aria-controls="panel-favoritos">Favoritos</button>
+</div>
+<div id="panel-lista" role="tabpanel" tabindex="0">...</div>
+```
+
+---
+
+## Estrutura de Pastas Sugerida
+
+```
+src/
+  features/
+    users/
+      api/          # funções de fetch
+      components/   # UserCard, UserList, UserForm, UserFilters
+      hooks/        # useUserFilters, useUserMutation
+      pages/        # UsersPage, UserDetailPage (lazy)
+    tabs/
+      Tabs.tsx      # Compound component
+  shared/
+    components/
+      ErrorBoundary/
+      Skeleton/
+    context/
+      ThemeContext.tsx
+```
+
+---
+
+## Por Onde Começar
+
+1. **Scaffold**: crie as pastas, configure TanStack Query e React Router
+2. **Dados**: implemente `useQuery` para a lista de usuários — sem UI ainda, só verifique no DevTools
+3. **UI básica**: renderize a lista de cards sem filtros
+4. **Filtros**: adicione `useReducer` e o hook `useUserFilters`
+5. **Formulário**: React Hook Form + Zod + mutation
+6. **Otimizações**: adicione `React.memo`, `useCallback`, `useMemo` onde há evidência de necessidade
+7. **Rota de detalhe**: lazy loading + Suspense
+8. **Tabs**: Compound Component
+9. **Polimento a11y**: revise teclado, ARIA, labels
+10. **Auto-avaliação**: percorra a checklist acima
+
+Boa sorte — e lembre-se: o objetivo não é usar todos os patterns porque você pode, mas entender por que cada um existe e quando ele resolve um problema real.

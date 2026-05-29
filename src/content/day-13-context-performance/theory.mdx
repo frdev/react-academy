@@ -1,0 +1,209 @@
+# Context Performance: O Problema dos Re-renders em Cascata
+
+> **Para engenheiros Angular:** O sistema de DI hierárquico do Angular é mais sofisticado que o Context do React. Um service Angular não re-renderiza todos os componentes que o injetam quando qualquer parte do service muda — a reatividade é granular via Observables/Signals. O Context do React re-renderiza **todos** os consumidores quando o valor muda. Entender isso evita bugs de performance difíceis de detectar.
+
+## O Problema Fundamental
+
+O React Context funciona com **igualdade referencial**. Quando o valor do Provider muda (nova referência), **todos os componentes que consomem aquele contexto re-renderizam** — independentemente de terem "usado" a parte que mudou.
+
+```typescript
+// PROBLEMA: um objeto novo a cada render do Provider
+function AppProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [theme, setTheme] = useState('dark')
+  const [notifications, setNotifications] = useState<Notification[]>([])
+
+  // Este objeto é RECRIADO a cada render do AppProvider
+  // Qualquer mudança (user, theme, notifications) re-renderiza TODOS os consumidores
+  return (
+    <AppContext.Provider value={{ user, theme, notifications, setUser, setTheme }}>
+      {children}
+    </AppContext.Provider>
+  )
+}
+```
+
+Se `notifications` mudar, `ThemeButton` (que só usa `theme`) também re-renderiza. Isso pode ser devastador em árvores grandes.
+
+---
+
+## Por Que Isso Acontece?
+
+O React faz uma comparação com `Object.is` (equivalente a `===`) no valor do Provider a cada render. Se o Provider re-renderizar com um objeto novo, todos os consumidores são notificados.
+
+```typescript
+const v1 = { user: null, theme: 'dark' }
+const v2 = { user: null, theme: 'dark' }
+
+Object.is(v1, v2) // false — referências diferentes
+```
+
+Mesmo que os dados sejam idênticos, se é um objeto novo (criado inline no JSX), o Context entende como "mudou".
+
+---
+
+## Solução 1: Dividir Contextos
+
+A solução mais eficaz: separar contextos por frequência de mudança.
+
+```typescript
+// Contextos separados — cada consumidor só re-renderiza quando o seu contexto muda
+const AuthContext = createContext<AuthState | null>(null)
+const ThemeContext = createContext<ThemeState | null>(null)
+const NotificationsContext = createContext<NotificationsState | null>(null)
+
+function Providers({ children }: { children: React.ReactNode }) {
+  const auth = useAuthState()
+  const theme = useThemeState()
+  const notifications = useNotificationsState()
+
+  return (
+    <AuthContext.Provider value={auth}>
+      <ThemeContext.Provider value={theme}>
+        <NotificationsContext.Provider value={notifications}>
+          {children}
+        </NotificationsContext.Provider>
+      </ThemeContext.Provider>
+    </AuthContext.Provider>
+  )
+}
+
+// ThemeButton só consome ThemeContext — não re-renderiza quando auth muda
+function ThemeButton() {
+  const { theme, setTheme } = useContext(ThemeContext)!
+  return <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme}</button>
+}
+```
+
+**Regra prática:** Separe contextos por **frequência de mudança** e **quem precisa do quê**. Auth + Theme são dados de baixa frequência. Notificações podem mudar mais — contexto separado. Dados de formulário? Provavelmente não deveriam estar no Context.
+
+---
+
+## Solução 2: Memoizar o Valor do Provider
+
+Quando você não pode ou não quer dividir contextos, memoize o valor:
+
+```typescript
+function AppProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [theme, setTheme] = useState('dark')
+
+  // O valor só muda quando user ou theme mudarem
+  const value = useMemo(
+    () => ({ user, theme, setUser }),
+    [user, theme]
+  )
+
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+    </AppContext.Provider>
+  )
+}
+```
+
+**Atenção:** `setUser` é um setter de useState — sua referência é estável entre renders (o React garante isso). Você pode incluí-lo no objeto sem precisar incluí-lo nas deps do useMemo.
+
+---
+
+## Solução 3: Separar State de Dispatch
+
+Um padrão popular com `useReducer`: separar o estado (que muda frequentemente) do dispatch (que nunca muda):
+
+```typescript
+const CountStateContext = createContext<number | null>(null)
+const CountDispatchContext = createContext<React.Dispatch<Action> | null>(null)
+
+function CounterProvider({ children }: { children: React.ReactNode }) {
+  const [count, dispatch] = useReducer(reducer, 0)
+
+  return (
+    <CountDispatchContext.Provider value={dispatch}>
+      <CountStateContext.Provider value={count}>
+        {children}
+      </CountStateContext.Provider>
+    </CountDispatchContext.Provider>
+  )
+}
+
+// Componente que só dispara actions — nunca re-renderiza por mudança de state
+function IncrementButton() {
+  const dispatch = useContext(CountDispatchContext)!
+  return <button onClick={() => dispatch({ type: 'INCREMENT' })}>+</button>
+}
+
+// Componente que exibe — re-renderiza quando count muda
+function CountDisplay() {
+  const count = useContext(CountStateContext)!
+  return <span>{count}</span>
+}
+```
+
+O `dispatch` de `useReducer` tem referência estável (nunca muda), então `IncrementButton` nunca re-renderiza desnecessariamente.
+
+---
+
+## Quando Context É Adequado
+
+Context é ideal para dados **globais de baixa frequência**:
+
+- Tema da aplicação (dark/light) — muda raramente
+- Dados de autenticação — muda quando faz login/logout
+- Locale/idioma — muda raramente
+- Feature flags — quase nunca muda
+
+**Evite Context para:**
+
+- Dados que mudam por interação do usuário (formulários, inputs)
+- Dados com atualizações em alta frequência (ex: posição do mouse, timer)
+- Estado de UI local (modais abertos, tabs ativas)
+- Dados de formulário que não precisam ser globais
+
+---
+
+## O Risco com Concurrent Mode
+
+React 18 com Concurrent Mode introduz um risco adicional chamado **tearing** (rasgamento). Em modo concorrente, diferentes partes da árvore podem renderizar com versões diferentes do estado — se o estado não estiver em um external store que o React conhece.
+
+Context é seguro do tearing porque o React tem controle total sobre ele. Mas se você misturar Context com mutações diretas (ref.current, variáveis de módulo), pode ter problemas.
+
+Para estado que muda frequentemente em apps com Concurrent Mode, stores externas como Zustand usam a API `useSyncExternalStore` para garantir consistência.
+
+---
+
+## Quando Usar Zustand ou Jotai
+
+Considere sair do Context + useReducer quando:
+
+- Múltiplos componentes em partes distintas da árvore precisam do mesmo estado
+- O estado muda com alta frequência e você precisa de atualizações granulares
+- Você precisa subscrever apenas a uma fatia do estado (seletores)
+- O estado é grande e você quer evitar re-renders em cascata
+
+```typescript
+// Zustand: re-renderiza apenas quando o slice selecionado muda
+const useUserName = () => useStore(state => state.user.name) // seletor
+const useTheme = () => useStore(state => state.theme) // seletor diferente
+```
+
+---
+
+## Comparação com Angular DI
+
+No Angular, quando um service muda (ex: emite um novo valor via Observable/Signal), apenas os componentes que **subscreveram** aquele Observable ou **leram** aquele Signal específico reagem. É granular por design.
+
+No React com Context, a granularidade está na **separação dos contextos**, não no mecanismo interno. O desenvolvedor precisa ser explícito sobre essa separação.
+
+Isso faz o DI do Angular mais ergonômico para estado complexo compartilhado — mas o Context do React é mais simples e previsível para casos básicos. Para casos avançados, Zustand/Jotai preenchem o gap.
+
+---
+
+## Key Takeaways
+
+1. Todo consumidor de Context re-renderiza quando o valor do Provider muda — mesmo que a parte usada não tenha mudado
+2. O React compara o valor do Context com `Object.is` — um objeto novo sempre é "diferente"
+3. **Fix 1**: Dividir contextos por frequência de mudança (a melhor solução)
+4. **Fix 2**: `useMemo` no valor do Provider — nova referência só quando deps mudarem
+5. **Fix 3**: Separar State de Dispatch contexts — dispatch tem referência estável
+6. Context é ideal para dados globais de baixa frequência (auth, theme, locale)
+7. Para alta frequência ou grande escala: Zustand, Jotai, ou Recoil

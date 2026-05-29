@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-12",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Em qual situação useReducer é preferível ao useState?",
+      "options": [
+        "Sempre que o estado for um objeto (ao invés de primitivo)",
+        "Quando há múltiplos campos de estado relacionados com transições complexas entre eles",
+        "Quando o estado precisa ser compartilhado entre componentes",
+        "Sempre que a performance for crítica"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useReducer brilha quando: (1) há múltiplos campos de estado que precisam ser atualizados juntos de forma consistente, (2) a lógica de transição é complexa (ex: o próximo estado depende do estado atual de forma não trivial), ou (3) você está modelando uma máquina de estados onde certas combinações são inválidas. Para um único valor booleano ou string, useState é mais simples e igualmente correto."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que um reducer deve ser uma função pura?",
+      "options": [
+        "Para que o React possa chamar ele no servidor",
+        "Para facilitar o uso com TypeScript",
+        "Para que seja previsível, testável, e para que o React possa detectar mudanças corretamente comparando referências",
+        "É apenas uma convenção — reducers impuros funcionam da mesma forma"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Pureza em reducers serve a três propósitos: (1) Previsibilidade — dado o mesmo state e action, sempre retorna o mesmo resultado, sem surpresas; (2) Testabilidade — pode ser testado como função simples sem mocks ou setup complexo; (3) Detecção de mudanças — o React detecta se o estado mudou comparando referências (Object.is). Um reducer que muta o estado original ao invés de retornar um novo objeto vai quebrar essa detecção."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como o padrão useReducer + useContext se relaciona com Redux?",
+      "options": [
+        "São completamente diferentes — Redux usa Observables, React usa Promises",
+        "useReducer + Context é uma implementação local do mesmo padrão que Redux popularizou",
+        "Redux é uma implementação de useReducer com melhor performance",
+        "Context substitui completamente o Redux em todos os casos de uso"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Redux popularizou o padrão de actions + reducer + store no ecossistema React. O próprio useReducer foi adicionado ao React inspirado pelo Redux. A diferença é escopo: useReducer é local a um componente; Redux é uma store global. Quando você combina useReducer + Context, está essencialmente reimplementando Redux de forma mais simples — mas sem as otimizações de seletores e middleware que o Redux (especialmente com Redux Toolkit) oferece."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Verdadeiro ou Falso: Discriminated unions TypeScript em actions de reducer permitem que o TypeScript faça type narrowing automático dentro de cada case do switch.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Com discriminated unions, o TypeScript usa o campo discriminante (geralmente 'type') para narrowing: dentro do case 'FETCH_SUCCESS', o TypeScript sabe que action tem a propriedade 'data'; dentro do case 'FETCH_ERROR', ele sabe que action tem 'error'. Tentar acessar action.data no case errado resulta em erro de compilação. Isso torna reducers type-safe com mínimo de código."
+    }
+  ]
+}

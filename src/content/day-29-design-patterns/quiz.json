@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-29",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o benefício principal do padrão Container/Presentational em React?",
+      "options": [
+        "Melhora a performance ao dividir renders em duas fases",
+        "Separa a lógica de busca/transformação de dados da lógica de renderização, tornando o componente presentational testável e reutilizável sem necessitar de contexto de dados",
+        "Permite que componentes funcionem sem hooks",
+        "É obrigatório para usar TypeScript com React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A separação entre Container (smart) e Presentational (dumb) resolve um problema de testabilidade e reúso. O componente presentational — que apenas renderiza props — pode ser testado com qualquer conjunto de dados mock, sem precisar configurar fetch, query client ou contextos. Pode ser reutilizado com diferentes fontes de dados. O container, por sua vez, pode ser substituído (troca de REST para GraphQL, por exemplo) sem afetar a UI. Com hooks, essa separação pode viver no mesmo componente, mas para componentes complexos, a separação explícita ainda é válida."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em qual cenário o Provider Pattern com Context é mais apropriado que passar props diretamente?",
+      "options": [
+        "Sempre que dois ou mais componentes precisam do mesmo dado",
+        "Quando o dado precisa ser acessível por componentes em diferentes níveis da árvore, e passar via props por cada nível intermediário (prop drilling) criaria acoplamento desnecessário",
+        "Quando o dado muda com frequência — Context é mais eficiente para atualizações rápidas",
+        "Apenas para dados globais imutáveis como configurações de build"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Provider Pattern resolve prop drilling: a situação onde você passa dados através de 3-5 níveis intermediários apenas para chegar ao componente que realmente precisa. O sinal correto para usar Context é quando componentes intermediários passam props que eles próprios não utilizam. Contexto inadequado para: dados muito locais (estado de um form dentro de um componente), dados que mudam com muita frequência (cada keystroke pode causar re-renders desnecessários se o Context não for bem dividido). Para dados globais de alta frequência, considere Zustand ou Jotai."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é o benefício central do padrão Adapter ao envolver componentes de bibliotecas de terceiros?",
+      "options": [
+        "Melhora a performance da biblioteca terceira",
+        "Cria um ponto único de mudança — se a biblioteca mudar de API ou for substituída, apenas o Adapter precisa ser atualizado, sem afetar o resto da aplicação",
+        "Permite usar a biblioteca sem instalá-la no package.json",
+        "Adiciona TypeScript à bibliotecas que não têm tipos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O Adapter isola o resto da aplicação das peculiaridades de terceiros. Sem Adapter: se você usa `<ExternalDatePicker selectedDate={...} onDateChange={...} />` em 20 lugares e a biblioteca muda de `selectedDate` para `value` em uma atualização major, você precisa atualizar 20 arquivos. Com Adapter: você tem `<DateInput value={...} onChange={...} />` em 20 lugares e o mapeamento `value → selectedDate` em UM lugar. Trocar de biblioteca requer apenas reescrever o Adapter. A API interna permanece estável."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual sinal indica que o uso de design patterns se tornou over-engineering?",
+      "options": [
+        "Quando o código tem mais de 500 linhas por arquivo",
+        "Quando o padrão adiciona camadas de abstração que requerem mais explicação do que o problema que resolvem, sem benefício claro de testabilidade, reúso ou manutenção",
+        "Quando o projeto tem menos de 6 meses",
+        "Quando a equipe tem menos de 5 desenvolvedores"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Over-engineering com patterns acontece quando a abstração se torna o objetivo em vez de um meio. Sinais concretos: 1) você precisa de um diagrama para explicar como o componente mais simples funciona; 2) adicionar uma funcionalidade requer mudanças em 5+ arquivos por causa das camadas; 3) o time passa mais tempo discutindo qual pattern usar do que construindo features; 4) você está antecipando requisitos de flexibilidade que não existem. A regra pragmática: resolva o problema que você TEM, não o problema que você IMAGINA ter no futuro."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-25",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença principal entre useTransition e useDeferredValue?",
+      "options": [
+        "useTransition é para dados assíncronos (fetch), useDeferredValue é para dados síncronos",
+        "useTransition marca um setState como não-urgente (você controla o que é transição); useDeferredValue adia um valor recebido externamente para renderizações pesadas",
+        "useTransition funciona apenas em React 19, useDeferredValue funciona desde React 16",
+        "Não há diferença — são aliases do mesmo hook"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A distinção é sobre onde você controla a prioridade. Com `useTransition`, você envolve explicitamente um `setState` em `startTransition(() => setState(...))` — você decide que ESSA atualização é não-urgente. Com `useDeferredValue`, você recebe um valor (geralmente de um setState que não controla) e diz ao React para usar a versão antiga desse valor em renders pesados, atualizando quando possível. Regra prática: se você controla o setState, use useTransition. Se o valor vem de cima, use useDeferredValue."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Quando o uso de startTransition é mais adequado?",
+      "options": [
+        "Para todas as atualizações de estado — startTransition é sempre mais eficiente",
+        "Para marcar como não-urgente atualizações que causam renders pesados (listas grandes, gráficos complexos), mantendo o input do usuário responsivo",
+        "Para operações assíncronas como fetch — substitui useEffect + fetch",
+        "Para debouncing de inputs — substitui setTimeout"
+      ],
+      "correctAnswer": 1,
+      "explanation": "startTransition é adequado quando: 1) uma atualização de estado causa um render lento (> 50-100ms), 2) você quer que o React priorize atualizações urgentes (como o input que o usuário está digitando) sobre essa atualização. Casos clássicos: filtrar uma lista de 5000 itens ao digitar, trocar de aba com conteúdo pesado, navegar entre páginas ricas. NÃO use para: operações assíncronas (use async/await + useMutation), debouncing (use lodash.debounce ou setTimeout), ou renders rápidos (o overhead é maior que o benefício)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que o flag `isPending` retornado por useTransition indica?",
+      "options": [
+        "Que um request de rede está em andamento",
+        "Que o React está processando em background uma atualização marcada como transição — útil para mostrar um indicador de carregamento sutil durante renders pesados",
+        "Que o componente está aguardando a hidratação do servidor",
+        "Que há erros pendentes não tratados no componente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`isPending` é `true` enquanto o React está processando a atualização de estado marcada como transição — ou seja, durante um render pesado em background. Isso é diferente de isLoading de fetch: é sobre trabalho de CPU do React, não de rede. Use `isPending` para dar feedback visual sutil ao usuário durante esse período: opacidade reduzida na lista sendo filtrada, uma barra de carregamento fina no topo, ou um texto 'Atualizando...'. Quando o render pesado termina, `isPending` volta para `false`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que concorrência NO React NÃO significa ou resolve?",
+      "options": [
+        "Interrupção de renders pesados para priorizar interações urgentes do usuário",
+        "Descarte de renders intermediários quando o estado muda rapidamente",
+        "Execução paralela em múltiplas threads — JavaScript ainda é single-threaded",
+        "Manutenção da responsividade do input durante filtragem de listas grandes"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Concorrência no React é frequentemente mal interpretada como 'multi-threading' ou 'paralelismo'. JavaScript (e portanto o React) ainda executa em uma única thread. O que o Concurrent Mode faz é dividir o trabalho de renderização em pequenas unidades e intercalar com verificações de prioridade — se algo urgente aparece (evento do usuário), o React pausa o render pesado, processa o urgente, e retoma. Isso é cooperativo, não paralelo. Para processamento verdadeiramente paralelo em JavaScript, você usaria Web Workers."
+    }
+  ]
+}

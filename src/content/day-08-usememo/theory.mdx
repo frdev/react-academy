@@ -1,0 +1,202 @@
+# useMemo: Memoizando Resultados de Computações
+
+> **Para engenheiros Angular:** useMemo é análogo a um pipe `pure: true` no Angular — ele memoriza o resultado até que as dependências mudem. A diferença: no Angular o pipe é configurado no template, no React é um hook imperativo no componente.
+
+## O Que é useMemo?
+
+`useMemo` é um hook que **memoiza o resultado de uma computação**. Ele recebe uma função e um array de dependências, executa a função na primeira renderização e reutiliza o resultado nas renderizações seguintes — a menos que alguma dependência tenha mudado.
+
+```typescript
+const memoizedValue = useMemo(() => {
+  return expensiveComputation(a, b)
+}, [a, b])
+```
+
+A função passada para `useMemo` é executada durante a renderização (não depois, como `useEffect`). O React armazena o resultado e só recalcula quando `a` ou `b` mudarem.
+
+---
+
+## Por Que Isso Importa?
+
+Há dois cenários principais onde `useMemo` resolve problemas reais:
+
+### 1. Computações Caras
+
+Se seu componente precisa transformar ou filtrar dados grandes a cada render, isso pode ser lento:
+
+```typescript
+function ProductList({ products, searchTerm }: Props) {
+  // Sem useMemo: filtra toda vez que o componente re-renderiza
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  return <ul>{filteredProducts.map(p => <li key={p.id}>{p.name}</li>)}</ul>
+}
+```
+
+Com `useMemo`:
+
+```typescript
+function ProductList({ products, searchTerm }: Props) {
+  // Só refiltra quando products ou searchTerm mudarem
+  const filteredProducts = useMemo(
+    () => products.filter(p =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [products, searchTerm]
+  )
+
+  return <ul>{filteredProducts.map(p => <li key={p.id}>{p.name}</li>)}</ul>
+}
+```
+
+Se o componente pai re-renderizar por algum outro motivo (ex: um contador não relacionado), a filtragem não acontece novamente.
+
+### 2. Igualdade Referencial
+
+Este é o caso mais sutil — e frequentemente mais importante.
+
+Em JavaScript, dois objetos com o mesmo conteúdo **não são iguais**:
+
+```typescript
+const a = { x: 1, y: 2 }
+const b = { x: 1, y: 2 }
+
+console.log(a === b) // false — referências diferentes!
+```
+
+Isso causa problemas quando você passa objetos ou arrays como props para componentes memoizados com `React.memo`:
+
+```typescript
+function Parent() {
+  const [count, setCount] = useState(0)
+
+  // Este objeto é RECRIADO a cada render — nova referência toda vez!
+  const config = { theme: 'dark', lang: 'pt' }
+
+  return <Child config={config} />
+}
+
+const Child = React.memo(({ config }: { config: Config }) => {
+  // React.memo compara config com ===
+  // Como config é sempre uma referência nova, Child sempre re-renderiza
+  return <div>...</div>
+})
+```
+
+A solução:
+
+```typescript
+function Parent() {
+  const [count, setCount] = useState(0)
+
+  // config mantém a mesma referência enquanto os dados não mudarem
+  const config = useMemo(() => ({ theme: 'dark', lang: 'pt' }), [])
+
+  return <Child config={config} />
+}
+```
+
+Agora `React.memo` consegue fazer a comparação corretamente e o `Child` não re-renderiza desnecessariamente.
+
+---
+
+## O Array de Dependências
+
+As regras do array de dependências de `useMemo` são **idênticas às do `useEffect`**:
+
+- Liste todos os valores da função que vêm de fora (props, state, variáveis do componente)
+- O React compara usando `Object.is` (similar a `===` mas com tratamento correto para `NaN` e `+0/-0`)
+- Um array vazio `[]` significa "calcule uma vez e nunca recalcule"
+- Omitir o array significa "recalcule sempre" (inútil — equivale a não usar useMemo)
+
+```typescript
+// Calculado uma vez — equivale a uma constante dentro do componente
+const base = useMemo(() => createBaseConfig(), [])
+
+// Recalculado quando userId ou permissions mudarem
+const userPermissions = useMemo(
+  () => computePermissions(userId, permissions),
+  [userId, permissions]
+)
+```
+
+O plugin `eslint-plugin-react-hooks` com a regra `exhaustive-deps` vai alertar se você esquecer uma dependência. **Não ignore esses avisos** — dependências faltando causam valores stale (desatualizados).
+
+---
+
+## Quando NÃO Usar useMemo
+
+Este é o ponto mais importante da aula: **useMemo tem um custo**.
+
+Cada chamada de `useMemo` adiciona:
+1. **Overhead de memória**: o resultado anterior precisa ser armazenado
+2. **Overhead de comparação**: o React precisa comparar as dependências a cada render
+3. **Complexidade de código**: mais para ler, entender e manter
+
+Para valores simples, o overhead de `useMemo` pode ser **maior** que simplesmente recalcular:
+
+```typescript
+// Inútil — o custo do useMemo supera o da operação
+const doubled = useMemo(() => count * 2, [count])
+
+// Simplesmente: const doubled = count * 2
+```
+
+### Regra Prática
+
+Só use `useMemo` quando:
+
+1. A computação é demonstravelmente lenta (perfilada com DevTools)
+2. Você precisa de estabilidade referencial para um objeto/array passado como prop para componente memoizado
+
+Para tudo mais: **não use**. Primeiro faça funcionar, depois meça, depois otimize.
+
+> Premature optimization is the root of all evil. — Donald Knuth
+
+---
+
+## useMemo e o Array de Dependências Vazio
+
+Um caso especial comum é `useMemo` com `[]`:
+
+```typescript
+// Criado uma vez, reutilizado em todos os renders
+const computedSchema = useMemo(() => buildValidationSchema(rules), [])
+```
+
+Isso é válido quando a computação não depende de nenhum valor externo. Note que `rules` aqui seria um valor de fora do componente (uma constante do módulo, não uma prop). Se `rules` viesse de props, ela deveria estar nas dependências.
+
+---
+
+## Comparação com Angular: Pure Pipes
+
+No Angular, um pipe com `pure: true` (o padrão) faz essencialmente a mesma coisa:
+
+```typescript
+@Pipe({ name: 'filterProducts', pure: true })
+export class FilterProductsPipe implements PipeTransform {
+  transform(products: Product[], term: string): Product[] {
+    return products.filter(p => p.name.includes(term))
+  }
+}
+```
+
+O Angular só re-executa o pipe quando as referências das entradas mudam. O comportamento é análogo a `useMemo`. A diferença principal:
+
+- No Angular, a memoização é configurada no template e ocorre transparentemente
+- No React, você decide explicitamente no componente onde memoizar
+
+Isso dá mais controle ao desenvolvedor React, mas também mais responsabilidade de usar a ferramenta no momento certo.
+
+---
+
+## Key Takeaways
+
+1. `useMemo` memoiza o **resultado** de uma computação, não a função em si
+2. Use para computações caras **ou** para estabilizar referências de objetos/arrays passados como props
+3. O array de dependências segue as mesmas regras do `useEffect`
+4. `useMemo` tem custo: memória + comparação de deps a cada render
+5. Não use para valores primitivos simples — o overhead supera o benefício
+6. Perfil antes de otimizar — resolva problemas reais, não imaginários

@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental entre useState e useRef?",
+      "options": [
+        "useState é para valores primitivos, useRef é para objetos",
+        "useState trigera re-render quando seu valor muda, useRef não",
+        "useRef é mais performático que useState em qualquer situação",
+        "useState persiste entre renders, useRef não"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A diferença fundamental é que atualizações de state (via setter) trigeram um re-render do componente, enquanto mutações de `ref.current` não trigeram re-render. Ambos persistem valores entre renders. Use state quando a mudança precisa refletir na UI; use ref para valores que mudam sem afetar a UI."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Quando é seguro ler o valor de `ref.current` para acessar um elemento DOM?",
+      "options": [
+        "Imediatamente após declarar a ref com useRef",
+        "Durante a fase render, no corpo do componente",
+        "Em useEffect ou useLayoutEffect, após o componente ter sido montado",
+        "No momento de passar a ref para o JSX via prop ref="
+      ],
+      "correctAnswer": 2,
+      "explanation": "O React popula `ref.current` com o DOM node real durante a fase Commit — após o JSX ter sido renderizado e o elemento existir no DOM. Durante a fase Render (o corpo do componente), o DOM ainda não foi criado/atualizado, então `ref.current` pode ser null. A leitura segura é em useEffect (após mount/update) ou useLayoutEffect."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que é uma 'stale closure' no contexto de React?",
+      "options": [
+        "Um componente que não é mais usado mas ainda está montado",
+        "Um efeito que esqueceu de retornar a função de cleanup",
+        "Uma função criada durante um render que captura valores antigos e não vê atualizações posteriores",
+        "Uma ref que aponta para um elemento DOM já removido"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Uma stale closure ocorre quando uma função (callback, handler, efeito) é criada em um render e 'captura' variáveis daquele momento. Se essas variáveis mudam em renders futuros, a função continua vendo os valores antigos. O padrão de 'latest ref' — guardar o valor mais atual em uma ref e lê-la dentro do callback — resolve esse problema sem precisar recriar o callback."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Mutar ref.current dentro de um event handler pode causar problemas de concorrência no React.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso (em condições normais). Event handlers são executados de forma síncrona e fora da fase de rendering, então mutar `ref.current` neles é seguro. O que você deve evitar é mutar refs durante a fase Render (no corpo do componente), pois o Concurrent Mode pode renderizar o componente múltiplas vezes ou pausar e retomar a renderização."
+    }
+  ]
+}

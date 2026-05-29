@@ -1,0 +1,14 @@
+{
+  "id": "day-22",
+  "day": 22,
+  "week": 4,
+  "title": "React.memo",
+  "slug": "react-memo",
+  "topics": ["React.memo", "shallow comparison", "props memoization", "when to memo", "performance"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-08", "day-09"],
+  "hasVisualizer": true,
+  "hasChallenge": true,
+  "xpReward": 110
+}

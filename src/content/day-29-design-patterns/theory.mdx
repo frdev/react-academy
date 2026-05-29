@@ -1,0 +1,314 @@
+# Padrões de Design React: Soluções para Problemas Recorrentes
+
+> **Para engenheiros Angular:** Muitos desses padrões existem em Angular via serviços, decorators e injeção de dependência — mas são mais pesados e dependem do framework. No React, os padrões emergem de composição de funções e componentes, sem necessitar de classes ou DI. Isso os torna mais portáveis, mas também mais fáceis de over-engenheirar. Use com propósito.
+
+## 1. Container/Presentational (Smart/Dumb Components)
+
+**Problema:** Componentes que misturam lógica de busca de dados com lógica de renderização são difíceis de testar e reutilizar.
+
+**Solução:** Separe em dois componentes:
+- **Container (Smart)**: busca dados, gerencia estado, passa props
+- **Presentational (Dumb)**: recebe props, renderiza, não tem efeitos colaterais
+
+```typescript
+// CONTAINER — lógica de dados
+function UserListContainer() {
+  const { data: users, isLoading, error } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+  })
+
+  if (isLoading) return <UserListSkeleton />
+  if (error) return <ErrorMessage error={error} />
+  
+  return <UserList users={users} />
+}
+
+// PRESENTATIONAL — puramente renderização
+function UserList({ users }: { users: User[] }) {
+  return (
+    <ul>
+      {users.map(user => (
+        <li key={user.id}>{user.name} — {user.email}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+**Quando usar:** ainda válido para componentes com lógica de busca complexa. Para componentes simples, hooks já separam o suficiente — não force o padrão.
+
+**Angular:** equivalente a um componente que injeta um Service vs um componente que apenas usa `@Input()`. O padrão existe, mas é menos formal.
+
+---
+
+## 2. Provider Pattern: Compartilhando Comportamento
+
+**Problema:** Múltiplos componentes precisam de estado compartilhado, mas prop drilling é verboso.
+
+**Solução:** O Provider Pattern encapsula estado e comportamento em um Context, com um componente Provider e um hook de acesso:
+
+```typescript
+// 1. Context + Provider
+interface ThemeContextValue {
+  theme: 'light' | 'dark'
+  toggleTheme: () => void
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null)
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+  
+  const value = useMemo(
+    () => ({ theme, toggleTheme: () => setTheme(t => t === 'light' ? 'dark' : 'light') }),
+    [theme]
+  )
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+}
+
+// 2. Hook de acesso com validação
+export function useTheme() {
+  const context = useContext(ThemeContext)
+  if (!context) throw new Error('useTheme must be used within ThemeProvider')
+  return context
+}
+
+// 3. Consumo
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme()
+  return <button onClick={toggleTheme}>Tema atual: {theme}</button>
+}
+```
+
+**Quando usar:** estado genuinamente global (tema, auth, preferências do usuário). Não use para estado que é local a uma subárvore pequena.
+
+---
+
+## 3. Observer Pattern: Eventos sem Prop Drilling
+
+**Problema:** Componentes distantes na árvore precisam se comunicar sem compartilhar estado global.
+
+**Solução:** Um EventEmitter simples combinado com `useEffect` para subscriptions:
+
+```typescript
+// EventEmitter minimalista (sem dependências)
+type Listener<T> = (data: T) => void
+
+class EventEmitter<Events extends Record<string, unknown>> {
+  private listeners = new Map<keyof Events, Set<Listener<unknown>>>()
+
+  on<K extends keyof Events>(event: K, listener: Listener<Events[K]>) {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set())
+    this.listeners.get(event)!.add(listener as Listener<unknown>)
+    return () => this.off(event, listener)
+  }
+
+  off<K extends keyof Events>(event: K, listener: Listener<Events[K]>) {
+    this.listeners.get(event)?.delete(listener as Listener<unknown>)
+  }
+
+  emit<K extends keyof Events>(event: K, data: Events[K]) {
+    this.listeners.get(event)?.forEach(l => l(data))
+  }
+}
+
+// Instância global
+export const appEvents = new EventEmitter<{
+  'user:logout': void
+  'notification:new': { message: string; type: 'info' | 'error' }
+}>()
+
+// Emitindo
+function LogoutButton() {
+  return <button onClick={() => appEvents.emit('user:logout', undefined)}>Sair</button>
+}
+
+// Subscrevendo com cleanup automático
+function NotificationBadge() {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    const unsubscribe = appEvents.on('notification:new', () => {
+      setCount(c => c + 1)
+    })
+    return unsubscribe // cleanup quando componente desmonta
+  }, [])
+
+  return <span>{count}</span>
+}
+```
+
+**Quando usar:** ações transversais (logout, notificações, analytics) onde o emissor não conhece os consumidores.
+
+---
+
+## 4. Factory Pattern: Componentes por Configuração
+
+**Problema:** Renderizar diferentes componentes baseado em tipo/configuração sem if/else profundo.
+
+**Solução:** Um mapa de tipo → componente:
+
+```typescript
+type WidgetType = 'chart' | 'table' | 'metric' | 'heatmap'
+
+const WIDGET_COMPONENTS: Record<WidgetType, React.ComponentType<WidgetProps>> = {
+  chart: ChartWidget,
+  table: TableWidget,
+  metric: MetricWidget,
+  heatmap: HeatmapWidget,
+}
+
+interface WidgetProps {
+  data: unknown
+  title: string
+}
+
+function WidgetFactory({ type, ...props }: { type: WidgetType } & WidgetProps) {
+  const Component = WIDGET_COMPONENTS[type]
+  
+  if (!Component) {
+    console.warn(`Widget type "${type}" não encontrado`)
+    return <FallbackWidget {...props} />
+  }
+
+  return <Component {...props} />
+}
+
+// Uso — o dashboard não precisa saber quais widgets existem
+function Dashboard({ widgets }: { widgets: DashboardWidget[] }) {
+  return (
+    <div className="grid">
+      {widgets.map(widget => (
+        <WidgetFactory key={widget.id} type={widget.type} {...widget} />
+      ))}
+    </div>
+  )
+}
+```
+
+**Quando usar:** sistemas de plugins, dashboards configuráveis, renderizadores de conteúdo dinâmico (CMS). Adicionar um novo tipo não requer modificar o Factory — basta registrar no mapa.
+
+---
+
+## 5. Adapter Pattern: Envolvendo Componentes de Terceiros
+
+**Problema:** Bibliotecas externas têm APIs inconsistentes ou que você não quer expor diretamente no seu código.
+
+**Solução:** Crie um wrapper que adapta a API externa para a interface interna:
+
+```typescript
+// Biblioteca externa com API verbosa
+import { DatePicker as ExternalDatePicker } from 'some-datepicker-lib'
+
+// Interface interna — simples e consistente com o resto do app
+interface DateInputProps {
+  value: Date | null
+  onChange: (date: Date | null) => void
+  label: string
+  disabled?: boolean
+}
+
+// Adapter
+function DateInput({ value, onChange, label, disabled }: DateInputProps) {
+  return (
+    <div>
+      <label htmlFor={label}>{label}</label>
+      <ExternalDatePicker
+        selectedDate={value}              // adapta: value → selectedDate
+        onDateChange={onChange}           // adapta: onChange → onDateChange
+        isDisabled={disabled ?? false}    // adapta: disabled → isDisabled
+        locale="pt-BR"                    // configuração padrão interna
+        dateFormat="dd/MM/yyyy"
+        id={label}
+      />
+    </div>
+  )
+}
+
+// O resto do app usa DateInput — não conhece ExternalDatePicker
+// Se trocar a biblioteca, só o adapter precisa mudar
+```
+
+**Quando usar:** qualquer componente de terceiro que você usa em mais de um lugar. Se a biblioteca mudar de API ou você quiser trocá-la, apenas o adapter precisa ser atualizado.
+
+---
+
+## 6. Command Pattern: Ações Reversíveis
+
+**Problema:** Implementar undo/redo, histórico de ações, ou operações que podem ser enfileiradas.
+
+**Solução:** Representar ações como objetos, com `execute` e `undo`:
+
+```typescript
+interface Command {
+  execute: () => void
+  undo: () => void
+  description: string
+}
+
+function useCommandHistory() {
+  const [history, setHistory] = useState<Command[]>([])
+  const [position, setPosition] = useState(-1)
+
+  const execute = useCallback((command: Command) => {
+    command.execute()
+    setHistory(h => [...h.slice(0, position + 1), command])
+    setPosition(p => p + 1)
+  }, [position])
+
+  const undo = useCallback(() => {
+    if (position < 0) return
+    history[position].undo()
+    setPosition(p => p - 1)
+  }, [history, position])
+
+  const redo = useCallback(() => {
+    if (position >= history.length - 1) return
+    history[position + 1].execute()
+    setPosition(p => p + 1)
+  }, [history, position])
+
+  return { execute, undo, redo, canUndo: position >= 0, canRedo: position < history.length - 1 }
+}
+
+// Uso em um editor de texto
+const { execute, undo } = useCommandHistory()
+
+const handleInsertText = (text: string) => {
+  execute({
+    execute: () => insertText(text),
+    undo: () => removeText(text.length),
+    description: `Inserir "${text}"`,
+  })
+}
+```
+
+**Quando usar:** editores, fluxos de onboarding multi-step, transações que precisam de rollback.
+
+---
+
+## Quando Padrões Se Tornam Over-Engineering
+
+Padrões são ferramentas, não regras. Sinais de over-engineering:
+
+- O padrão adiciona mais código do que economiza
+- O time passa mais tempo entendendo o padrão do que usando o produto
+- Você está antecipando flexibilidade que nunca vai precisar
+- Componentes simples têm wrappers, adapters e factories sem motivo claro
+
+> "Make it work, make it right, make it fast" — na ordem certa.
+
+---
+
+## Resumo
+
+| Padrão | Problema que Resolve | Quando Usar |
+|---|---|---|
+| Container/Presentational | Mistura de dados e UI | Componentes com fetch complexo |
+| Provider | Estado compartilhado profundo | Tema, auth, configurações |
+| Observer | Comunicação entre partes distantes | Eventos globais, notificações |
+| Factory | Renderização por tipo/config | Dashboards, CMS, plugins |
+| Adapter | APIs externas inconsistentes | Toda biblioteca de terceiro reutilizada |
+| Command | Ações reversíveis | Editores, undo/redo, workflows |

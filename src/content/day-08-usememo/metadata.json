@@ -1,0 +1,14 @@
+{
+  "id": "day-08",
+  "day": 8,
+  "week": 2,
+  "title": "useMemo",
+  "slug": "usememo",
+  "topics": ["memoization", "referential equality", "expensive computations", "dependency array"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01", "day-04"],
+  "hasVisualizer": true,
+  "hasChallenge": true,
+  "xpReward": 110
+}

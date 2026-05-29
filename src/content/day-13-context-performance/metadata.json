@@ -1,0 +1,14 @@
+{
+  "id": "day-13",
+  "day": 13,
+  "week": 2,
+  "title": "Context Performance",
+  "slug": "context-performance",
+  "topics": ["context", "re-renders", "value memoization", "context splitting", "performance"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-08", "day-09"],
+  "hasVisualizer": true,
+  "hasChallenge": true,
+  "xpReward": 130
+}

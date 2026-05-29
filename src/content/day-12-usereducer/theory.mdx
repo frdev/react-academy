@@ -1,0 +1,255 @@
+# useReducer: Estado Complexo com Lógica Previsível
+
+> **Para engenheiros Angular:** Se você já trabalhou com NgRx, o padrão de `useReducer` vai ser imediatamente familiar: actions, reducers, dispatch — é exatamente o mesmo modelo. O React importou o padrão diretamente do Redux (que por sua vez veio do Elm). A diferença é que aqui é local ao componente, sem store global.
+
+## useReducer vs useState: A Mesma Primitiva
+
+`useState` e `useReducer` são implementações diferentes sobre o mesmo mecanismo de estado do React. Na verdade, `useState` é implementado em cima de `useReducer` internamente.
+
+```typescript
+// Estes dois são equivalentes:
+const [count, setCount] = useState(0)
+
+const [count, dispatch] = useReducer((state, action) => {
+  return action.type === 'INCREMENT' ? state + 1 : state
+}, 0)
+```
+
+A diferença é de **ergonomia e organização**, não de capacidade.
+
+---
+
+## Quando Usar useReducer
+
+Prefira `useReducer` quando:
+
+**1. Múltiplos campos de estado relacionados que mudam juntos:**
+
+```typescript
+// Com useState — fragmentado e sujeito a inconsistências
+const [isLoading, setIsLoading] = useState(false)
+const [data, setData] = useState(null)
+const [error, setError] = useState(null)
+
+// Você precisa lembrar de atualizar todos em sincronia:
+setIsLoading(true)
+setData(null) // lembrou?
+setError(null) // e isso?
+```
+
+```typescript
+// Com useReducer — transições atômicas e consistentes
+type State = 
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: Data }
+  | { status: 'error'; error: Error }
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { status: 'loading' }
+    case 'FETCH_SUCCESS':
+      return { status: 'success', data: action.data }
+    case 'FETCH_ERROR':
+      return { status: 'error', error: action.error }
+    default:
+      return state
+  }
+}
+```
+
+**2. Lógica de transição de estado complexa:**
+
+Quando a próxima state depende da state anterior de forma não trivial, ou quando há múltiplas ações que podem mudar o mesmo campo de formas diferentes.
+
+**3. Estado que representa uma máquina de estados:**
+
+Como o exemplo acima — onde estados inválidos (ex: `isLoading: true` e `error: 'something'` ao mesmo tempo) não deveriam existir.
+
+---
+
+## A Anatomia do useReducer
+
+```typescript
+type Action =
+  | { type: 'ADD_TODO'; text: string }
+  | { type: 'TOGGLE_TODO'; id: number }
+  | { type: 'DELETE_TODO'; id: number }
+
+interface Todo {
+  id: number
+  text: string
+  completed: boolean
+}
+
+function todoReducer(state: Todo[], action: Action): Todo[] {
+  switch (action.type) {
+    case 'ADD_TODO':
+      return [
+        ...state,
+        { id: Date.now(), text: action.text, completed: false }
+      ]
+    case 'TOGGLE_TODO':
+      return state.map(todo =>
+        todo.id === action.id
+          ? { ...todo, completed: !todo.completed }
+          : todo
+      )
+    case 'DELETE_TODO':
+      return state.filter(todo => todo.id !== action.id)
+    default:
+      return state
+  }
+}
+
+function TodoApp() {
+  const [todos, dispatch] = useReducer(todoReducer, [])
+
+  return (
+    <div>
+      <button onClick={() => dispatch({ type: 'ADD_TODO', text: 'Nova tarefa' })}>
+        Adicionar
+      </button>
+      {todos.map(todo => (
+        <div key={todo.id}>
+          <span
+            style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}
+            onClick={() => dispatch({ type: 'TOGGLE_TODO', id: todo.id })}
+          >
+            {todo.text}
+          </span>
+          <button onClick={() => dispatch({ type: 'DELETE_TODO', id: todo.id })}>
+            Excluir
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+---
+
+## Type Safety com Discriminated Unions TypeScript
+
+Um dos maiores benefícios do padrão reducer com TypeScript são as **discriminated unions** — o TypeScript consegue narrowing automático:
+
+```typescript
+type Action =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; data: ApiResponse }
+  | { type: 'FETCH_ERROR'; error: string }
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'FETCH_SUCCESS':
+      // TypeScript sabe que action.data existe aqui
+      return { status: 'success', data: action.data }
+    case 'FETCH_ERROR':
+      // TypeScript sabe que action.error existe aqui
+      return { status: 'error', message: action.error }
+  }
+}
+```
+
+Se você tentar acessar `action.data` em um case onde ela não existe, o TypeScript vai errar em compile time.
+
+---
+
+## Testando Reducers
+
+Reducers são **funções puras** — dado o mesmo estado e a mesma action, sempre retornam o mesmo resultado. Isso os torna extremamente fáceis de testar:
+
+```typescript
+import { todoReducer } from './todoReducer'
+
+describe('todoReducer', () => {
+  it('adiciona um todo', () => {
+    const initial: Todo[] = []
+    const result = todoReducer(initial, { type: 'ADD_TODO', text: 'Estudar React' })
+    expect(result).toHaveLength(1)
+    expect(result[0].text).toBe('Estudar React')
+    expect(result[0].completed).toBe(false)
+  })
+
+  it('toggle completa e depois descompleta', () => {
+    const initial = [{ id: 1, text: 'Tarefa', completed: false }]
+    const toggled = todoReducer(initial, { type: 'TOGGLE_TODO', id: 1 })
+    expect(toggled[0].completed).toBe(true)
+
+    const unToggled = todoReducer(toggled, { type: 'TOGGLE_TODO', id: 1 })
+    expect(unToggled[0].completed).toBe(false)
+  })
+})
+```
+
+Não precisa de mocks, não precisa de `renderHook`, não precisa de componente — é só uma função.
+
+---
+
+## Combinando useReducer + useContext: "Poor Man's Redux"
+
+Para estado global simples, a combinação `useReducer` + `useContext` oferece um padrão muito próximo do Redux sem dependências externas:
+
+```typescript
+// store.tsx
+const StoreContext = createContext<{
+  state: AppState
+  dispatch: React.Dispatch<Action>
+} | null>(null)
+
+export function StoreProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(appReducer, initialState)
+  return (
+    <StoreContext.Provider value={{ state, dispatch }}>
+      {children}
+    </StoreContext.Provider>
+  )
+}
+
+export function useStore() {
+  const ctx = useContext(StoreContext)
+  if (!ctx) throw new Error('useStore deve ser usado dentro de StoreProvider')
+  return ctx
+}
+
+// Uso em qualquer componente:
+function Counter() {
+  const { state, dispatch } = useStore()
+  return (
+    <button onClick={() => dispatch({ type: 'INCREMENT' })}>
+      {state.count}
+    </button>
+  )
+}
+```
+
+**Atenção:** Este padrão tem limitações de performance (abordadas no Dia 13). Para apps grandes com muitas atualizações, considere Zustand ou Jotai.
+
+---
+
+## Comparação com NgRx (Angular)
+
+| Conceito NgRx | Equivalente React |
+|---|---|
+| `Action` (classe/type) | `Action` (discriminated union TypeScript) |
+| `Reducer` (função pura) | `reducer` (função pura) |
+| `Store.dispatch()` | `dispatch()` do `useReducer` |
+| `Store.select()` | `state` do `useReducer` + `useMemo` para derivados |
+| `Effects` | `useEffect` que despacha actions |
+| Store global | `useReducer` + Context |
+
+A grande diferença: NgRx é global por default (store do módulo/app). `useReducer` é local ao componente. Para torná-lo global, você precisa elevá-lo via Context.
+
+---
+
+## Key Takeaways
+
+1. `useReducer` e `useState` são a mesma primitiva — `useState` é built on `useReducer`
+2. Prefira `useReducer` para múltiplos campos relacionados, transições complexas, ou state machines
+3. O padrão action/reducer torna transições de estado explícitas, previsíveis e testáveis
+4. Discriminated unions TypeScript dão type safety completa nas actions
+5. Reducers são funções puras — fáceis de testar sem mocks ou componentes
+6. `useReducer` + Context = Redux local — útil mas com limitações de performance em escala
+7. Para quem conhece NgRx: é exatamente o mesmo padrão, apenas local ao componente

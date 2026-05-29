@@ -1,0 +1,14 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "Composition Pattern",
+  "slug": "composition-pattern",
+  "topics": ["children", "composition", "specialization", "containment", "slot pattern"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 110
+}

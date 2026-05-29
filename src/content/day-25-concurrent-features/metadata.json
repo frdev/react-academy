@@ -1,0 +1,14 @@
+{
+  "id": "day-25",
+  "day": 25,
+  "week": 4,
+  "title": "Concurrent Features",
+  "slug": "concurrent-features",
+  "topics": ["useTransition", "useDeferredValue", "startTransition", "concurrent mode", "scheduler"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-24"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 150
+}

@@ -1,0 +1,14 @@
+{
+  "id": "day-24",
+  "day": 24,
+  "week": 4,
+  "title": "Suspense",
+  "slug": "suspense",
+  "topics": ["Suspense", "fallback", "lazy loading", "data fetching", "streaming"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-23"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 130
+}

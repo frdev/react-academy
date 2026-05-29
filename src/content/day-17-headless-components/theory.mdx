@@ -1,0 +1,278 @@
+# Headless Components: Separando Lógica de Apresentação
+
+> **Para engenheiros Angular:** O Angular CDK (Component Development Kit) é uma biblioteca de primitivas headless — overlay, drag-and-drop, acessibilidade, virtual scrolling — sem CSS de aparência. O mesmo princípio exato. A diferença é que no React o padrão é mais diverso: existem múltiplas bibliotecas (Radix UI, Headless UI, TanStack) cada uma com sua API, e o padrão de hooks como alternativa a componentes renderless.
+
+## O Que São Headless Components?
+
+Um headless component (ou renderless component) é um componente que encapsula **comportamento e lógica** sem opinar sobre a **aparência visual**.
+
+Compare com um componente normal:
+
+```typescript
+// Componente estilizado — lógica + UI juntas
+function Accordion({ items }: { items: AccordionItem[] }) {
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  return (
+    <div className="accordion border rounded-lg">
+      {items.map(item => (
+        <div key={item.id}>
+          <button
+            className="flex w-full p-4 bg-gray-100 hover:bg-gray-200"
+            onClick={() => setOpenId(openId === item.id ? null : item.id)}
+          >
+            {item.title}
+          </button>
+          {openId === item.id && (
+            <div className="p-4 bg-white">{item.content}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+O problema: se você tem dois design systems diferentes (um para produto A, outro para produto B), o componente acima não é reutilizável — o CSS está embutido.
+
+---
+
+## Abordagem 1: Hooks como Headless
+
+A forma mais idiomática no React moderno é usar hooks para encapsular o comportamento:
+
+```typescript
+// Hook headless — só lógica, zero UI
+function useAccordion(items: AccordionItem[]) {
+  const [openId, setOpenId] = useState<string | null>(null)
+
+  const toggle = useCallback((id: string) => {
+    setOpenId(prev => prev === id ? null : id)
+  }, [])
+
+  const isOpen = useCallback((id: string) => openId === id, [openId])
+
+  const getItemProps = (id: string) => ({
+    'aria-expanded': isOpen(id),
+    'aria-controls': `accordion-panel-${id}`,
+  })
+
+  const getTriggerProps = (id: string) => ({
+    id: `accordion-trigger-${id}`,
+    onClick: () => toggle(id),
+    'aria-expanded': isOpen(id),
+    'aria-controls': `accordion-panel-${id}`,
+  })
+
+  const getPanelProps = (id: string) => ({
+    id: `accordion-panel-${id}`,
+    role: 'region' as const,
+    'aria-labelledby': `accordion-trigger-${id}`,
+    hidden: !isOpen(id),
+  })
+
+  return { isOpen, toggle, getItemProps, getTriggerProps, getPanelProps }
+}
+```
+
+O componente que usa esse hook decide completamente o JSX:
+
+```typescript
+// Design System A — estilo corporativo
+function CorporateAccordion({ items }: { items: AccordionItem[] }) {
+  const { isOpen, getTriggerProps, getPanelProps } = useAccordion(items)
+
+  return (
+    <div className="ds-accordion">
+      {items.map(item => (
+        <div key={item.id} className="ds-accordion__item">
+          <button className="ds-accordion__trigger" {...getTriggerProps(item.id)}>
+            <span>{item.title}</span>
+            <ChevronIcon rotated={isOpen(item.id)} />
+          </button>
+          <div className="ds-accordion__panel" {...getPanelProps(item.id)}>
+            {item.content}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Design System B — estilo consumer
+function ConsumerAccordion({ items }: { items: AccordionItem[] }) {
+  const { isOpen, getTriggerProps, getPanelProps } = useAccordion(items)
+
+  return (
+    <section className="rounded-2xl shadow-lg overflow-hidden">
+      {items.map(item => (
+        <article key={item.id}>
+          <h3>
+            <button className="w-full text-left p-6 font-semibold" {...getTriggerProps(item.id)}>
+              {item.title}
+            </button>
+          </h3>
+          <div className="px-6 pb-6" {...getPanelProps(item.id)}>
+            {item.content}
+          </div>
+        </article>
+      ))}
+    </section>
+  )
+}
+```
+
+**Mesma lógica, aparências completamente diferentes.** O hook `useAccordion` é reutilizado por ambos os design systems.
+
+---
+
+## Abordagem 2: Render Props (Componentes Renderless)
+
+Antes dos hooks, o padrão era render props — o componente recebe uma função que decide como renderizar:
+
+```typescript
+interface AccordionRenderProps {
+  isOpen: boolean
+  toggle: () => void
+}
+
+function AccordionItem({
+  children,
+}: {
+  children: (props: AccordionRenderProps) => React.ReactNode
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const toggle = () => setIsOpen(prev => !prev)
+
+  return <>{children({ isOpen, toggle })}</>
+}
+
+// Uso:
+<AccordionItem>
+  {({ isOpen, toggle }) => (
+    <div>
+      <button onClick={toggle}>{isOpen ? '−' : '+'} Título</button>
+      {isOpen && <div>Conteúdo</div>}
+    </div>
+  )}
+</AccordionItem>
+```
+
+Hooks tornaram render props menos necessários para esse caso — mas render props ainda são úteis quando você precisa de composição em JSX (não apenas lógica).
+
+---
+
+## Bibliotecas Headless no Ecossistema React
+
+### Radix UI
+
+Radix é a biblioteca headless mais popular para componentes de UI complexos:
+
+```typescript
+import * as Dialog from '@radix-ui/react-dialog'
+
+// Radix provê comportamento: foco trap, escape para fechar, ARIA
+// Você provê o CSS
+function MyModal({ open, onClose, children }: ModalProps) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onClose}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl p-6 shadow-2xl">
+          {children}
+          <Dialog.Close className="absolute top-4 right-4">×</Dialog.Close>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+```
+
+Sem Radix, um dialog acessível requer: `focus trap` (o usuário não pode tabular para fora do modal), `aria-modal`, `aria-labelledby`, fechar com `Escape`, e devolver o foco ao elemento trigger quando fechar. São dezenas de linhas de lógica. Radix cuida de tudo isso.
+
+### Headless UI (Tailwind Labs)
+
+Similar ao Radix, projetado especificamente para uso com Tailwind CSS.
+
+### TanStack Table
+
+Headless para tabelas com sorting, filtering, pagination, row selection:
+
+```typescript
+const table = useReactTable({
+  data,
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+})
+
+// Você decide como renderizar a tabela
+return (
+  <table>
+    <thead>
+      {table.getHeaderGroups().map(headerGroup => (
+        <tr key={headerGroup.id}>
+          {headerGroup.headers.map(header => (
+            <th key={header.id} onClick={header.column.getToggleSortingHandler()}>
+              {flexRender(header.column.columnDef.header, header.getContext())}
+            </th>
+          ))}
+        </tr>
+      ))}
+    </thead>
+    <tbody>
+      {table.getRowModel().rows.map(row => (
+        <tr key={row.id}>
+          {row.getVisibleCells().map(cell => (
+            <td key={cell.id}>
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)
+```
+
+---
+
+## Por Que Headless Existe: O Problema do Design System
+
+O ecossistema de UI components do React historicamente acoplava lógica e estilo. Material UI, Ant Design, Chakra UI — todos excelentes, mas todos impõem sua aparência. Se o design do seu produto diverge, você luta contra a biblioteca.
+
+Headless separa as preocupações:
+
+```
+Lógica + Comportamento + Acessibilidade  →  biblioteca headless (Radix, Headless UI)
+Aparência visual + Tokens de design      →  seu CSS / seu Tailwind
+```
+
+Para autores de design systems corporativos, isso é transformador: você implementa uma vez a lógica de dropdown com acessibilidade perfeita, e cinco squads diferentes aplicam a aparência do produto deles.
+
+---
+
+## Comparação: Angular CDK vs React Headless
+
+| Aspecto | Angular CDK | React Headless (Radix/Hooks) |
+|---|---|---|
+| Filosofia | Primitivas headless | Igual — mesma filosofia |
+| API | Diretivas + Services | Componentes + Hooks |
+| Acessibilidade | Sim (a11y package) | Sim (Radix, etc.) |
+| Flexibilidade de markup | Via `<ng-content>` | Via qualquer JSX |
+| Exemplos | Overlay, DragDrop, CDKTable | Dialog, Dropdown, Table |
+
+A filosofia é idêntica — o que muda é o mecanismo de implementação. Se você já usou `CdkAccordion` do Angular CDK, você já entende o problema que Radix UI resolve.
+
+---
+
+## Key Takeaways
+
+1. Headless components encapsulam comportamento sem impor aparência — lógica separada de UI
+2. Hooks são a forma idiomática moderna: retornam estado + prop getters que o componente aplica ao JSX
+3. Render props foram a forma pré-hooks — ainda úteis para composição em JSX
+4. Radix UI, Headless UI e TanStack são as bibliotecas headless mais usadas no ecossistema
+5. O caso de uso perfeito: acessibilidade complexa (modals, dropdowns, tooltips) sem impor CSS
+6. Para design systems corporativos: use headless para comportamento, aplique tokens de design próprios
+7. Angular CDK é exatamente a mesma filosofia — familiaridade útil para engenheiros Angular migrando

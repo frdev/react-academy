@@ -1,0 +1,195 @@
+# useLayoutEffect vs useEffect: Timing É Tudo
+
+> **Para engenheiros Angular:** `useLayoutEffect` é análogo ao `ngAfterViewInit` do Angular — executa de forma síncrona após as mutações do DOM, antes de o browser pintar. `useEffect` é mais parecido com um `setTimeout(fn, 0)` após o `ngAfterViewInit` — assíncrono em relação ao paint. A distinção importa quando você precisa medir ou ajustar o DOM antes que o usuário veja.
+
+## O Modelo Mental: O Pipeline de Render
+
+Para entender a diferença, visualize o pipeline completo do React:
+
+```
+[React Render] → [React Commit (DOM mutations)] → [useLayoutEffect] → [Browser Paint] → [useEffect]
+```
+
+Tanto `useLayoutEffect` quanto `useEffect` rodam **após** o React ter commitado as mudanças no DOM. A diferença está em relação ao **paint do browser**:
+
+- `useLayoutEffect`: **antes** do paint — síncrono, bloqueia o paint
+- `useEffect`: **após** o paint — assíncrono, não bloqueia nada
+
+---
+
+## useEffect: O Default Correto para 99% dos Casos
+
+`useEffect` executa **depois que o browser pintou a tela**. Isso significa que o usuário já viu a atualização quando o efeito roda:
+
+```typescript
+useEffect(() => {
+  // O usuário já viu o novo estado da UI quando isso executa
+  fetch('/api/analytics').then(trackPageView)
+
+  const subscription = store.subscribe(handleChange)
+  return () => subscription.unsubscribe()
+}, [])
+```
+
+Casos de uso ideais para `useEffect`:
+- **Data fetching** — fetch, axios, SWR manual
+- **Subscriptions** — WebSocket, EventSource, custom stores
+- **Analytics e logging** — rastreamento de visualizações
+- **DOM mutations não visuais** — adicionar/remover event listeners
+- **Timers** — `setTimeout`, `setInterval`
+
+A natureza assíncrona é uma **vantagem**: o browser pode pintar sem esperar pelo efeito, mantendo a UI responsiva.
+
+---
+
+## useLayoutEffect: Para Quando a Visibilidade Importa
+
+`useLayoutEffect` executa **antes do browser pintar**, de forma síncrona após as mutações do DOM. Isso o torna necessário quando você precisa **ler ou modificar o DOM** de forma que afete o que o usuário verá.
+
+### O Problema Clássico: Tooltip Positioning
+
+```typescript
+function Tooltip({ targetRef, content }: TooltipProps) {
+  const tooltipRef = useRef<HTMLDivElement>(null)
+
+  // Se usarmos useEffect aqui, o usuário veria o tooltip na posição errada
+  // por um frame antes de ser corrigido — um flash indesejado
+  useLayoutEffect(() => {
+    const target = targetRef.current
+    const tooltip = tooltipRef.current
+    if (!target || !tooltip) return
+
+    const targetRect = target.getBoundingClientRect()
+    const tooltipRect = tooltip.getBoundingClientRect()
+
+    // Posicionar acima do target, centralizado
+    tooltip.style.top = `${targetRect.top - tooltipRect.height - 8}px`
+    tooltip.style.left = `${targetRect.left + (targetRect.width - tooltipRect.width) / 2}px`
+  }) // sem deps — recalcula após todo render
+
+  return (
+    <div ref={tooltipRef} className="tooltip" style={{ position: 'fixed' }}>
+      {content}
+    </div>
+  )
+}
+```
+
+Com `useEffect`, o tooltip apareceria no canto superior esquerdo por um frame (posição inicial `top: 0, left: 0`) antes de ser movido. O usuário veria um flash. Com `useLayoutEffect`, o reposicionamento acontece antes do paint — o usuário nunca vê a posição incorreta.
+
+### Outros Casos de Uso de useLayoutEffect
+
+```typescript
+// Medir elemento antes que o usuário veja
+useLayoutEffect(() => {
+  const { height } = containerRef.current!.getBoundingClientRect()
+  setContainerHeight(height) // ajusta estado baseado em medida DOM
+}, [dependencies])
+
+// Sincronizar scroll position
+useLayoutEffect(() => {
+  window.scrollTo(0, savedScrollPosition)
+}, [savedScrollPosition])
+
+// Animações que precisam da posição DOM inicial para calcular
+useLayoutEffect(() => {
+  const rect = elementRef.current!.getBoundingClientRect()
+  animate(elementRef.current!, { from: rect })
+}, [])
+```
+
+---
+
+## A Caveat do SSR: useIsomorphicLayoutEffect
+
+`useLayoutEffect` não existe no ambiente do servidor (Node.js). Em apps com SSR (Next.js, Remix), você verá este warning:
+
+```
+Warning: useLayoutEffect does nothing on the server because its effect cannot 
+be encoded into the server renderer's output format.
+```
+
+A solução é o padrão `useIsomorphicLayoutEffect`:
+
+```typescript
+import { useEffect, useLayoutEffect } from 'react'
+
+// No servidor: useEffect (que não faz nada no SSR)
+// No cliente: useLayoutEffect (comportamento correto)
+export const useIsomorphicLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect
+```
+
+Use esse padrão em libraries e componentes que serão usados em apps SSR.
+
+---
+
+## Comparação Visual de Timing
+
+```
+Cenário: setState é chamado
+
+Com useEffect:
+┌─────────────────────────────────────────────────────────────┐
+│ 1. React re-renderiza (fase Render)                         │
+│ 2. React commita no DOM (fase Commit)                       │
+│ 3. useLayoutEffect roda (se houver)                         │
+│ 4. Browser pinta a tela ← usuário vê aqui                  │
+│ 5. useEffect roda ← aqui você pode fazer side effects       │
+└─────────────────────────────────────────────────────────────┘
+
+Com useLayoutEffect:
+┌─────────────────────────────────────────────────────────────┐
+│ 1. React re-renderiza (fase Render)                         │
+│ 2. React commita no DOM (fase Commit)                       │
+│ 3. useLayoutEffect roda ← aqui você pode modificar DOM      │
+│ 4. Browser pinta a tela ← usuário vê o resultado final      │
+│ 5. useEffect roda                                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Por Que não Usar useLayoutEffect para Tudo?
+
+Porque é **síncrono e bloqueia o paint**. Se o código dentro de `useLayoutEffect` for lento, o browser fica bloqueado esperando, causando jank (travamento visual).
+
+Compare:
+
+```typescript
+// Seguro: roda após o paint, não bloqueia
+useEffect(() => {
+  fetch('/api/heavy-data').then(process) // pode demorar 500ms
+}, [])
+
+// PERIGOSO: bloqueia o paint por 500ms!
+useLayoutEffect(() => {
+  fetch('/api/heavy-data').then(process) // usuário vê tela em branco
+}, [])
+```
+
+A regra é simples: **`useEffect` a menos que você tenha um motivo específico para `useLayoutEffect`**. E o único motivo válido é evitar flicker visual causado por leitura/escrita de layout DOM.
+
+---
+
+## Comparação com Angular
+
+| React | Angular |
+|---|---|
+| `useLayoutEffect` | `ngAfterViewInit` (síncrono, após DOM disponível) |
+| `useEffect` | `ngAfterViewInit` + `setTimeout(fn, 0)` (assíncrono) |
+| `useLayoutEffect cleanup` | `ngOnDestroy` |
+
+O `ngAfterViewInit` do Angular é sempre síncrono — você sempre tem acesso ao DOM real ali. No React, você escolhe explicitamente se quer sincronicidade (`useLayoutEffect`) ou assincronia (`useEffect`). Na maioria dos casos, a assincronia do `useEffect` é preferível para performance.
+
+---
+
+## Key Takeaways
+
+1. `useLayoutEffect` roda **antes** do paint — síncrono, bloqueia o browser
+2. `useEffect` roda **após** o paint — assíncrono, não bloqueia nada
+3. Use `useLayoutEffect` para: medir DOM, posicionar tooltips/popovers, evitar flicker visual
+4. Use `useEffect` para: fetch, subscriptions, timers, analytics — 99% dos casos
+5. `useLayoutEffect` causa warning no SSR — use o padrão `useIsomorphicLayoutEffect`
+6. Nunca coloque operações lentas em `useLayoutEffect` — vai bloquear o paint
+7. Angular paralelo: `useLayoutEffect` ≈ `ngAfterViewInit`; `useEffect` ≈ `ngAfterViewInit` + `setTimeout`

@@ -1,0 +1,14 @@
+{
+  "id": "day-28",
+  "day": 28,
+  "week": 4,
+  "title": "Accessibility (a11y)",
+  "slug": "accessibility",
+  "topics": ["ARIA", "focus management", "keyboard navigation", "screen readers", "semantic HTML"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 120
+}

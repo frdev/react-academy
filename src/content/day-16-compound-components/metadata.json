@@ -1,0 +1,14 @@
+{
+  "id": "day-16",
+  "day": 16,
+  "week": 3,
+  "title": "Compound Components",
+  "slug": "compound-components",
+  "topics": ["compound components", "context", "implicit state", "flexible API", "dot notation"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-06", "day-13"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 140
+}

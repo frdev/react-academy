@@ -1,0 +1,14 @@
+{
+  "id": "day-20",
+  "day": 20,
+  "week": 3,
+  "title": "Server State",
+  "slug": "server-state",
+  "topics": ["TanStack Query", "server state", "cache", "stale-while-revalidate", "mutations"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-19"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 140
+}

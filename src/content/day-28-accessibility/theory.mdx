@@ -1,0 +1,310 @@
+# Acessibilidade (a11y): UIs que Funcionam para Todos
+
+> **Para engenheiros Angular:** O Angular CDK fornece `A11yModule` com utilitários como `FocusTrap`, `LiveAnnouncer` e `FocusMonitor` — infraestrutura robusta para acessibilidade. Em React, os princípios são idênticos, mas a implementação é mais manual: você usa `useRef` + `focus()`, cria focus traps com lógica de event listener, e usa `aria-live` para announcements dinâmicos. A vantagem é controle total; a desvantagem é que você escreve mais código.
+
+## Por Que Acessibilidade Importa
+
+Cerca de 15-20% da população mundial tem algum tipo de deficiência. Na web, as principais são:
+
+- **Visual**: usuários de leitores de tela (NVDA, VoiceOver, JAWS), baixa visão, daltonismo
+- **Motora**: navegação por teclado apenas, switch access
+- **Cognitiva**: dislexia, TDAH, dificuldade com interfaces complexas
+
+Além do impacto humano, há **risco legal**: em muitos países (EUA, EU, Brasil), apps inacessíveis violam legislação de proteção a pessoas com deficiência. Grandes empresas enfrentaram processos milionários por acessibilidade inadequada.
+
+---
+
+## HTML Semântico Primeiro
+
+A regra mais importante: **use os elementos HTML corretos antes de recorrer ao ARIA**.
+
+```html
+<!-- RUIM: div que parece um botão -->
+<div onClick={handleSave} className="btn">Salvar</div>
+
+<!-- BOM: botão real — teclado, ARIA role, estados nativos de graça -->
+<button onClick={handleSave}>Salvar</button>
+
+<!-- RUIM: div como link -->
+<div onClick={() => navigate('/profile')}>Perfil</div>
+
+<!-- BOM: âncora real -->
+<a href="/profile">Perfil</a>
+
+<!-- RUIM: div como lista -->
+<div>
+  <div>Item 1</div>
+  <div>Item 2</div>
+</div>
+
+<!-- BOM: lista semântica -->
+<ul>
+  <li>Item 1</li>
+  <li>Item 2</li>
+</ul>
+```
+
+Elementos HTML nativos (`button`, `a`, `input`, `select`, `textarea`) vêm com:
+- Role ARIA correto por padrão
+- Comportamento de teclado nativo
+- Estados comunicados automaticamente ao leitor de tela
+
+---
+
+## ARIA: Quando e Como Usar
+
+ARIA (Accessible Rich Internet Applications) **complementa** HTML semântico — não substitui. A regra:
+
+> "Nenhum ARIA é melhor que ARIA ruim."
+
+**Use ARIA quando:**
+- O elemento HTML nativo não comunica o que é necessário
+- Você criou um widget customizado (dropdown, tabs, modal, carousel)
+- Conteúdo dinâmico precisa ser anunciado
+
+```typescript
+// Botão com estado de loading — ARIA adiciona contexto
+<button 
+  onClick={handleSave} 
+  disabled={isSaving}
+  aria-busy={isSaving}
+  aria-label={isSaving ? 'Salvando...' : 'Salvar'}
+>
+  {isSaving ? <Spinner /> : 'Salvar'}
+</button>
+
+// Ícone como botão — sem aria-label, leitor de tela não sabe o que é
+<button onClick={handleDelete} aria-label="Excluir usuário Alice">
+  <TrashIcon aria-hidden="true" /> {/* aria-hidden esconde o ícone do leitor */}
+</button>
+
+// Região de status dinâmico
+<div aria-live="polite" aria-atomic="true">
+  {statusMessage && <p>{statusMessage}</p>}
+</div>
+```
+
+---
+
+## aria-live: Anunciando Conteúdo Dinâmico
+
+Quando conteúdo muda dinamicamente (notificações, erros de formulário, resultados de busca), leitores de tela precisam ser notificados:
+
+```typescript
+function SearchResults({ results, isLoading }: Props) {
+  return (
+    <div>
+      {/* Anuncia mudanças educadamente (não interrompe o usuário) */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {isLoading 
+          ? 'Buscando resultados...' 
+          : `${results.length} resultado(s) encontrado(s)`
+        }
+      </div>
+      
+      <ul>
+        {results.map(r => <li key={r.id}>{r.name}</li>)}
+      </ul>
+    </div>
+  )
+}
+```
+
+- `aria-live="polite"`: anuncia quando o usuário termina de interagir (menos intrusivo)
+- `aria-live="assertive"`: anuncia imediatamente (para erros críticos)
+- `aria-atomic="true"`: anuncia a região inteira, não apenas a parte que mudou
+
+---
+
+## Navegação por Teclado
+
+**Toda interação deve ser possível via teclado.** Usuários com deficiência motora frequentemente não usam mouse.
+
+```typescript
+// Tab: move foco entre elementos interativos
+// Enter/Space: ativa botões
+// Escape: fecha modais/dropdowns
+// Arrow keys: navega dentro de grupos (menus, tabs)
+
+// Custom dropdown com navegação por teclado
+function Dropdown({ options, value, onChange }: Props) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case 'Enter':
+      case ' ':
+        setIsOpen(open => !open)
+        break
+      case 'Escape':
+        setIsOpen(false)
+        break
+      case 'ArrowDown':
+        e.preventDefault()
+        // mover foco para próxima opção
+        break
+    }
+  }
+
+  return (
+    <div 
+      role="combobox"
+      aria-expanded={isOpen}
+      aria-haspopup="listbox"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
+      {/* ... */}
+    </div>
+  )
+}
+```
+
+---
+
+## Gerenciamento de Foco: Modais e Drawers
+
+O maior desafio de acessibilidade em React: **manter o foco dentro do modal**.
+
+```typescript
+function Modal({ isOpen, onClose, children }: Props) {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
+
+  // Foca o primeiro elemento ao abrir
+  useEffect(() => {
+    if (isOpen) {
+      closeBtnRef.current?.focus()
+    }
+  }, [isOpen])
+
+  // Trap de foco — previne Tab sair do modal
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose()
+      return
+    }
+
+    if (e.key === 'Tab') {
+      const focusable = modalRef.current?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      if (!focusable || focusable.length === 0) return
+
+      const first = focusable[0] as HTMLElement
+      const last = focusable[focusable.length - 1] as HTMLElement
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div 
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      ref={modalRef}
+      onKeyDown={handleKeyDown}
+    >
+      <h2 id="modal-title">Título do Modal</h2>
+      <button ref={closeBtnRef} onClick={onClose} aria-label="Fechar modal">
+        ×
+      </button>
+      {children}
+    </div>
+  )
+}
+```
+
+Alternativa: use bibliotecas como `@radix-ui/react-dialog` ou `react-aria` que implementam focus trap corretamente.
+
+---
+
+## React-Specific: key e Foco
+
+Quando você usa `key` para forçar remontagem de componentes, o foco é perdido. Gerencie explicitamente:
+
+```typescript
+// key muda → componente remonta → foco perdido
+<input key={currentStep} />
+
+// Solução: após mudança de step, reposicionar foco
+useEffect(() => {
+  inputRef.current?.focus()
+}, [currentStep])
+```
+
+---
+
+## Portais e Acessibilidade
+
+Portais (`createPortal`) rendem filhos fora da árvore DOM do componente. O leitor de tela segue a ordem do DOM, não a hierarquia do React:
+
+```typescript
+// Modal em portal — certifique-se que aria-modal e role="dialog" estão presentes
+function Modal({ children }) {
+  return createPortal(
+    <div role="dialog" aria-modal="true">
+      {children}
+    </div>,
+    document.body // renderiza fora do #root, mas o React ainda gerencia
+  )
+}
+```
+
+---
+
+## Testando Acessibilidade
+
+**axe-core automatiza parte da verificação:**
+```bash
+npm install -D @axe-core/react
+```
+
+```typescript
+// Em desenvolvimento apenas
+if (process.env.NODE_ENV === 'development') {
+  import('@axe-core/react').then(({ default: axe }) => {
+    axe(React, ReactDOM, 1000)
+  })
+}
+```
+
+**Testes com Vitest:**
+```typescript
+import { axe } from 'jest-axe'
+
+it('não tem violações de acessibilidade', async () => {
+  const { container } = render(<LoginForm />)
+  const results = await axe(container)
+  expect(results).toHaveNoViolations()
+})
+```
+
+**Teste manual essencial:**
+1. Navegue pelo app usando apenas Tab, Enter, Space, Escape, setas
+2. Teste com VoiceOver (macOS) ou NVDA (Windows)
+3. Verifique contraste de cores com ferramentas como Colour Contrast Analyser
+
+---
+
+## Resumo
+
+| Regra | Por Quê |
+|---|---|
+| HTML semântico primeiro | Comportamento nativo grátis, menos código |
+| ARIA só quando necessário | ARIA ruim é pior que nenhum ARIA |
+| `aria-label` em ícones | Leitores de tela precisam de texto |
+| `aria-live` para conteúdo dinâmico | Notificações não são visíveis sem olhar a tela |
+| Focus trap em modais | Usuário de teclado fica preso fora do modal |
+| Teste com teclado | Valide que todos os flows são possíveis sem mouse |
+
+Acessibilidade não é um checklist para cumprir no final do projeto. É uma prática que, quando adotada desde o início, custa pouco e beneficia muitos — inclusive usuários sem deficiência (como quem usa o teclado para ser mais produtivo).

@@ -1,0 +1,14 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Render Cycle",
+  "slug": "render-cycle",
+  "topics": ["trigger", "render phase", "commit phase", "browser paint", "re-render"],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": [],
+  "hasVisualizer": true,
+  "hasChallenge": true,
+  "xpReward": 100
+}

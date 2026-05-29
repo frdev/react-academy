@@ -1,0 +1,14 @@
+{
+  "id": "day-09",
+  "day": 9,
+  "week": 2,
+  "title": "useCallback",
+  "slug": "usecallback",
+  "topics": ["function memoization", "referential equality", "event handlers", "dependency array"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-08"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 110
+}

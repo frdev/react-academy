@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-14",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença de timing entre useLayoutEffect e useEffect?",
+      "options": [
+        "useLayoutEffect roda antes do React commitar no DOM; useEffect roda depois",
+        "useLayoutEffect roda sincronamente após as mutações do DOM, antes do paint; useEffect roda assincronamente após o paint",
+        "useLayoutEffect roda uma vez; useEffect roda a cada render",
+        "useLayoutEffect é para operações de leitura; useEffect é para operações de escrita"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A sequência é: Render → Commit (DOM mutations) → useLayoutEffect → Browser Paint → useEffect. useLayoutEffect é síncrono e bloqueia o paint do browser, garantindo que o usuário só vê a tela depois que o efeito completou. useEffect é assíncrono — o browser pinta primeiro, depois o efeito roda. Isso faz useEffect não bloqueante, mas significa que o usuário pode ver um estado intermediário por um frame."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em qual situação você DEVE usar useLayoutEffect ao invés de useEffect?",
+      "options": [
+        "Para fetch de dados — useLayoutEffect garante que os dados estejam disponíveis antes do primeiro render",
+        "Para subscriptions — useLayoutEffect evita memory leaks",
+        "Para posicionar elementos como tooltips baseado em medidas do DOM, evitando flicker visual",
+        "Para analytics — garante que o evento seja enviado antes do usuário navegar"
+      ],
+      "correctAnswer": 2,
+      "explanation": "useLayoutEffect é necessário quando você precisa ler o DOM e ajustar algo antes que o usuário veja. Um tooltip precisa ser posicionado baseado no getBoundingClientRect() do elemento alvo. Com useEffect, o tooltip apareceria na posição default por um frame e então saltaria para a posição correta (flicker). Com useLayoutEffect, o reposicionamento acontece antes do paint — o usuário só vê a posição correta."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que useLayoutEffect causa problemas em aplicações com SSR (Server-Side Rendering)?",
+      "options": [
+        "useLayoutEffect não suporta arrays de dependências no servidor",
+        "O servidor não tem DOM — useLayoutEffect não pode executar e React emite um warning",
+        "useLayoutEffect conflita com hidratação do React no cliente",
+        "SSR requer que todos os efeitos sejam assíncronos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "No servidor (Node.js), não existe DOM, window, ou browser paint. useLayoutEffect não pode executar porque seu propósito é manipular o DOM. O React emite um warning e ignora o hook. A solução é usar o padrão useIsomorphicLayoutEffect: uma variável que é useLayoutEffect no cliente (typeof window !== 'undefined') e useEffect no servidor."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Verdadeiro ou Falso: Por ser mais poderoso, useLayoutEffect deve ser preferido sobre useEffect na maioria dos casos.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. useLayoutEffect bloqueia o paint do browser — se o código dentro dele for lento, o usuário verá a tela 'travada'. useEffect é assíncrono e não bloqueia nada, tornando a UI mais responsiva. useEffect deve ser o default para 99% dos casos: fetch, subscriptions, analytics, timers. Reserve useLayoutEffect exclusivamente para casos onde você precisa evitar flicker visual causado por leitura/escrita de layout DOM."
+    }
+  ]
+}

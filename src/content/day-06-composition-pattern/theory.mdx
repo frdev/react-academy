@@ -1,0 +1,208 @@
+# Composition Pattern: Construindo UI Como Lego
+
+## Por Que Composição, Não Herança
+
+No React, a documentação oficial diz explicitamente: **prefira composição à herança**. Mas por quê?
+
+Em linguagens orientadas a objeto clássicas, você estende comportamentos criando subclasses: `Button extends Component`. O problema com herança para UI é o acoplamento rígido — quando você herda de uma classe, você depende de toda a sua implementação. Mudanças na superclasse afetam todas as subclasses.
+
+Composição é diferente: você constrói componentes maiores combinando componentes menores. A relação é de "tem um" em vez de "é um". Um `Dialog` *tem* um `Button` — não é uma subclasse de Button.
+
+React não proibiu herança de classes (`extends React.Component` é herança de React), mas proibiu o padrão de herança para lógica de UI. Com hooks, nem mesmo a herança de `React.Component` é mais necessária.
+
+---
+
+## O `children` Prop: O Mecanismo Principal
+
+A prop `children` é a forma mais natural de composição no React. Qualquer conteúdo entre as tags de abertura e fechamento de um componente é recebido como `children`:
+
+```jsx
+// O componente Card não sabe o que seus filhos são — apenas os renderiza
+function Card({ children, title }) {
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h2>{title}</h2>
+      </div>
+      <div className="card-body">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Uso — o conteúdo interno é flexível
+<Card title="Perfil do Usuário">
+  <Avatar src={user.photo} />
+  <UserStats userId={user.id} />
+  <FollowButton userId={user.id} />
+</Card>
+
+<Card title="Configurações">
+  <SettingsForm />
+</Card>
+```
+
+`Card` é um componente de **contenção** — ele provê estrutura e estilo, mas não impõe o que vai dentro. Isso o torna reutilizável em qualquer contexto.
+
+---
+
+## Specialization (Especialização)
+
+Às vezes você quer criar uma versão mais específica de um componente genérico. Em vez de herdar, você compõe:
+
+```jsx
+// Componente genérico
+function Dialog({ title, children, footer }) {
+  return (
+    <div className="dialog-overlay">
+      <div className="dialog">
+        <header className="dialog-header">
+          <h2>{title}</h2>
+        </header>
+        <main className="dialog-content">{children}</main>
+        {footer && <footer className="dialog-footer">{footer}</footer>}
+      </div>
+    </div>
+  )
+}
+
+// Especialização — SuccessDialog é um Dialog com configurações específicas
+function SuccessDialog({ message, onClose }) {
+  return (
+    <Dialog
+      title="Operação Concluída"
+      footer={<button onClick={onClose}>OK</button>}
+    >
+      <div className="success-content">
+        <CheckIcon />
+        <p>{message}</p>
+      </div>
+    </Dialog>
+  )
+}
+
+// Outra especialização
+function ConfirmDialog({ question, onConfirm, onCancel }) {
+  return (
+    <Dialog
+      title="Confirmar Ação"
+      footer={
+        <>
+          <button onClick={onCancel}>Cancelar</button>
+          <button onClick={onConfirm}>Confirmar</button>
+        </>
+      }
+    >
+      <p>{question}</p>
+    </Dialog>
+  )
+}
+```
+
+`SuccessDialog` e `ConfirmDialog` são especializações de `Dialog`. Elas reutilizam toda a lógica de layout, overlay, e estrutura sem herdar — apenas compondo.
+
+---
+
+## Named Slots via Props
+
+Para layouts complexos com múltiplas áreas, `children` sozinho não é suficiente. Você pode criar "slots nomeados" passando componentes ou JSX como props:
+
+```jsx
+function PageLayout({ header, sidebar, children, footer }) {
+  return (
+    <div className="page">
+      <header className="page-header">{header}</header>
+      <div className="page-body">
+        {sidebar && <aside className="page-sidebar">{sidebar}</aside>}
+        <main className="page-main">{children}</main>
+      </div>
+      {footer && <footer className="page-footer">{footer}</footer>}
+    </div>
+  )
+}
+
+// Uso — cada área é preenchida com o componente adequado
+<PageLayout
+  header={<TopNav user={user} />}
+  sidebar={<FilterPanel filters={filters} onChange={setFilters} />}
+  footer={<Pagination page={page} total={total} />}
+>
+  <ProductGrid products={filteredProducts} />
+</PageLayout>
+```
+
+Esta é a alternativa React ao `ng-content` com `select` do Angular. Em vez de usar atributos CSS como seletor (`ng-content select="[header]"`), você simplesmente passa o conteúdo como props.
+
+---
+
+## Compound Components: Composição com Contexto Compartilhado
+
+Um padrão mais avançado é o **Compound Component** — múltiplos componentes que trabalham juntos e compartilham estado via Context:
+
+```jsx
+// Exemplo simplificado de um Accordion compound component
+const AccordionContext = createContext(null)
+
+function Accordion({ children }) {
+  const [openItem, setOpenItem] = useState(null)
+  
+  return (
+    <AccordionContext.Provider value={{ openItem, setOpenItem }}>
+      <div className="accordion">{children}</div>
+    </AccordionContext.Provider>
+  )
+}
+
+function AccordionItem({ id, title, children }) {
+  const { openItem, setOpenItem } = useContext(AccordionContext)
+  const isOpen = openItem === id
+  
+  return (
+    <div className="accordion-item">
+      <button onClick={() => setOpenItem(isOpen ? null : id)}>
+        {title}
+      </button>
+      {isOpen && <div className="accordion-content">{children}</div>}
+    </div>
+  )
+}
+
+// API de uso — expressa a estrutura, não a implementação
+<Accordion>
+  <AccordionItem id="faq-1" title="Como funciona?">
+    <p>Explicação aqui...</p>
+  </AccordionItem>
+  <AccordionItem id="faq-2" title="Qual o preço?">
+    <p>Detalhes de preço...</p>
+  </AccordionItem>
+</Accordion>
+```
+
+---
+
+## Comparação com Angular
+
+> **Para engenheiros Angular:** O Angular usa `<ng-content>` para content projection — o equivalente ao `children` do React. Você pode usar `<ng-content select="[slot-header]">` para múltiplos slots nomeados — equivalente a passar JSX como props no React. O Angular também tem `@ContentChildren` para acessar componentes filhos projetados programaticamente — similar ao `React.Children` API ou ao padrão compound component com Context. A principal diferença é que no Angular o mecanismo é declarativo no template via seletores CSS, enquanto no React você usa JavaScript puro — props são apenas valores, e passar JSX como prop é idiomático.
+
+---
+
+## Por Que Composição Escala Melhor
+
+Com herança profunda, uma mudança em qualquer nível da cadeia pode quebrar tudo abaixo. Com composição:
+
+1. **Cada componente tem uma responsabilidade clara** — `Card` gerencia layout de card, não sabe de negócio
+2. **Flexibilidade sem acoplamento** — você pode passar qualquer JSX como `children`
+3. **Testabilidade** — cada componente pode ser testado isoladamente com qualquer children
+4. **Reutilização** — `Dialog` funciona para confirmações, alertas, formulários — qualquer conteúdo
+
+---
+
+## Key Takeaways
+
+1. **Composição sobre herança** — construa UI combinando componentes, não estendendo classes.
+2. **`children`** é a API primária de composição — qualquer JSX entre tags se torna children.
+3. **Specialization** = um componente específico que usa um genérico com configurações fixas.
+4. **Named slots via props** = para múltiplas áreas (header, sidebar, footer) passe JSX como props.
+5. **Compound Components** = múltiplos componentes cooperando via Context — ótimo para componentes com estado compartilhado (Accordion, Tabs, Select).
+6. **React não usa herança para UI** — o design da API do React foi deliberadamente construído para tornar composição o caminho de menor resistência.

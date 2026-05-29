@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-15",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que significa 'colocation' em arquitetura de projetos React?",
+      "options": [
+        "Colocar todos os componentes em uma única pasta 'components/'",
+        "Arquivos que mudam juntos devem viver juntos, próximos uns dos outros",
+        "Separar código por tipo de arquivo: hooks em 'hooks/', utils em 'utils/'",
+        "Centralizar todo o estado da aplicação em um único arquivo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Colocation é o princípio de que arquivos que mudam juntos devem viver juntos. Se o componente UserCard, seu hook useUserCard e seus testes UserCard.test.tsx sempre mudam ao mesmo tempo, eles devem estar na mesma pasta — não distribuídos em 'components/', 'hooks/' e '__tests__/' separados. Isso reduz o custo cognitivo de navegar entre arquivos relacionados."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é o sinal mais claro de que uma feature precisa ser dividida em duas?",
+      "options": [
+        "Quando ela tem mais de 10 arquivos",
+        "Quando ela tem mais de 500 linhas de código",
+        "Quando duas features importam dos internals uma da outra formando acoplamento circular",
+        "Quando ela usa mais de 3 hooks diferentes"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O sinal mais claro é o acoplamento cruzado: quando a feature A importa de dentro da feature B e vice-versa, as duas na prática são uma só — ou precisam ser reorganizadas com uma terceira feature compartilhada. Features bem definidas têm fronteiras claras: outras partes da aplicação só importam do barrel export (index.ts), nunca dos internals. Número de arquivos ou linhas são métricas muito menos confiáveis."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que a estrutura layer-based ('components/', 'hooks/', 'utils/') falha em projetos grandes?",
+      "options": [
+        "Porque React não suporta essa estrutura em produção",
+        "Porque pastas muito genéricas acumulam arquivos não relacionados, tornando a navegação difícil e o acoplamento implícito",
+        "Porque é incompatível com TypeScript",
+        "Porque o bundler processa arquivos de forma diferente em subpastas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A estrutura layer-based falha por causa do crescimento: uma pasta 'components/' com 80 arquivos de features diferentes se torna um espaço genérico sem coesão. Para entender o fluxo de uma feature, você precisa pular entre 'components/', 'hooks/', 'services/', 'utils/' — pastas que misturam código de features completamente não relacionadas. A feature-based agrupa por domínio, mantendo coeso o que pertence junto."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é o propósito de um barrel export (arquivo index.ts) em uma feature?",
+      "options": [
+        "Melhorar o tree-shaking do bundler automaticamente",
+        "Definir a API pública da feature — o que pode ser importado de fora e o que é detalhe interno",
+        "Evitar que TypeScript emita erros de tipo em importações circulares",
+        "Reduzir o tempo de compilação do TypeScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O barrel export (index.ts) é o contrato público da feature. Ele define exatamente o que é exposto para o resto da aplicação. Arquivos que não são re-exportados pelo index.ts são detalhes de implementação — outras features não devem importá-los diretamente. Isso cria uma fronteira explícita, semelhante a como um NgModule no Angular declara o que é público via 'exports' e o que é interno via 'declarations'."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "day-18",
+  "day": 18,
+  "week": 3,
+  "title": "State Machines",
+  "slug": "state-machines",
+  "topics": ["state machines", "finite states", "transitions", "XState", "useReducer as state machine"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-12"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 140
+}

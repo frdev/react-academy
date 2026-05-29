@@ -1,0 +1,14 @@
+{
+  "id": "day-23",
+  "day": 23,
+  "week": 4,
+  "title": "Lazy Loading",
+  "slug": "lazy-loading",
+  "topics": ["React.lazy", "dynamic import", "code splitting", "bundle size", "route-based splitting"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 100
+}

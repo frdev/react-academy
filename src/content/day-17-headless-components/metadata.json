@@ -1,0 +1,14 @@
+{
+  "id": "day-17",
+  "day": 17,
+  "week": 3,
+  "title": "Headless Components",
+  "slug": "headless-components",
+  "topics": ["headless", "renderless", "separation of logic and UI", "hooks", "radix ui"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-11", "day-16"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 130
+}

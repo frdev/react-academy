@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que define o padrão Render Prop?",
+      "options": [
+        "Uma prop chamada 'render' que recebe o nome do componente a ser renderizado",
+        "Um componente que passa uma função como prop, onde essa função retorna JSX e é chamada pelo componente que a recebe",
+        "O ato de renderizar props diretamente no JSX usando chaves {}",
+        "Uma prop que controla se o componente deve ou não renderizar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O padrão Render Prop consiste em passar uma função como prop para um componente. Esse componente chama a função (geralmente com seu estado interno como argumento) e renderiza o resultado. O nome da prop pode ser 'render', 'children', ou qualquer outro — o que define o padrão é a função retornar JSX e ser chamada internamente."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a assinatura correta de um Higher-Order Component (HOC)?",
+      "options": [
+        "Um componente React que recebe children e os wraps em um Provider",
+        "Uma função que recebe um componente como argumento e retorna um novo componente aprimorado",
+        "Um hook que retorna um componente React",
+        "Uma classe que estende outro componente React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um HOC é uma função com assinatura `withSomething(WrappedComponent) => EnhancedComponent`. Ela recebe um componente, cria um novo componente (geralmente uma função que renderiza o componente original com props adicionais ou lógica extra), e retorna esse novo componente. É o padrão decorator aplicado a componentes React."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que hooks substituíram a maioria dos casos de uso de HOC e Render Props?",
+      "options": [
+        "Porque hooks são mais rápidos em termos de performance de runtime",
+        "Porque hooks eliminam o nesting excessivo ('wrapper hell'), colisão de props, e têm melhor suporte a TypeScript para compartilhamento de lógica stateful",
+        "Porque HOC e Render Props foram oficialmente deprecados na documentação do React",
+        "Porque hooks permitem usar estado em componentes de classe"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Hooks resolvem os principais problemas de HOC e Render Props: o 'wrapper hell' (múltiplos HOCs criam uma hierarquia difícil de debugar), colisão de props (HOC pode sobrescrever props existentes), inferência de tipos difícil em TypeScript, e código mais difícil de seguir. Com hooks, você extrai a lógica stateful em uma função reutilizável sem criar componentes wrapper."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Uma ref passada para um componente HOC automaticamente aponta para o componente interno (WrappedComponent), sem nenhuma configuração adicional.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Por padrão, refs apontam para o componente HOC wrapper, não para o WrappedComponent. Para fazer refs passarem transparentemente até o componente interno, você precisa usar React.forwardRef ao criar o HOC — `const Enhanced = React.forwardRef((props, ref) => <WrappedComponent {...props} ref={ref} />)`. Sem isso, o componente que usa o HOC não consegue obter uma ref para o componente real."
+    }
+  ]
+}

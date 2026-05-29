@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-22",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Como React.memo compara props de tipo objeto ou array entre renders?",
+      "options": [
+        "Comparação profunda (deep equal) — percorre recursivamente todas as propriedades",
+        "Comparação rasa (shallow) — verifica apenas se a referência é a mesma, não o conteúdo",
+        "Sempre considera objetos e arrays como iguais para evitar re-renders",
+        "Serializa em JSON e compara as strings resultantes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "React.memo usa comparação rasa (shallow comparison) por padrão. Para primitivos (string, number, boolean), compara por valor. Para objetos, arrays e funções, compara por referência — ou seja, `{a: 1} === {a: 1}` é `false` mesmo com o mesmo conteúdo. Isso é crucial: passar um novo objeto literal `<MemoChild user={{ name: 'Alice' }} />` derrota o memo a cada render do pai, porque cada `{}` é uma nova referência na memória."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em qual situação React.memo oferece maior benefício de performance?",
+      "options": [
+        "Em todo componente filho, como prática preventiva de performance",
+        "Em componentes simples como botões e ícones que renderizam frequentemente",
+        "Em componentes com render caro (listas grandes, cálculos pesados) cujas props são estáveis ou estabilizadas com useMemo/useCallback",
+        "Apenas em componentes que recebem funções como props"
+      ],
+      "correctAnswer": 2,
+      "explanation": "React.memo tem maior ROI quando o render do componente é genuinamente caro E as props são estáveis entre renders do pai. Se o render é barato, o overhead de comparação pode superar o benefício. Se as props sempre mudam, o React compara E re-renderiza — pior que sem memo. O fluxo ideal: 1) identifique renders lentos com o Profiler, 2) estabilize props com useMemo/useCallback, 3) aplique React.memo. Não adicione memo preventivamente."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que o código abaixo faz React.memo ser ineficaz?\n\n```\nfunction Parent() {\n  return <MemoChild onClick={() => console.log('click')} />\n}\nconst MemoChild = React.memo(function Child({ onClick }) { ... })\n```",
+      "options": [
+        "React.memo não funciona com event handlers",
+        "A arrow function `() => console.log('click')` cria uma nova referência de função a cada render do Parent, fazendo a prop onClick sempre mudar",
+        "MemoChild precisa ser declarado antes de Parent no arquivo",
+        "console.log não é permitido dentro de props"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Toda vez que Parent renderiza, a expressão `() => console.log('click')` cria uma função nova na memória — uma nova referência. Para React.memo, a comparação `prevProps.onClick === nextProps.onClick` é sempre `false`, então o componente re-renderiza mesmo que o comportamento seja idêntico. A solução é `useCallback`: `const handleClick = useCallback(() => console.log('click'), [])` — isso mantém a mesma referência entre renders, tornando o memo efetivo."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é o equivalente de React.memo no Angular?",
+      "options": [
+        "ngOnChanges — detecta mudanças nos Inputs do componente",
+        "ChangeDetectionStrategy.OnPush — o componente só é verificado quando a referência dos Inputs muda ou um evento interno ocorre",
+        "pure pipes — são memoizadas automaticamente",
+        "ngDoCheck — permite implementar detecção de mudança customizada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "ChangeDetectionStrategy.OnPush é o análogo mais direto de React.memo no Angular. Assim como React.memo pula re-renders quando as props não mudam por referência, um componente Angular com OnPush só é verificado pelo change detector quando: 1) uma referência de @Input muda, 2) um evento interno (output, subscription) ocorre, ou 3) é marcado manualmente com ChangeDetectorRef.markForCheck(). Ambos são otimizações baseadas em imutabilidade de dados."
+    }
+  ]
+}

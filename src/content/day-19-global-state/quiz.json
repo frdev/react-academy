@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-19",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental de performance entre Context API e Zustand?",
+      "options": [
+        "Context é mais rápido porque é nativo do React; Zustand é mais lento por ser uma biblioteca externa",
+        "Context re-renderiza todos os consumidores quando qualquer parte do valor muda; Zustand re-renderiza apenas componentes cujo selector retornou um valor diferente",
+        "Não há diferença de performance — ambos usam o mesmo mecanismo de subscription",
+        "Zustand é mais rápido apenas quando usado com Immer middleware"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Context compara o valor do Provider por referência. Se o Provider provê um objeto { user, theme, cart } e qualquer uma das propriedades muda, todos os consumidores do Context re-renderizam — mesmo que só precisem de 'theme'. Zustand usa subscriptions granulares: cada componente declara um selector (state => state.theme) e só re-renderiza se esse valor específico mudar. Para stores com muitos dados, essa diferença é significativa."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Para que serve um selector no Zustand?",
+      "options": [
+        "Para filtrar dados de uma API antes de salvar na store",
+        "Para selecionar a fatia específica do estado que o componente precisa, evitando re-renders quando outras partes da store mudam",
+        "Para transformar actions antes de elas atualizarem o estado",
+        "Para sincronizar o estado com o localStorage automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O selector é uma função (state => state.user.name) que extrai a parte do estado que o componente precisa. Zustand compara o resultado do selector antes e depois de cada atualização da store. Se o valor não mudou (shallow equality por padrão), o componente não re-renderiza. Isso é análogo aos selectors do NgRx no Angular: você cria memoized selectors que derivam estado específico e o store notifica apenas quem depende daquele slice."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando você DEVE usar estado global em vez de estado local ou Context?",
+      "options": [
+        "Para todo estado que é usado em mais de um componente",
+        "Para estado que precisa ser acessado por partes distantes da árvore de componentes e é atualizado com frequência suficiente para que o problema de performance do Context seja relevante",
+        "Sempre que o estado vem de uma API",
+        "Apenas quando o componente está mais de 3 níveis de profundidade na árvore"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Estado global tem um custo: aumenta o acoplamento implícito e dificulta raciocinar sobre quem muda o quê. Use-o quando: (1) o estado é genuinamente compartilhado por partes muito distantes da árvore, E (2) é atualizado com frequência suficiente para que Context seja um problema de performance. Preferências do usuário, sessão autenticada e carrinho de compras são bons candidatos. O estado de 'qual accordion está aberto' nunca deveria ser global."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença entre Zustand e Redux/NgRx em termos de API?",
+      "options": [
+        "Zustand não suporta DevTools; Redux sim",
+        "Zustand co-localiza actions com o estado na store e não exige a separação formal de actions, reducers e selectors que Redux/NgRx impõem",
+        "Redux é mais rápido que Zustand para stores grandes",
+        "Zustand não funciona com TypeScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Redux e NgRx impõem uma arquitetura formal: actions separadas de reducers separados de selectors, com o fluxo unidirecional rigoroso. Isso é valioso para equipes grandes que precisam de rastreabilidade. Zustand simplifica: você define estado e actions juntos em create(). Não há action creators, não há reducers separados. Para a maioria das aplicações, essa simplicidade é uma vantagem. A desvantagem é menos estrutura para equipes que precisam dela."
+    }
+  ]
+}

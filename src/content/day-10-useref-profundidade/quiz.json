@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-10",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Quais são os três principais casos de uso do useRef?",
+      "options": [
+        "Estado global, memoização, e performance",
+        "Acesso ao DOM, valor mutável sem re-render, e latest value para closures",
+        "Formulários, animações, e fetch de dados",
+        "Context, reducers, e eventos customizados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useRef tem três casos de uso distintos: (1) Acesso ao DOM — conectar a elementos reais para operações imperativas como focus(), scrollIntoView(), play(); (2) Valor mutável sem re-render — armazenar IDs de timer, flags, contadores internos sem disparar re-renders; (3) Latest value pattern — manter uma ref sincronizada com o state para que closures antigas possam ler o valor atual."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre modificar ref.current e chamar um setter de useState?",
+      "options": [
+        "Não há diferença — ambos disparam re-render",
+        "ref.current é síncrono, useState é assíncrono",
+        "Modificar ref.current NÃO dispara re-render; useState dispara",
+        "ref.current persiste entre renders, useState não"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Esta é a distinção fundamental: modificar ref.current é uma operação imperativa direta que o React não rastreia — nenhum re-render é agendado. Chamar um setter de useState enfileira uma atualização de estado que causará um re-render. Ambos persistem entre renders, mas apenas useState integra com o ciclo de reatividade do React."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que usar ref.current em vez de state no 'latest value pattern' resolve o problema de stale closure?",
+      "options": [
+        "Porque ref é mais rápido que state",
+        "Porque ref.current não é capturado pela closure — você sempre lê o objeto ref, que é mutado externamente",
+        "Porque closures nunca fecham sobre valores de ref",
+        "Porque o React atualiza ref automaticamente antes de chamar callbacks"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A closure captura a referência ao objeto ref em si (que nunca muda), não o valor de ref.current. Quando você lê ref.current dentro da closure, está lendo o valor atual no momento da execução — não o valor no momento em que a closure foi criada. É como ter um ponteiro para um container que pode ser atualizado de fora."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Verdadeiro ou Falso: É seguro usar ref.current como dependência em useEffect para detectar mudanças nele.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. O React não rastreia mutações de ref.current — modificá-lo não dispara re-renders nem notifica o sistema de dependências dos hooks. Se você colocar ref.current no array de deps de useEffect, o efeito não vai re-executar quando ref.current mudar, porque o React não sabe que ele mudou. Para reagir a mudanças, use useState."
+    }
+  ]
+}

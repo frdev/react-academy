@@ -1,0 +1,14 @@
+{
+  "id": "day-10",
+  "day": 10,
+  "week": 2,
+  "title": "useRef em Profundidade",
+  "slug": "useref-profundidade",
+  "topics": ["useRef", "mutable ref", "DOM access", "previous value pattern", "interval storage"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 110
+}

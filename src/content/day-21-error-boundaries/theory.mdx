@@ -1,0 +1,277 @@
+# Error Boundaries: Contendo Falhas na Árvore de Componentes
+
+> **Para engenheiros Angular:** Angular tem um `ErrorHandler` global — você implementa a interface `ErrorHandler` e o Angular chama `handleError()` para qualquer erro não tratado. É uma rede de segurança global. Error Boundaries no React são mais granulares: você posiciona boundaries em diferentes partes da árvore, permitindo que seções específicas falhem sem derrubar a aplicação inteira. O Angular também oferece `ngOnError` em componentes, mas não tem um equivalente exato por subárvore.
+
+## O Que São Error Boundaries
+
+Em React, quando um componente lança uma exceção durante a renderização, o React por padrão desmonta toda a árvore de componentes — o usuário vê uma tela em branco.
+
+Error Boundaries são componentes que **capturam** exceções na renderização de seus filhos e exibem uma **UI de fallback** em vez de deixar o app quebrar.
+
+```typescript
+// Sem Error Boundary — um erro em ProductCard derruba tudo
+<App>
+  <Header />
+  <Sidebar />
+  <ProductCard product={product} /> {/* ← erro aqui derruba Header e Sidebar também */}
+  <Footer />
+</App>
+
+// Com Error Boundary — erro é contido
+<App>
+  <Header />
+  <Sidebar />
+  <ErrorBoundary fallback={<ErrorMessage />}>
+    <ProductCard product={product} /> {/* ← erro aqui só afeta este boundary */}
+  </ErrorBoundary>
+  <Footer />
+</App>
+```
+
+---
+
+## Por Que Class Components (e Não Hooks)
+
+Error Boundaries **precisam ser class components**. Não existe equivalente em hooks.
+
+A razão técnica: dois métodos de ciclo de vida são necessários:
+
+- `getDerivedStateFromError(error)` — static method chamado durante a fase de render para atualizar o estado e exibir o fallback
+- `componentDidCatch(error, info)` — chamado após o React commitar o fallback ao DOM, útil para logging
+
+```typescript
+class ErrorBoundaryBase extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: any) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  // Chamado durante render — atualiza state para exibir fallback
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  // Chamado após commit — use para logging
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('Error Boundary capturou:', error)
+    console.error('Component stack:', info.componentStack)
+    // Enviar para Sentry, DataDog, etc.
+    errorReportingService.log(error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback
+    }
+    return this.props.children
+  }
+}
+```
+
+O React não implementou `useError()` porque `getDerivedStateFromError` precisa ser **síncrono** durante a fase de render — hooks têm restrições que tornam isso difícil de implementar corretamente. A equipe do React indica que pode adicionar suporte em versões futuras.
+
+---
+
+## react-error-boundary: A Solução Prática
+
+Em vez de escrever sua própria class component, use a biblioteca `react-error-boundary`:
+
+```typescript
+import { ErrorBoundary } from 'react-error-boundary'
+
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div role="alert" className="error-container">
+      <h2>Algo deu errado</h2>
+      <pre className="error-message">{error.message}</pre>
+      <button onClick={resetErrorBoundary}>Tentar novamente</button>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onError={(error, info) => errorReportingService.log(error, info)}
+      onReset={() => {
+        // Limpeza antes de tentar novamente
+        clearCache()
+      }}
+    >
+      <MainContent />
+    </ErrorBoundary>
+  )
+}
+```
+
+---
+
+## Granularidade: Onde Posicionar Error Boundaries
+
+**Uma boundary no topo** é um erro comum:
+
+```typescript
+// ❌ Um erro em Notifications derruba toda a aplicação
+<ErrorBoundary fallback={<AppCrashed />}>
+  <Header />
+  <Sidebar />
+  <MainContent />
+  <Notifications />  // erro aqui → usuário vê AppCrashed para tudo
+</ErrorBoundary>
+```
+
+**Por seção funcional** é o equilíbrio certo:
+
+```typescript
+// ✓ Seções independentes — falha contida
+<ErrorBoundary fallback={<HeaderError />}>
+  <Header />
+</ErrorBoundary>
+
+<div className="layout">
+  <ErrorBoundary fallback={<SidebarError />}>
+    <Sidebar />
+  </ErrorBoundary>
+
+  <ErrorBoundary fallback={<ContentError />} resetKeys={[routeId]}>
+    <MainContent />
+  </ErrorBoundary>
+</div>
+
+<ErrorBoundary fallback={null}> {/* null = silencia erros não críticos */}
+  <Notifications />
+</ErrorBoundary>
+```
+
+Se `Notifications` quebrar, o resto da aplicação funciona normalmente. O usuário perde apenas as notificações.
+
+---
+
+## O Mecanismo de Reset
+
+`react-error-boundary` oferece dois mecanismos de reset:
+
+### resetKeys — Reset Automático por Mudança de Prop
+
+```typescript
+function ProductPage({ productId }: { productId: string }) {
+  return (
+    <ErrorBoundary
+      FallbackComponent={ProductError}
+      resetKeys={[productId]}  // reset quando productId muda
+    >
+      <ProductDetails productId={productId} />
+    </ErrorBoundary>
+  )
+}
+```
+
+Quando o usuário navega para outro produto (`productId` muda), o boundary automaticamente sai do estado de erro e tenta renderizar `ProductDetails` novamente.
+
+### resetErrorBoundary — Reset Manual pelo Usuário
+
+```typescript
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div>
+      <p>Erro ao carregar dados: {error.message}</p>
+      <button onClick={resetErrorBoundary}>
+        Tentar novamente
+      </button>
+    </div>
+  )
+}
+```
+
+`resetErrorBoundary` é injetado automaticamente no `FallbackComponent` pela biblioteca.
+
+---
+
+## O Que Error Boundaries NÃO Capturam
+
+Esta é a parte mais importante para usar corretamente:
+
+```typescript
+// ❌ NÃO capturado — erro em event handler
+function Button() {
+  const handleClick = () => {
+    throw new Error('erro no click') // Error Boundary não vê isso
+  }
+  return <button onClick={handleClick}>Clicar</button>
+}
+// Use try/catch dentro do handler
+
+// ❌ NÃO capturado — erro em código assíncrono
+function DataFetcher() {
+  useEffect(() => {
+    fetch('/api/data')
+      .then(data => processData(data)) // erro aqui não é capturado
+      .catch(err => setError(err)) // você precisa fazer isso manualmente
+  }, [])
+}
+
+// ❌ NÃO capturado — erros em SSR
+// Error Boundaries são client-side only
+
+// ✓ CAPTURADO — erro durante renderização
+function BrokenComponent({ data }: { data: null }) {
+  return <div>{data.nonExistentProperty}</div> // TypeError durante render
+}
+```
+
+---
+
+## Integração com Logging
+
+Error Boundaries são o lugar ideal para enviar erros ao sistema de monitoramento:
+
+```typescript
+import * as Sentry from '@sentry/react'
+
+function AppErrorBoundary({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary
+      FallbackComponent={ErrorFallback}
+      onError={(error, info) => {
+        Sentry.captureException(error, {
+          extra: { componentStack: info.componentStack },
+        })
+      }}
+    >
+      {children}
+    </ErrorBoundary>
+  )
+}
+```
+
+`componentDidCatch` (e o `onError` do react-error-boundary) fornece o `componentStack` — a stack trace de componentes React que levou ao erro, diferente da stack trace JavaScript normal. Isso é extremamente útil para debugar erros de produção.
+
+---
+
+## Comparação: Angular ErrorHandler vs React Error Boundaries
+
+| Aspecto | Angular ErrorHandler | React Error Boundaries |
+|---|---|---|
+| Granularidade | Global (um handler para tudo) | Por subárvore (múltiplos boundaries) |
+| Tipos de erro | Qualquer erro no app | Apenas erros de renderização |
+| Fallback UI | Não — apenas handling/logging | Sim — UI de fallback por boundary |
+| Reset automático | N/A | Via resetKeys ou resetErrorBoundary |
+| SSR | Sim (com Universal) | Não nativamente |
+
+A vantagem do React é a granularidade — diferentes partes da UI podem ter políticas de erro diferentes. Um widget de ads pode falhar silenciosamente (`fallback={null}`), enquanto o carrinho de compras exibe uma mensagem clara com botão de retry.
+
+---
+
+## Key Takeaways
+
+1. Error Boundaries capturam erros de renderização e exibem UI de fallback — a aplicação não quebra por completo
+2. Class components são necessários porque `getDerivedStateFromError` não tem equivalente em hooks — limitação atual do React
+3. `react-error-boundary` é a solução prática — evita escrever class components manualmente
+4. Posicione por seção funcional — não um boundary global nem um por componente
+5. `resetKeys` para reset automático ao mudar de rota/contexto; `resetErrorBoundary` para retry manual
+6. Error Boundaries NÃO capturam: event handlers, código assíncrono, erros de SSR
+7. `onError` / `componentDidCatch` é o lugar para logging — fornece `componentStack` para debug

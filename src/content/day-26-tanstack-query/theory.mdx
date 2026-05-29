@@ -1,0 +1,306 @@
+# TanStack Query: Server State com Superpoderes
+
+> **Para engenheiros Angular:** Em Angular, buscar dados geralmente significa `HttpClient` + um `BehaviorSubject` em um serviço + estado de loading/error manual + lógica de cache + invalidação. Com NgRx Entity você ganha estrutura, mas ainda escreve muito código. TanStack Query resolve tudo isso com praticamente zero boilerplate: cache automático, revalidação em background, deduplicação de requests, estados de loading/error, paginação, optimistic updates — tudo fora da caixa.
+
+## Por Que TanStack Query?
+
+Dados que vêm de um servidor têm características únicas:
+- Podem ficar desatualizados (outro usuário editou o mesmo dado)
+- Podem ser compartilhados entre múltiplos componentes
+- Falham (rede, servidor) e precisam de retry
+- Precisam de cache inteligente para não re-buscar o que já temos
+
+Você já viu TanStack Query no Dia 20. Aqui vamos fundo em cada API.
+
+---
+
+## Configuração e QueryClient
+
+```typescript
+// main.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutos — dados ficam "frescos" por 5min
+      gcTime: 10 * 60 * 1000,   // 10 minutos — cache é limpo após 10min sem uso
+      retry: 2,                  // tenta 2 vezes em caso de erro
+    },
+  },
+})
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Router />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  )
+}
+```
+
+---
+
+## useQuery: Buscando Dados
+
+```typescript
+import { useQuery } from '@tanstack/react-query'
+
+function UserProfile({ userId }: { userId: string }) {
+  const { data, isLoading, isError, error, isFetching } = useQuery({
+    queryKey: ['user', userId],     // chave única para este dado
+    queryFn: () => fetchUser(userId), // função que busca os dados
+    staleTime: 60_000,              // override: fresco por 1 minuto
+  })
+
+  if (isLoading) return <Skeleton />
+  if (isError) return <ErrorMessage error={error} />
+
+  return (
+    <div>
+      <h1>{data.name}</h1>
+      {isFetching && <RefetchIndicator />} {/* revalidando em background */}
+    </div>
+  )
+}
+```
+
+**`isLoading`** vs **`isFetching`**:
+- `isLoading`: `true` apenas no primeiro fetch (sem cache)
+- `isFetching`: `true` sempre que há um fetch em andamento (inclusive revalidação)
+
+---
+
+## queryKey: A Chave de Cache
+
+O `queryKey` é o conceito mais importante do TanStack Query. Trate-o como um **array de dependências do useEffect** — tudo que afeta os dados deve estar na key.
+
+```typescript
+// Buscas distintas — caches separados
+useQuery({ queryKey: ['users'] })              // lista de usuários
+useQuery({ queryKey: ['user', userId] })        // usuário específico
+useQuery({ queryKey: ['user', userId, 'posts'] }) // posts deste usuário
+
+// Com filtros — cada combinação tem seu próprio cache
+useQuery({ queryKey: ['products', { category, page, sort }] })
+useQuery({ queryKey: ['products', { category: 'electronics', page: 1, sort: 'price' }] })
+
+// Sem userId na key — BUG: cache vai mostrar dado errado ao mudar userId
+useQuery({ queryKey: ['user'], queryFn: () => fetchUser(userId) }) // ← ERRADO!
+```
+
+**Regras para queryKey:**
+1. Inclua todos os parâmetros que afetam a resposta
+2. Use estruturas consistentes: `['entidade', id]` ou `['entidade', filtros]`
+3. Prefira objetos para múltiplos filtros: `['products', { category, page }]`
+
+---
+
+## staleTime vs gcTime (garbage collection time)
+
+Esses dois conceitos são frequentemente confundidos:
+
+```
+staleTime: quanto tempo os dados são considerados "frescos"
+  └── durante esse tempo: componentes novos usam o cache sem refetch
+  └── após esse tempo: dado é "stale" — ainda é mostrado, mas um refetch é agendado
+
+gcTime: quanto tempo o cache é mantido APÓS o último componente desmontar
+  └── durante esse tempo: se o componente montar novamente, usa o cache
+  └── após esse tempo: cache é deletado (GC)
+```
+
+```typescript
+// Exemplo: dados de usuário raramente mudam
+useQuery({
+  queryKey: ['user', userId],
+  queryFn: fetchUser,
+  staleTime: 5 * 60 * 1000,  // 5 min: não refetch se voltarmos à página dentro de 5min
+  gcTime: 30 * 60 * 1000,    // 30 min: mantém cache por 30min após sair da página
+})
+
+// Dados de preço em tempo real — sempre refetch
+useQuery({
+  queryKey: ['price', productId],
+  queryFn: fetchPrice,
+  staleTime: 0,              // sempre stale — sempre refetch ao montar
+  refetchInterval: 10_000,   // refetch automático a cada 10 segundos
+})
+```
+
+---
+
+## useMutation: Mutações e Invalidação
+
+```typescript
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+
+function CreateUserForm() {
+  const queryClient = useQueryClient()
+
+  const createUser = useMutation({
+    mutationFn: (data: CreateUserDto) => api.post('/users', data),
+    
+    onSuccess: (newUser) => {
+      // Invalida o cache da lista — o próximo render vai buscar dados frescos
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      
+      // Ou popula o cache diretamente sem novo request:
+      queryClient.setQueryData(['user', newUser.id], newUser)
+    },
+    
+    onError: (error) => {
+      toast.error('Erro ao criar usuário: ' + error.message)
+    },
+  })
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault()
+      createUser.mutate({ name: 'Alice', email: 'alice@example.com' })
+    }}>
+      <button type="submit" disabled={createUser.isPending}>
+        {createUser.isPending ? 'Criando...' : 'Criar Usuário'}
+      </button>
+    </form>
+  )
+}
+```
+
+---
+
+## Optimistic Updates
+
+Optimistic updates mostram a mudança imediatamente, antes da confirmação do servidor:
+
+```typescript
+const toggleLike = useMutation({
+  mutationFn: (postId: string) => api.post(`/posts/${postId}/like`),
+
+  onMutate: async (postId) => {
+    // Cancela refetches pendentes
+    await queryClient.cancelQueries({ queryKey: ['post', postId] })
+
+    // Snapshot do valor anterior (para rollback)
+    const previousPost = queryClient.getQueryData(['post', postId])
+
+    // Atualiza o cache otimisticamente
+    queryClient.setQueryData(['post', postId], (old: Post) => ({
+      ...old,
+      likes: old.liked ? old.likes - 1 : old.likes + 1,
+      liked: !old.liked,
+    }))
+
+    return { previousPost } // context para onError
+  },
+
+  onError: (err, postId, context) => {
+    // Rollback em caso de erro
+    queryClient.setQueryData(['post', postId], context?.previousPost)
+  },
+
+  onSettled: (data, error, postId) => {
+    // Revalida após sucesso ou erro
+    queryClient.invalidateQueries({ queryKey: ['post', postId] })
+  },
+})
+```
+
+---
+
+## Queries em Paralelo e Dependentes
+
+```typescript
+// Paralelas — executam simultaneamente
+const usersQuery = useQuery({ queryKey: ['users'], queryFn: fetchUsers })
+const rolesQuery = useQuery({ queryKey: ['roles'], queryFn: fetchRoles })
+
+// Dependentes — userId deve existir antes de buscar posts
+const { data: user } = useQuery({ queryKey: ['user', userId], queryFn: ... })
+const { data: posts } = useQuery({
+  queryKey: ['posts', user?.id],
+  queryFn: () => fetchUserPosts(user!.id),
+  enabled: !!user?.id, // só executa quando user existe
+})
+```
+
+---
+
+## useInfiniteQuery: Paginação
+
+```typescript
+import { useInfiniteQuery } from '@tanstack/react-query'
+
+function InfiniteList() {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['posts'],
+    queryFn: ({ pageParam = 0 }) => fetchPosts({ page: pageParam, limit: 20 }),
+    getNextPageParam: (lastPage, pages) => lastPage.nextCursor ?? undefined,
+    initialPageParam: 0,
+  })
+
+  const allPosts = data?.pages.flatMap(page => page.items) ?? []
+
+  return (
+    <>
+      {allPosts.map(post => <PostCard key={post.id} post={post} />)}
+      <button 
+        onClick={() => fetchNextPage()}
+        disabled={!hasNextPage || isFetchingNextPage}
+      >
+        {isFetchingNextPage ? 'Carregando...' : 'Ver mais'}
+      </button>
+    </>
+  )
+}
+```
+
+---
+
+## Prefetching
+
+```typescript
+// Pré-carrega dados antes da navegação
+const prefetchUser = async (userId: string) => {
+  await queryClient.prefetchQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId),
+  })
+}
+
+// No hover de um link — quando o usuário clicar, dados já estão no cache
+<UserLink 
+  userId={user.id}
+  onMouseEnter={() => prefetchUser(user.id)}
+/>
+```
+
+---
+
+## DevTools
+
+```typescript
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+
+// Adicione no final do seu App
+<ReactQueryDevtools initialIsOpen={false} />
+```
+
+As DevTools mostram: estado de cada query, cache, stale time, número de observers, histórico de fetches. Essencial durante o desenvolvimento.
+
+---
+
+## Resumo
+
+| Conceito | Detalhe |
+|---|---|
+| `queryKey` | Array de dependências — inclua tudo que afeta os dados |
+| `staleTime` | Tempo que dados são "frescos" — sem refetch durante este período |
+| `gcTime` | Tempo que o cache sobrevive após o componente desmontar |
+| `enabled` | Controla se a query executa (para queries dependentes) |
+| `invalidateQueries` | Marca queries como stale e agenda refetch |
+| `setQueryData` | Atualiza cache diretamente (sem request) |
+| `useMutation` | Mutações com callbacks de sucesso/erro/settled |
+| Optimistic updates | `onMutate` → atualiza cache → `onError` → rollback |

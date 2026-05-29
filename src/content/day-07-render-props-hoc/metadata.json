@@ -1,0 +1,14 @@
+{
+  "id": "day-07",
+  "day": 7,
+  "week": 1,
+  "title": "Render Props e HOC",
+  "slug": "render-props-hoc",
+  "topics": ["render props", "HOC", "higher-order components", "code reuse", "hooks vs HOC"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 110
+}

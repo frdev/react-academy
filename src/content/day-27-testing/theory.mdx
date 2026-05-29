@@ -1,0 +1,279 @@
+# Testando React: Comportamento, Não Implementação
+
+> **Para engenheiros Angular:** No Angular, você usa `TestBed.configureTestingModule()` + `ComponentFixture` + `DebugElement`. É muito mais infraestrutura. Com Testing Library, você `render(<Component />)` e interage com queries semânticas — `getByRole('button', { name: 'Salvar' })`, `getByLabelText('Email')`. A filosofia é a mesma: teste o que o usuário experimenta. Mas a API é muito mais simples. Testing Library também tem uma versão para Angular (`@testing-library/angular`).
+
+## A Filosofia: Teste Comportamento, Não Implementação
+
+> "Quanto mais seus testes se assemelharem à forma como o software é usado, mais confiança eles darão." — Kent C. Dodds, criador do Testing Library
+
+**Teste de implementação** (frágil):
+```typescript
+// RUIM: testa estado interno — quebra ao refatorar sem mudar comportamento
+expect(component.state.isOpen).toBe(true)
+expect(wrapper.find('input').props().value).toBe('hello')
+```
+
+**Teste de comportamento** (resiliente):
+```typescript
+// BOM: testa o que o usuário vê — sobrevive a refatorações internas
+expect(screen.getByRole('dialog')).toBeInTheDocument()
+expect(screen.getByDisplayValue('hello')).toBeInTheDocument()
+```
+
+---
+
+## Setup: Vitest + Testing Library
+
+```bash
+npm install -D vitest @testing-library/react @testing-library/user-event @testing-library/jest-dom jsdom
+```
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.ts',
+  },
+})
+
+// src/test/setup.ts
+import '@testing-library/jest-dom'
+```
+
+```typescript
+// src/test/setup.ts — matchers como toBeInTheDocument(), toHaveValue()
+import '@testing-library/jest-dom'
+```
+
+---
+
+## Queries do Testing Library: Prioridade
+
+Testing Library oferece múltiplas formas de encontrar elementos. Use na ordem de prioridade:
+
+**1. Por Role (melhor — semântico e acessível):**
+```typescript
+screen.getByRole('button', { name: 'Salvar' })
+screen.getByRole('textbox', { name: 'Email' })
+screen.getByRole('heading', { level: 1 })
+screen.getByRole('checkbox', { name: 'Lembrar-me' })
+```
+
+**2. Por Label Text (formulários):**
+```typescript
+screen.getByLabelText('Email')
+screen.getByLabelText('Senha')
+```
+
+**3. Por Placeholder:**
+```typescript
+screen.getByPlaceholderText('Digite seu email')
+```
+
+**4. Por Text:**
+```typescript
+screen.getByText('Bem-vindo, Alice')
+```
+
+**5. Por TestId (último recurso — use apenas quando nenhum outro funcionar):**
+```typescript
+screen.getByTestId('loading-spinner') // evite ao máximo
+```
+
+---
+
+## userEvent vs fireEvent
+
+**Sempre prefira `userEvent`**. Ele simula interações reais: foca o elemento, dispara eventos intermediários (keydown, keypress, keyup), move o cursor.
+
+```typescript
+import userEvent from '@testing-library/user-event'
+
+// RUIM: fireEvent.change dispara apenas o evento change
+fireEvent.change(input, { target: { value: 'alice@example.com' } })
+
+// BOM: userEvent.type simula digitação real, caractere por caractere
+const user = userEvent.setup()
+await user.type(input, 'alice@example.com')
+
+// Clicar
+await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+// Selecionar em select
+await user.selectOptions(select, 'brazil')
+
+// Teclado
+await user.keyboard('{Enter}')
+await user.keyboard('{Tab}')
+```
+
+Use `fireEvent` apenas quando precisar de um evento muito específico que `userEvent` não suporta.
+
+---
+
+## Um Teste Completo: Formulário
+
+```typescript
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { LoginForm } from './LoginForm'
+
+describe('LoginForm', () => {
+  it('chama onSubmit com email e senha ao submeter', async () => {
+    const user = userEvent.setup()
+    const handleSubmit = vi.fn()
+    
+    render(<LoginForm onSubmit={handleSubmit} />)
+
+    await user.type(screen.getByLabelText('Email'), 'alice@example.com')
+    await user.type(screen.getByLabelText('Senha'), 'secret123')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(handleSubmit).toHaveBeenCalledWith({
+      email: 'alice@example.com',
+      password: 'secret123',
+    })
+  })
+
+  it('exibe erro quando email é inválido', async () => {
+    const user = userEvent.setup()
+    render(<LoginForm onSubmit={vi.fn()} />)
+
+    await user.type(screen.getByLabelText('Email'), 'nao-e-um-email')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(screen.getByText('Email inválido')).toBeInTheDocument()
+  })
+})
+```
+
+---
+
+## renderHook: Testando Custom Hooks
+
+```typescript
+import { renderHook, act } from '@testing-library/react'
+import { useCounter } from './useCounter'
+
+describe('useCounter', () => {
+  it('incrementa o contador', () => {
+    const { result } = renderHook(() => useCounter(0))
+
+    expect(result.current.count).toBe(0)
+
+    act(() => {
+      result.current.increment()
+    })
+
+    expect(result.current.count).toBe(1)
+  })
+})
+```
+
+---
+
+## MSW: Mock Service Worker para APIs
+
+Não mocke `fetch` diretamente. Use MSW — ele intercepta requests no nível de rede, tornando os mocks mais realistas:
+
+```typescript
+// src/test/handlers.ts
+import { http, HttpResponse } from 'msw'
+
+export const handlers = [
+  http.get('/api/users', () => {
+    return HttpResponse.json([
+      { id: '1', name: 'Alice' },
+      { id: '2', name: 'Bob' },
+    ])
+  }),
+
+  http.post('/api/users', async ({ request }) => {
+    const body = await request.json()
+    return HttpResponse.json({ id: '3', ...body }, { status: 201 })
+  }),
+]
+
+// src/test/server.ts
+import { setupServer } from 'msw/node'
+import { handlers } from './handlers'
+
+export const server = setupServer(...handlers)
+
+// src/test/setup.ts
+import { server } from './server'
+beforeAll(() => server.listen())
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
+```
+
+```typescript
+// No teste — você pode override handlers por teste
+it('exibe erro quando API falha', async () => {
+  server.use(
+    http.get('/api/users', () => {
+      return HttpResponse.error()
+    })
+  )
+
+  render(<UserList />)
+  expect(await screen.findByText('Erro ao carregar usuários')).toBeInTheDocument()
+})
+```
+
+---
+
+## O Que Testar
+
+**Teste:**
+- Fluxos críticos de negócio (login, checkout, criação de conta)
+- Comportamentos condicionais (estados de loading, erro, vazio)
+- Interações do usuário (form submission, cliques, teclado)
+- Custom hooks com lógica complexa
+
+**Não teste:**
+- Detalhes de implementação (estado interno, nomes de variáveis)
+- Código de terceiros (não teste o React, não teste o Zod)
+- Cada linha de código (coverage 100% não é o objetivo)
+- Estilos CSS (exceto classes condicionais que afetam comportamento)
+
+---
+
+## Snapshot Testing: Quando Evitar
+
+```typescript
+// Snapshot testing — frágil e ruidoso
+it('renderiza o componente', () => {
+  const { container } = render(<Button>Clique</Button>)
+  expect(container).toMatchSnapshot() // quebra com qualquer mudança de HTML
+})
+```
+
+Snapshots quebram a cada refatoração de estrutura HTML, mesmo sem mudança de comportamento. Prefira asserções específicas:
+
+```typescript
+// Melhor: asserta comportamento específico
+it('renderiza o label corretamente', () => {
+  render(<Button>Clique</Button>)
+  expect(screen.getByRole('button', { name: 'Clique' })).toBeInTheDocument()
+})
+```
+
+Use snapshots apenas para saídas complexas e estáveis (JSON de serialização, etc.).
+
+---
+
+## Resumo
+
+| Ferramenta | Para Que |
+|---|---|
+| Vitest | Runner de testes, compatível com Vite |
+| `@testing-library/react` | `render`, `screen`, queries semânticas |
+| `@testing-library/user-event` | Simulação realista de interações |
+| `@testing-library/jest-dom` | Matchers como `toBeInTheDocument` |
+| MSW | Interceptação de requests HTTP para mocks |
+| `renderHook` | Testar custom hooks isoladamente |
+
+A regra de ouro: se você precisar conhecer a implementação interna do componente para escrever o teste, o teste está errado. Teste da perspectiva do usuário.

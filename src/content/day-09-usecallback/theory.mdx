@@ -1,0 +1,225 @@
+# useCallback: Memoizando Funções
+
+> **Para engenheiros Angular:** Diferente do Angular, onde event bindings no template não causam problemas de identidade referencial, no React cada função criada dentro de um componente tem uma nova referência a cada render. `useCallback` resolve exatamente esse problema — mas só quando realmente importa.
+
+## A Diferença Entre useMemo e useCallback
+
+Antes de tudo: entenda a distinção fundamental.
+
+- **`useMemo`** memoiza o **resultado** de uma computação: `const value = useMemo(() => compute(), deps)`
+- **`useCallback`** memoiza a **função em si**: `const fn = useCallback(() => doSomething(), deps)`
+
+De fato, `useCallback` é apenas açúcar sintático sobre `useMemo`:
+
+```typescript
+// Estes dois são equivalentes:
+const fn = useCallback(() => doSomething(a, b), [a, b])
+const fn = useMemo(() => () => doSomething(a, b), [a, b])
+```
+
+`useCallback(fn, deps)` é literalmente `useMemo(() => fn, deps)`. O React oferece `useCallback` separado apenas por legibilidade.
+
+---
+
+## Por Que Funções São Recriadas a Cada Render?
+
+Para entender o problema, é preciso entender closures em JavaScript.
+
+Quando um componente renderiza, a função do componente é executada inteiramente. Todas as variáveis, incluindo funções definidas dentro do componente, são recriadas:
+
+```typescript
+function SearchBox({ onSearch }: Props) {
+  const [query, setQuery] = useState('')
+
+  // handleChange é uma nova função a cada render
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value)
+    onSearch(e.target.value) // closure sobre onSearch
+  }
+
+  return <input value={query} onChange={handleChange} />
+}
+```
+
+A cada renderização de `SearchBox`, `handleChange` é um objeto função completamente novo na memória. A referência muda.
+
+---
+
+## O Problema de Igualdade Referencial com Funções
+
+Assim como com objetos e arrays (que vimos no Dia 8), funções sofrem do mesmo problema:
+
+```typescript
+const fn1 = () => console.log('hello')
+const fn2 = () => console.log('hello')
+
+console.log(fn1 === fn2) // false — funções diferentes na memória!
+```
+
+Isso importa quando você passa funções como props para componentes memoizados com `React.memo`:
+
+```typescript
+function Parent() {
+  const [count, setCount] = useState(0)
+  const [theme, setTheme] = useState('dark')
+
+  // handleClick é RECRIADA a cada render
+  const handleClick = () => {
+    console.log('clicked!')
+  }
+
+  return (
+    <>
+      <button onClick={() => setCount(c => c + 1)}>Count: {count}</button>
+      <ExpensiveChild onClick={handleClick} />
+    </>
+  )
+}
+
+const ExpensiveChild = React.memo(({ onClick }: { onClick: () => void }) => {
+  console.log('ExpensiveChild renderizou')
+  return <button onClick={onClick}>Click me</button>
+})
+```
+
+Neste exemplo, toda vez que `count` muda, `Parent` re-renderiza, `handleClick` é recriada (nova referência), e `React.memo` no `ExpensiveChild` vê uma prop diferente — então `ExpensiveChild` também re-renderiza, mesmo sem necessidade.
+
+A solução:
+
+```typescript
+const handleClick = useCallback(() => {
+  console.log('clicked!')
+}, []) // sem dependências — a função não usa nada de fora
+
+// Agora handleClick tem a mesma referência entre renders
+// React.memo em ExpensiveChild funciona corretamente
+```
+
+---
+
+## Quando useCallback Realmente Importa
+
+`useCallback` é útil em dois cenários:
+
+### 1. Funções Passadas a Componentes Memoizados
+
+Como visto acima — quando a função é uma prop de um componente com `React.memo`.
+
+### 2. Funções no Array de Dependências de useEffect
+
+Se você cria uma função no componente e a usa como dependência de `useEffect`, você vai criar um loop infinito sem `useCallback`:
+
+```typescript
+function DataLoader({ userId }: Props) {
+  const [data, setData] = useState(null)
+
+  // Sem useCallback, fetchData é recriada a cada render
+  // useEffect vê uma dependência nova → executa → pode causar re-render → loop!
+  const fetchData = async () => {
+    const result = await api.getUser(userId)
+    setData(result)
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData]) // fetchData na dep array → problema!
+}
+```
+
+Com `useCallback`:
+
+```typescript
+const fetchData = useCallback(async () => {
+  const result = await api.getUser(userId)
+  setData(result)
+}, [userId]) // só recria quando userId mudar
+
+useEffect(() => {
+  fetchData()
+}, [fetchData]) // seguro — fetchData só muda quando userId muda
+```
+
+---
+
+## A Armadilha das Stale Closures
+
+O erro mais comum com `useCallback` é esquecer dependências. Quando você omite uma dependência, a função fecha sobre o valor **antigo** (stale) da variável:
+
+```typescript
+function Counter() {
+  const [count, setCount] = useState(0)
+
+  // BUG: count não está nas dependências
+  const logCount = useCallback(() => {
+    console.log('Count:', count) // sempre loga 0 — valor do primeiro render!
+  }, []) // array vazio = fecha sobre o count inicial
+
+  return (
+    <button onClick={logCount}>Log count</button>
+  )
+}
+```
+
+A solução correta:
+
+```typescript
+const logCount = useCallback(() => {
+  console.log('Count:', count)
+}, [count]) // count nas dependências — sempre o valor atual
+```
+
+Ou, quando você precisa ler o estado mais recente mas não quer recriar a função, use o padrão com `useRef` (veremos no Dia 10):
+
+```typescript
+const countRef = useRef(count)
+useEffect(() => { countRef.current = count }, [count])
+
+const logCount = useCallback(() => {
+  console.log('Count:', countRef.current) // sempre o valor mais recente
+}, []) // sem dependências — seguro porque usa ref
+```
+
+---
+
+## Quando NÃO Usar useCallback
+
+Assim como `useMemo`, `useCallback` tem overhead: armazenamento da função anterior + comparação das dependências a cada render.
+
+**Não use `useCallback` para:**
+
+- Funções passadas a elementos DOM nativos (`<button onClick={fn}>`) — o DOM não usa `===` para comparar handlers
+- Funções que não são passadas como props ou usadas em deps de hooks
+- Qualquer caso onde você não mediu um problema real de performance
+
+```typescript
+// Inútil — o DOM não se importa com referência de função
+const handleClick = useCallback(() => setCount(c => c + 1), [])
+// vs
+const handleClick = () => setCount(c => c + 1) // mais simples, mesmo resultado
+```
+
+---
+
+## Comparação com Angular
+
+No Angular, o binding de eventos no template não tem esse problema:
+
+```html
+<!-- Angular: não há criação de nova função a cada ciclo de detecção -->
+<button (click)="handleClick()">Click</button>
+```
+
+O Angular chama o método do componente quando o evento dispara — não passa uma referência de função para o elemento. O framework não usa igualdade referencial de funções para decidir re-renderizar.
+
+No React, tudo é JavaScript puro: `<button onClick={handleClick}>` passa a referência da função como uma prop. Isso é mais transparente e flexível, mas exige que o desenvolvedor entenda closures e igualdade referencial.
+
+---
+
+## Key Takeaways
+
+1. `useCallback` memoiza a **função** (não o resultado) — `useMemo(() => fn, deps)` sob o capô
+2. Resolve o problema de igualdade referencial: funções recriadas a cada render têm referências novas
+3. Use quando: função é prop de componente memoizado, ou função está em deps de `useEffect`
+4. Stale closures são a principal armadilha: sempre liste dependências (use o lint rule)
+5. Não use em funções passadas a elementos DOM nativos — é overhead desnecessário
+6. O problema não existe em Angular porque o template não usa referências de função para comparação

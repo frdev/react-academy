@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-28",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a regra fundamental sobre quando usar ARIA em componentes React?",
+      "options": [
+        "Sempre adicione ARIA roles e labels a todos os elementos interativos",
+        "ARIA deve ser adicionado em todo componente para garantir compatibilidade máxima com leitores de tela",
+        "Use HTML semântico primeiro; adicione ARIA apenas quando o elemento nativo não comunica a semântica necessária — nenhum ARIA é melhor que ARIA incorreto",
+        "ARIA é necessário apenas em componentes de formulário"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A regra de ouro da W3C: 'nenhum ARIA é melhor que ARIA ruim'. Um `<button>Salvar</button>` já tem role='button', é focável por teclado, responde a Enter/Space, e anuncia 'Salvar, botão' no leitor de tela — sem nenhum ARIA. Adicionar `role='button'` em um `<button>` é redundante e polui. ARIA deve ser usado quando: você criou um widget customizado sem equivalente HTML semântico (carousel, tree view, tabs), quando precisa adicionar contexto extra (aria-label, aria-describedby), ou quando conteúdo dinâmico precisa ser anunciado (aria-live)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Ao abrir um modal, quais são as responsabilidades mínimas de gerenciamento de foco para acessibilidade?",
+      "options": [
+        "Nenhuma — leitores de tela detectam modais automaticamente",
+        "Mover o foco para dentro do modal ao abrir, implementar focus trap (Tab não sai do modal), fechar com Escape, e retornar o foco ao elemento que abriu o modal ao fechar",
+        "Apenas mover o foco para o botão de fechar",
+        "Adicionar `aria-modal='true'` é suficiente — o browser gerencia o foco"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O gerenciamento de foco em modais tem quatro obrigações: 1) ao abrir, mover o foco para o primeiro elemento focável dentro do modal (ou para o modal em si com tabIndex=0); 2) implementar focus trap — Tab deve ciclizar apenas entre elementos do modal, Shift+Tab também; 3) fechar com Escape — expectativa universal; 4) ao fechar, retornar o foco ao elemento que disparou o modal (geralmente o botão que o abriu). Sem isso, usuários de teclado ficam 'presos' atrás do modal ou não conseguem interagir com ele. `aria-modal='true'` ajuda leitores de tela mas não gerencia foco."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando usar `aria-live='assertive'` versus `aria-live='polite'` para anunciar conteúdo dinâmico?",
+      "options": [
+        "assertive para todos os anúncios — garante que o usuário sempre ouça",
+        "polite para mudanças de conteúdo não críticas (resultados de busca, atualizações de contador); assertive apenas para erros críticos ou alertas urgentes que requerem ação imediata",
+        "polite para texto simples, assertive para números e datas",
+        "assertive para elementos visíveis, polite para elementos ocultos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`aria-live='polite'` anuncia após o usuário parar de interagir — não interrompe o que ele está ouvindo. É adequado para a maioria dos casos: '10 resultados encontrados', 'Item adicionado ao carrinho', 'Mensagem enviada'. `aria-live='assertive'` interrompe o leitor de tela imediatamente — use apenas para erros críticos que requerem atenção agora ('Sessão expirada, faça login', 'Pagamento recusado'). Abuso de assertive é perturbador — como se alguém gritasse no seu ouvido toda vez que o contador muda. Use polite por padrão."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que usar `<button>` em vez de `<div onClick={handler}>` para elementos clicáveis é importante para acessibilidade?",
+      "options": [
+        "Apenas por motivos de estilo de código — funcionalmente são equivalentes",
+        "`<button>` é nativo e inclui automaticamente: focabilidade via Tab, ativação por Enter e Space, role='button' para leitores de tela, estados disabled, e comportamento esperado por tecnologias assistivas — tudo de graça sem linhas extras de código",
+        "`<div>` não pode ter event handlers em React moderno",
+        "Botões têm melhor performance que divs para eventos de clique"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A diferença é imensa. `<button>`: focável por Tab por padrão, ativado por Enter e Space, anuncia como 'botão' no leitor de tela, suporta `disabled` nativo, integra com `form`. `<div onClick={...}>`: não é focável (sem tabIndex=0), não responde a Enter/Space (precisaria de onKeyDown manual), não tem role (leitor de tela não sabe o que é), não tem estados disabled. Recriar tudo que button dá de graça resulta em código mais complexo e ainda mais frágil. HTML semântico não é sobre preferência — é sobre usar a ferramenta certa para o trabalho."
+    }
+  ]
+}

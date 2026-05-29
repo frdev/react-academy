@@ -1,0 +1,276 @@
+# Compound Components: APIs Flexíveis e Composição
+
+> **Para engenheiros Angular:** O Angular CDK usa `ContentChild` e `ContentChildren` para que componentes pais reajam a filhos projetados via `<ng-content>`. Compound Components no React resolvem o mesmo problema — comunicação implícita entre pai e filhos — mas de forma mais flexível: usam Context JavaScript em vez de diretivas de template. O resultado é que qualquer componente na subárvore pode participar, não apenas filhos diretos.
+
+## O Problema que Compound Components Resolvem
+
+Imagine um componente `Select`. A primeira versão aceita uma lista de opções via prop:
+
+```typescript
+<Select
+  options={['Apple', 'Banana', 'Cherry']}
+  value={selected}
+  onChange={setSelected}
+/>
+```
+
+Simples. Mas logo surgem novos requisitos: cada opção precisa de um ícone. Algumas opções têm dividers. Uma opção tem uma badge "Novo". O footer tem um botão "Criar nova opção".
+
+```typescript
+// Prop explosion — o componente virou uma API de configuração genérica
+<Select
+  options={options}
+  renderOption={(opt) => <><Icon name={opt.icon} />{opt.label}</>}
+  dividerAfter={[2, 5]}
+  badgeMap={{ 3: 'Novo' }}
+  footer={<button>Criar nova opção</button>}
+  value={selected}
+  onChange={setSelected}
+/>
+```
+
+Isso é **prop explosion**: o componente acumula props para cada variação possível. Alternativa igualmente problemática — estrutura rígida que o consumidor não pode customizar.
+
+Compound Components resolvem isso transferindo o controle da composição para o consumidor:
+
+```typescript
+<Select value={selected} onChange={setSelected}>
+  <Select.Option value="apple"><Icon name="apple" /> Apple</Select.Option>
+  <Select.Option value="banana">Banana</Select.Option>
+  <Select.Divider />
+  <Select.Option value="cherry" badge="Novo">Cherry</Select.Option>
+  <Select.Footer>
+    <button>Criar nova opção</button>
+  </Select.Footer>
+</Select>
+```
+
+---
+
+## Implementação: Context como Cola
+
+O segredo dos Compound Components é o **estado implícito** compartilhado via Context. O componente pai cria o Context; os filhos o consomem sem que o consumidor saiba da mecânica.
+
+```typescript
+// 1. Criar o Context
+interface SelectContextValue {
+  value: string
+  onChange: (value: string) => void
+}
+
+const SelectContext = React.createContext<SelectContextValue | null>(null)
+
+function useSelectContext() {
+  const ctx = React.useContext(SelectContext)
+  if (!ctx) throw new Error('Select.Option deve ser usado dentro de Select')
+  return ctx
+}
+
+// 2. Componente pai — provê o Context
+function Select({ value, onChange, children }: SelectProps) {
+  return (
+    <SelectContext.Provider value={{ value, onChange }}>
+      <div className="select-container" role="listbox">
+        {children}
+      </div>
+    </SelectContext.Provider>
+  )
+}
+
+// 3. Componentes filhos — consomem o Context
+function SelectOption({ value: optionValue, children, badge }: OptionProps) {
+  const { value, onChange } = useSelectContext()
+  const isSelected = value === optionValue
+
+  return (
+    <div
+      role="option"
+      aria-selected={isSelected}
+      className={cn('option', isSelected && 'option--selected')}
+      onClick={() => onChange(optionValue)}
+    >
+      {children}
+      {badge && <span className="badge">{badge}</span>}
+    </div>
+  )
+}
+
+function SelectDivider() {
+  return <hr className="select-divider" />
+}
+
+function SelectFooter({ children }: { children: React.ReactNode }) {
+  return <div className="select-footer">{children}</div>
+}
+```
+
+---
+
+## Dot Notation: Agrupando sob um Namespace
+
+Depois de implementar os subcomponentes, agrupe-os usando dot notation:
+
+```typescript
+// Atribuir subcomponentes como propriedades
+Select.Option = SelectOption
+Select.Divider = SelectDivider
+Select.Footer = SelectFooter
+
+// TypeScript: tipar corretamente
+type SelectComponent = typeof Select & {
+  Option: typeof SelectOption
+  Divider: typeof SelectDivider
+  Footer: typeof SelectFooter
+}
+
+export const Select = SelectBase as SelectComponent
+```
+
+Isso permite o uso `<Select.Option>` no JSX, tornando explícito que `Option` é parte do sistema `Select`. É um namespace de componentes — o consumidor vê a relação imediatamente sem precisar de documentação.
+
+---
+
+## Exemplo Completo: Tabs
+
+Tabs é o exemplo clássico de Compound Components:
+
+```typescript
+interface TabsContextValue {
+  activeTab: string
+  setActiveTab: (tab: string) => void
+}
+
+const TabsContext = React.createContext<TabsContextValue | null>(null)
+
+function Tabs({ defaultTab, children }: { defaultTab: string; children: React.ReactNode }) {
+  const [activeTab, setActiveTab] = useState(defaultTab)
+
+  return (
+    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+      <div className="tabs">{children}</div>
+    </TabsContext.Provider>
+  )
+}
+
+function TabList({ children }: { children: React.ReactNode }) {
+  return <div role="tablist" className="tab-list">{children}</div>
+}
+
+function Tab({ value, children }: { value: string; children: React.ReactNode }) {
+  const { activeTab, setActiveTab } = useContext(TabsContext)!
+
+  return (
+    <button
+      role="tab"
+      aria-selected={activeTab === value}
+      onClick={() => setActiveTab(value)}
+      className={cn('tab', activeTab === value && 'tab--active')}
+    >
+      {children}
+    </button>
+  )
+}
+
+function TabPanel({ value, children }: { value: string; children: React.ReactNode }) {
+  const { activeTab } = useContext(TabsContext)!
+
+  if (activeTab !== value) return null
+
+  return (
+    <div role="tabpanel" className="tab-panel">
+      {children}
+    </div>
+  )
+}
+
+// Montagem do namespace
+Tabs.List = TabList
+Tabs.Tab = Tab
+Tabs.Panel = TabPanel
+
+// Uso:
+function App() {
+  return (
+    <Tabs defaultTab="overview">
+      <Tabs.List>
+        <Tabs.Tab value="overview">Visão Geral</Tabs.Tab>
+        <Tabs.Tab value="details">Detalhes</Tabs.Tab>
+        <Tabs.Tab value="reviews">Avaliações</Tabs.Tab>
+      </Tabs.List>
+
+      <Tabs.Panel value="overview"><Overview /></Tabs.Panel>
+      <Tabs.Panel value="details"><Details /></Tabs.Panel>
+      <Tabs.Panel value="reviews"><Reviews /></Tabs.Panel>
+    </Tabs>
+  )
+}
+```
+
+O consumidor tem controle total: pode adicionar elementos entre as tabs, omitir panels não usados, ou colocar as tabs em posição diferente do panel.
+
+---
+
+## TypeScript: Tipando Compound Components
+
+O desafio com TypeScript é que você precisa tipar o tipo "função com propriedades extras":
+
+```typescript
+// Abordagem com interface
+interface TabsComponentType extends React.FC<TabsProps> {
+  List: React.FC<TabListProps>
+  Tab: React.FC<TabProps>
+  Panel: React.FC<TabPanelProps>
+}
+
+// Abordagem com type assertion (mais simples)
+const Tabs = Object.assign(TabsBase, {
+  List: TabList,
+  Tab: TabTab,
+  Panel: TabPanel,
+})
+// TypeScript infere o tipo automaticamente
+```
+
+A segunda abordagem com `Object.assign` é preferida por ser mais simples e deixar o TypeScript inferir o tipo resultante sem declarações manuais.
+
+---
+
+## Quando NÃO Usar Compound Components
+
+O padrão adiciona complexidade real. Não use quando:
+
+- O componente é simples e uma API de props cobre todos os casos de uso
+- Os subcomponentes não têm estado compartilhado implícito — passagem de props direta é mais clara
+- A equipe não está familiarizada com o padrão — a curva de aprendizado não vale para casos simples
+
+Use quando:
+
+- O consumidor precisa controlar a **estrutura** interna do componente (o que incluir, em que ordem)
+- Os subcomponentes precisam se coordenar (saber qual está ativo, qual está aberto)
+- A API de props cresceu demais e virou uma DSL de configuração
+
+---
+
+## Comparação Angular vs React
+
+| Aspecto | Angular CDK | React Compound Components |
+|---|---|---|
+| Mecanismo | ContentChild/ContentChildren | React Context |
+| Filhos diretos | Apenas projeção direta | Qualquer nível de profundidade |
+| Tipo | Diretivas de template | Componentes React normais |
+| Estado compartilhado | @Input/@Output entre pai-filho | Context acessível em qualquer nível |
+| Type safety | Via TypeScript + Angular templates | Via TypeScript + union types |
+
+A vantagem do React é que Context funciona em qualquer nível da árvore. Com Angular `ContentChildren`, o componente pai precisa conhecer seus filhos diretos. No React, um `Select.Option` dentro de um `div` extra ainda acessa o Context do `Select` pai.
+
+---
+
+## Key Takeaways
+
+1. Compound Components trocam prop explosion por uma API de composição controlada pelo consumidor
+2. Context é o mecanismo de estado implícito que conecta pai e filhos
+3. Dot notation (`<Tabs.Tab>`) agrupa subcomponentes em um namespace coeso
+4. Sempre lance um erro descritivo quando o contexto é usado fora do componente pai correto
+5. `Object.assign` é a forma mais simples de tipar compound components no TypeScript
+6. Diferente do Angular CDK: React Context funciona em qualquer nível da árvore, não apenas filhos diretos
+7. Use quando o consumidor precisa controlar estrutura; evite quando props simples são suficientes

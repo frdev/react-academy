@@ -1,0 +1,162 @@
+# Virtual DOM: O Que Está Por Trás do JSX
+
+## O Virtual DOM Não é Mágica
+
+"Virtual DOM é mais rápido" é uma das afirmações mais repetidas — e mais mal compreendidas — sobre o React. O Virtual DOM não é uma tecnologia revolucionária de performance. É uma estratégia de abstração que permite ao React saber exatamente o que precisa mudar antes de tocar o DOM real.
+
+O Virtual DOM é simplesmente uma **árvore de objetos JavaScript** que descreve a UI. Nada mais, nada menos.
+
+---
+
+## JSX: Açúcar Sintático para React.createElement
+
+Você escreve JSX, mas o que o compilador (Babel/SWC) realmente gera são chamadas a `React.createElement`:
+
+```jsx
+// O que você escreve
+const element = (
+  <div className="container">
+    <h1>Olá</h1>
+    <p>Bem-vindo</p>
+  </div>
+)
+
+// O que o compilador gera (React clássico, pré-React 17)
+const element = React.createElement(
+  'div',
+  { className: 'container' },
+  React.createElement('h1', null, 'Olá'),
+  React.createElement('p', null, 'Bem-vindo')
+)
+```
+
+A partir do React 17, o compilador usa o novo JSX transform que não exige importar React:
+
+```jsx
+// O que o novo compilador gera (React 17+)
+import { jsx as _jsx, jsxs as _jsxs } from 'react/jsx-runtime'
+
+const element = _jsxs('div', {
+  className: 'container',
+  children: [
+    _jsx('h1', { children: 'Olá' }),
+    _jsx('p', { children: 'Bem-vindo' })
+  ]
+})
+```
+
+---
+
+## O Que É Um React Element?
+
+O resultado de `React.createElement` (ou do JSX compilado) é um **React Element** — um objeto JavaScript simples e imutável que descreve o que deve ser renderizado:
+
+```javascript
+// Este é um React Element — um objeto comum
+{
+  $$typeof: Symbol(react.element),  // Identificador de segurança
+  type: 'div',                       // String para elementos DOM, ou função/classe para componentes
+  key: null,
+  ref: null,
+  props: {
+    className: 'container',
+    children: [
+      { type: 'h1', props: { children: 'Olá' }, ... },
+      { type: 'p', props: { children: 'Bem-vindo' }, ... }
+    ]
+  }
+}
+```
+
+Elementos são **descritores**, não instâncias. Criar um elemento não cria nada no DOM — é apenas um objeto que diz "deveria existir uma div com estas props e estes filhos".
+
+---
+
+## React Elements vs React Components vs DOM Elements
+
+Três conceitos que causam confusão:
+
+| Conceito | O que é | Exemplo |
+|----------|---------|---------|
+| **DOM Element** | Nó real no DOM do browser | `document.createElement('div')` |
+| **React Element** | Objeto JS descrevendo o que renderizar | `{ type: 'div', props: { ... } }` |
+| **React Component** | Função (ou classe) que retorna React Elements | `function Button() { return <button>...</button> }` |
+
+Quando `type` de um React Element é uma string (`'div'`, `'span'`), representa um elemento DOM. Quando é uma função ou classe, representa um componente React que o React irá chamar para obter mais elementos.
+
+---
+
+## A Fiber Tree: Uma Lista Encadeada, Não Uma Árvore Simples
+
+O que muita gente chama de "Virtual DOM" é na verdade a **Fiber Tree** — a representação interna do React que vai além de simples objetos descritores.
+
+Cada nó da Fiber Tree contém:
+- O React Element que ele representa
+- O estado do componente (memoizedState)
+- A referência ao DOM node real (stateNode)
+- Links para navegar pela árvore: `child`, `sibling`, `return`
+- Informação sobre o que precisa ser atualizado (effectTag)
+
+```
+Fiber Tree (lista encadeada):
+
+App ──child──▶ Header ──sibling──▶ Main ──sibling──▶ Footer
+                  │                   │
+               return              return
+                  ▼                   ▼
+                App               App
+```
+
+O React mantém **duas fiber trees em paralelo**:
+- **current**: o que está atualmente no DOM
+- **workInProgress**: o que o React está construindo durante a fase Render
+
+Após o Commit, a workInProgress se torna a current. Isso é chamado de **double buffering** e permite ao React descartar trabalho incompleto sem corromper a UI atual.
+
+---
+
+## Por Que "Virtual DOM é Mais Rápido" é um Mito
+
+O Virtual DOM **não é inerentemente mais rápido** que manipulação direta do DOM. De fato, adiciona overhead:
+
+1. Criar React Elements (objetos JS) a cada render
+2. Comparar a árvore antiga com a nova (reconciliation)
+3. Calcular o mínimo de mudanças necessárias
+
+Por que então usamos React? Porque otimização manual de DOM é propensa a bugs, difícil de manter, e o overhead do React é insignificante para a maioria das aplicações.
+
+O benefício real do Virtual DOM é:
+
+1. **Batching**: o React pode agrupar múltiplas atualizações e fazer um único repaint
+2. **Previsibilidade**: você descreve *o que* quer, não *como* chegar lá
+3. **Portable**: o mesmo modelo funciona para React DOM, React Native, React Three Fiber, etc.
+4. **Concurrent rendering**: com Fiber, o React pode pausar e priorizar trabalho
+
+---
+
+## O Que `key` Significa Para o Virtual DOM
+
+A prop `key` não é uma prop normal — o React a consome antes de criar o React Element e ela nunca chega ao componente como prop.
+
+```jsx
+// key é consumida pelo React internamente
+<Item key="abc-123" value="texto" />
+
+// Dentro de Item, props.key é undefined — você nunca recebe key como prop
+function Item({ value, key }) {  // key aqui é sempre undefined
+  console.log(key)               // undefined
+}
+```
+
+A key permite ao React manter a identidade de elementos em listas entre renders, evitando desmontar e remontar desnecessariamente.
+
+---
+
+## Key Takeaways
+
+1. **Virtual DOM é uma árvore de objetos JS** — nada de mágica ou sistema de observação.
+2. **JSX compila para `React.createElement`** (ou o novo JSX transform) — é açúcar sintático, não uma linguagem separada.
+3. **React Elements são descritores imutáveis** — criá-los não cria nada no DOM.
+4. **Fiber é a estrutura real interna** — lista encadeada com estado, efeitos e links de navegação.
+5. **"Virtual DOM é mais rápido" é um mito** — o benefício é previsibilidade, batching e modelo declarativo.
+6. **`key` é consumida pelo React** antes de criar o elemento — nunca chega ao componente como prop.

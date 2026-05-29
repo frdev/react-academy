@@ -1,0 +1,212 @@
+# Concurrent Features: Renderização Interruptível
+
+> **Para engenheiros Angular:** Angular usa Zone.js para detectar mudanças e agendar renderizações — cada evento dispara uma rodada de change detection que percorre a árvore de componentes. No React, o Concurrent Mode é a resposta para o mesmo problema, mas com uma granularidade maior: o React pode **interromper** uma renderização no meio do caminho para priorizar algo mais urgente (como manter um input responsivo), depois retomar de onde parou. Angular não tem esse modelo; sua alternativa mais próxima é `ChangeDetectionStrategy.OnPush` para reduzir a frequência, não a interruptibilidade.
+
+## O Que É Concorrência no React?
+
+Concorrência não significa multi-threading. O JavaScript ainda executa em uma thread. Significa que o React pode:
+
+1. **Começar** uma renderização
+2. **Pausar** no meio (se algo mais urgente aparecer)
+3. **Descartar** renderizações obsoletas
+4. **Retomar** quando a prioridade alta terminar
+
+Antes do Concurrent Mode, renderizações eram síncronas e bloqueantes. Se uma atualização de estado causava 300ms de renderização, o usuário não conseguia digitar, clicar ou scrollar durante esse tempo. Com o Concurrent Mode (padrão no React 18+), renderizações pesadas podem ser interrompidas.
+
+---
+
+## useTransition: Marcando Atualizações como Não-Urgentes
+
+`useTransition` permite marcar uma atualização de estado como de **baixa prioridade** (uma "transição"). React prioriza atualizações urgentes (input do usuário) sobre transições.
+
+```typescript
+import { useTransition, useState } from 'react'
+
+function SearchPage() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Item[]>([])
+  const [isPending, startTransition] = useTransition()
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    
+    // URGENTE: atualizar o input imediatamente
+    setQuery(value)
+    
+    // NÃO-URGENTE: calcular resultados pode esperar
+    startTransition(() => {
+      setResults(filterExpensiveList(value)) // pode causar render lento
+    })
+  }
+
+  return (
+    <div>
+      <input value={query} onChange={handleSearch} />
+      {isPending && <span>Filtrando...</span>}
+      <ResultsList results={results} />
+    </div>
+  )
+}
+```
+
+O input permanece responsivo mesmo enquanto `ResultsList` está sendo re-renderizado com milhares de itens. Se o usuário digitar rápido, React descarta renders intermediários e renderiza diretamente para o estado final.
+
+---
+
+## O Flag `isPending`
+
+`isPending` é `true` enquanto a transição está em andamento. Use para mostrar indicadores de loading sutis:
+
+```typescript
+const [isPending, startTransition] = useTransition()
+
+// Indicador de loading enquanto renderização pesada está em progresso
+{isPending && (
+  <div className="loading-bar" aria-label="Carregando resultados..." />
+)}
+```
+
+Diferente de um loading de rede, `isPending` é sobre trabalho de CPU — o React está renderizando em background, e `isPending` te diz quando isso termina.
+
+---
+
+## useDeferredValue: Diferindo um Valor
+
+`useDeferredValue` é similar a `useTransition`, mas para **valores** em vez de callbacks de estado. Útil quando você não controla onde o estado é atualizado:
+
+```typescript
+import { useDeferredValue, memo } from 'react'
+
+function SearchPage({ query }: { query: string }) {
+  // deferredQuery "fica para trás" enquanto query se atualiza rapidamente
+  const deferredQuery = useDeferredValue(query)
+  
+  return (
+    <div>
+      <SearchInput value={query} /> {/* sempre atual */}
+      <ResultsList query={deferredQuery} /> {/* pode ser stale temporariamente */}
+    </div>
+  )
+}
+```
+
+React renderiza com `query` atual para o input, e usa `deferredQuery` (possivelmente stale) para a lista — mantendo o input responsivo.
+
+**Comparando os dois:**
+- `useTransition`: você controla o que é urgente vs não-urgente na chamada de `setState`
+- `useDeferredValue`: você recebe um valor externo e o "atrasa" para renderizações pesadas
+
+---
+
+## startTransition: A Versão Imperativa
+
+`startTransition` é a versão sem hook — útil fora de componentes ou quando você não precisa de `isPending`:
+
+```typescript
+import { startTransition } from 'react'
+
+// Em um event handler qualquer
+function handleTabChange(tab: string) {
+  startTransition(() => {
+    setActiveTab(tab) // renderização pesada do conteúdo da aba
+  })
+}
+```
+
+---
+
+## Casos de Uso Reais
+
+**Filtros em listas grandes:**
+```typescript
+function ProductList() {
+  const [filter, setFilter] = useState('')
+  const [deferredFilter, setDeferredFilter] = useState('')
+  const [isPending, startTransition] = useTransition()
+
+  return (
+    <>
+      <input
+        value={filter}
+        onChange={e => {
+          setFilter(e.target.value)
+          startTransition(() => setDeferredFilter(e.target.value))
+        }}
+      />
+      <div style={{ opacity: isPending ? 0.7 : 1 }}>
+        <ProductGrid filter={deferredFilter} /> {/* 5000+ produtos */}
+      </div>
+    </>
+  )
+}
+```
+
+**Troca de abas com conteúdo pesado:**
+```typescript
+function TabPanel() {
+  const [activeTab, setActiveTab] = useState('overview')
+  const [isPending, startTransition] = useTransition()
+
+  return (
+    <>
+      <TabBar 
+        active={activeTab}
+        onChange={tab => startTransition(() => setActiveTab(tab))}
+      />
+      <div style={{ opacity: isPending ? 0.5 : 1 }}>
+        {activeTab === 'analytics' && <HeavyAnalyticsChart />}
+        {activeTab === 'users' && <UserTable />}
+        {activeTab === 'overview' && <Overview />}
+      </div>
+    </>
+  )
+}
+```
+
+---
+
+## O Que NÃO Beneficia de Concurrent Features
+
+Concurrent features não resolvem:
+- **Lentidão de rede**: se o fetch demora 3s, useTransition não ajuda — use Suspense + TanStack Query
+- **Componentes que nunca re-renderizam pesadamente**: overhead sem benefício
+- **Mutations de estado simples**: `setCount(c => c + 1)` não precisa de transição
+- **Renders já rápidos** (< 50ms): o overhead de scheduling é proporcionalmente grande
+
+```typescript
+// DESNECESSÁRIO — render simples não precisa de transição
+const [count, setCount] = useState(0)
+startTransition(() => setCount(c => c + 1)) // overhead sem benefício
+```
+
+---
+
+## O Scheduler: Por Baixo do Capô
+
+O React Scheduler é o motor por trás das concurrent features. Ele divide o trabalho de renderização em pequenas unidades chamadas **fiber work units** e as processa em "fatias de tempo" (time slicing).
+
+Quando uma fatia de tempo termina, o Scheduler verifica: há trabalho urgente pendente (evento do usuário)? Se sim, pausa o trabalho atual e processa o urgente primeiro. Isso é o que mantém a UI responsiva.
+
+Você não interage diretamente com o Scheduler — `useTransition` e `useDeferredValue` são as APIs de alto nível que o expõem de forma controlada.
+
+---
+
+## Depurando Concurrent Features
+
+As React DevTools mostram quais renders foram interrompidos e por quê. No Profiler, você verá:
+- Renders marcados como "deferred" ou "transition"
+- O `isPending` time (tempo de espera)
+- Renders descartados (interleaved renders)
+
+---
+
+## Resumo
+
+| API | Para Que Serve | Quando Usar |
+|---|---|---|
+| `useTransition` | Marca setState como não-urgente | Controla explicitamente qual update é urgente |
+| `useDeferredValue` | Atrasa um valor para renders pesados | Recebe valor de fora e precisa diferir |
+| `startTransition` | Imperativo, sem `isPending` | Fora de componentes, ou sem necessidade de feedback |
+| `isPending` | Flag de loading para transições | Mostrar indicador durante render em background |
+
+Concurrent features são o diferencial do React moderno. Mas como qualquer otimização, aplique com propósito: use o Profiler para identificar onde a UI perde responsividade, depois aplique a ferramenta certa.

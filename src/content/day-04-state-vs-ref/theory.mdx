@@ -1,0 +1,241 @@
+# State vs Ref: Quando Usar Cada Um
+
+## A Questão Central
+
+`useState` e `useRef` são dois mecanismos para persistir valores entre renders. A diferença fundamental é simples mas suas implicações são profundas:
+
+- **State** → persiste o valor E trigera um re-render quando muda
+- **Ref** → persiste o valor sem trigerar re-render
+
+Escolher o errado causa bugs sutis: usar ref quando deveria ser state = UI desatualizada; usar state quando deveria ser ref = re-renders desnecessários.
+
+---
+
+## Como State Funciona Internamente
+
+`useState` é implementado sobre a Fiber — o estado é armazenado na Fiber Node do componente, não dentro da função do componente. Por isso o estado persiste entre re-renders mesmo que a função seja chamada novamente.
+
+```jsx
+function Counter() {
+  // count é lido da Fiber Node a cada render
+  // setCount agenda uma atualização na Fiber e solicita um re-render
+  const [count, setCount] = useState(0)
+
+  return <button onClick={() => setCount(c => c + 1)}>{count}</button>
+}
+```
+
+**Características do state:**
+1. Imutável durante o render atual — `setCount(5)` não muda `count` imediatamente
+2. Atualização pode ser batched — múltiplos `setState` no mesmo event handler são processados juntos
+3. Cada re-render recebe um novo valor de `count` (snapshot)
+
+---
+
+## Como Refs Funcionam Internamente
+
+`useRef` retorna um objeto `{ current: value }` que é criado uma única vez e reutilizado em todos os renders. O objeto em si é estável — sempre a mesma referência — mas seu `.current` pode ser mutado livremente.
+
+```jsx
+function Timer() {
+  const intervalRef = useRef(null)
+
+  function start() {
+    // Mutar .current NÃO trigera re-render
+    intervalRef.current = setInterval(() => {
+      console.log('tick')
+    }, 1000)
+  }
+
+  function stop() {
+    clearInterval(intervalRef.current)
+    intervalRef.current = null
+  }
+
+  return (
+    <>
+      <button onClick={start}>Start</button>
+      <button onClick={stop}>Stop</button>
+    </>
+  )
+}
+```
+
+**Características da ref:**
+1. Mutável — você pode mudar `.current` diretamente
+2. Não trigera re-render
+3. O objeto `{ current }` é sempre o mesmo entre renders (referência estável)
+4. Mudanças em `.current` não são refletidas no JSX imediatamente (pois não há re-render)
+
+---
+
+## Os 3 Casos de Uso Principais para Refs
+
+### Caso 1: Armazenar Valores Mutáveis Sem Re-render
+
+Ideal para valores que precisam persistir mas cuja mudança não afeta a UI:
+
+```jsx
+function VideoPlayer() {
+  const [isPlaying, setIsPlaying] = useState(false)
+  const playerRef = useRef(null)      // Instância do player de vídeo
+  const startTimeRef = useRef(null)   // Timestamp de quando começou a tocar
+
+  function handlePlay() {
+    setIsPlaying(true)
+    startTimeRef.current = Date.now() // Não precisa causar re-render
+    playerRef.current.play()
+  }
+
+  return <video ref={playerRef} />
+}
+```
+
+### Caso 2: Acessar Elementos DOM Diretamente
+
+O caso mais comum: obter uma referência a um elemento DOM real para APIs que o React não expõe diretamente.
+
+```jsx
+function SearchInput() {
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    // Focar o input programaticamente após montar
+    inputRef.current.focus()
+  }, [])
+
+  return <input ref={inputRef} placeholder="Pesquisar..." />
+}
+```
+
+Quando você passa uma ref para um elemento JSX (`<input ref={inputRef} />`), o React popula `inputRef.current` com o DOM node real na fase Commit — após o elemento existir no DOM.
+
+### Caso 3: Armazenar o Valor Mais Recente para Callbacks (Evitando Stale Closures)
+
+Este é o caso mais sutil e poderoso. Closures capturam o valor de variáveis no momento em que são criadas. Se um callback é criado durante um render e usado mais tarde, ele "vê" os valores daquele render — o que pode ser desatualizado (stale).
+
+```jsx
+function Chat({ onMessage }) {
+  const [message, setMessage] = useState('')
+  
+  // Bug: se onMessage mudar, o useEffect usa a versão antiga
+  useEffect(() => {
+    const socket = connectSocket()
+    socket.on('message', (data) => {
+      onMessage(data) // stale closure — captura onMessage do render atual
+    })
+    return () => socket.disconnect()
+  }, []) // [] = só roda uma vez, mas onMessage pode mudar!
+}
+```
+
+A solução com ref:
+
+```jsx
+function Chat({ onMessage }) {
+  const [message, setMessage] = useState('')
+  const onMessageRef = useRef(onMessage)
+  
+  // Mantém a ref sempre atualizada com o callback mais recente
+  useLayoutEffect(() => {
+    onMessageRef.current = onMessage
+  })
+  
+  useEffect(() => {
+    const socket = connectSocket()
+    socket.on('message', (data) => {
+      // Sempre usa a versão mais recente de onMessage
+      onMessageRef.current(data)
+    })
+    return () => socket.disconnect()
+  }, []) // Seguro agora — não precisa de onMessage na dependency array
+}
+```
+
+---
+
+## O Padrão "Previous Value" com Ref
+
+Um padrão clássico para capturar o valor anterior de uma prop ou estado:
+
+```jsx
+function PriceDisplay({ price }) {
+  const prevPriceRef = useRef(price)
+  
+  useEffect(() => {
+    // Após cada render, atualiza a ref com o valor atual
+    prevPriceRef.current = price
+  })
+  
+  const prevPrice = prevPriceRef.current
+  const increased = price > prevPrice
+  
+  return (
+    <span style={{ color: increased ? 'green' : 'red' }}>
+      {price} {increased ? '↑' : '↓'}
+    </span>
+  )
+}
+```
+
+---
+
+## Quando Usar State vs Ref
+
+| Situação | Use |
+|----------|-----|
+| Valor que, quando muda, deve atualizar a UI | `useState` |
+| Contador, flag, ou objeto que muda mas não afeta UI | `useRef` |
+| Referência a elemento DOM | `useRef` |
+| Armazenar ID de setTimeout/setInterval | `useRef` |
+| Evitar stale closure em callbacks | `useRef` |
+| Valor anterior de uma prop/state | `useRef` |
+| Formulário controlado | `useState` |
+| Formulário não controlado | `useRef` |
+
+---
+
+## Erros Comuns
+
+### Usar ref para estado que afeta UI
+
+```jsx
+// Bug: UI nunca atualiza quando count muda
+function Counter() {
+  const countRef = useRef(0)
+  
+  return (
+    <button onClick={() => { countRef.current++ }}>
+      {countRef.current} {/* Nunca atualiza visualmente! */}
+    </button>
+  )
+}
+```
+
+### Ler ref durante a fase Render
+
+```jsx
+// Problemático: refs são populadas na fase Commit
+// Ler durante render pode retornar null ou valor antigo
+function Component() {
+  const ref = useRef(null)
+  console.log(ref.current?.offsetHeight) // null no primeiro render!
+  
+  // Correto: ler refs em useEffect ou useLayoutEffect
+  useEffect(() => {
+    console.log(ref.current.offsetHeight) // OK aqui
+  })
+  
+  return <div ref={ref}>...</div>
+}
+```
+
+---
+
+## Key Takeaways
+
+1. **State trigera re-render; ref não**. Use state quando a mudança precisa aparecer na UI.
+2. **Refs são objetos estáveis** — o objeto `{ current }` é sempre o mesmo, apenas `.current` muda.
+3. **Refs são populadas na fase Commit** — nunca leia `ref.current` durante a fase render (pode ser null).
+4. **O padrão "latest ref"** resolve stale closures em callbacks/efeitos que não devem re-executar quando o callback muda.
+5. **`useRef` não aceita função de inicialização lazy** como `useState` — se precisar de inicialização custosa, faça `if (ref.current === null) ref.current = createValue()`.

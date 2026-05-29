@@ -1,0 +1,14 @@
+{
+  "id": "day-14",
+  "day": 14,
+  "week": 2,
+  "title": "useLayoutEffect vs useEffect",
+  "slug": "uselayouteffect-vs-useeffect",
+  "topics": ["useEffect", "useLayoutEffect", "timing", "DOM measurement", "paint"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 120
+}

@@ -1,0 +1,198 @@
+# React.memo: Pulando Re-renders Desnecessários
+
+> **Para engenheiros Angular:** `React.memo` é o equivalente direto de `ChangeDetectionStrategy.OnPush` no Angular. Com OnPush, o Angular só re-renderiza um componente quando suas referências de Input mudam ou quando um evento interno ocorre. Com React.memo, o React só re-renderiza o componente quando suas props mudam — e "mudam" significa: para primitivos, por valor; para objetos e funções, por referência.
+
+## O Problema: Re-renders em Cascata
+
+Por padrão, quando um componente pai re-renderiza, **todos os seus filhos também re-renderizam** — mesmo que as props passadas para eles sejam exatamente as mesmas de antes.
+
+```typescript
+function Parent() {
+  const [count, setCount] = useState(0)
+  
+  return (
+    <div>
+      <button onClick={() => setCount(c => c + 1)}>Count: {count}</button>
+      <ExpensiveChild name="Alice" /> {/* re-renderiza a cada clique! */}
+    </div>
+  )
+}
+
+function ExpensiveChild({ name }: { name: string }) {
+  // renderização cara: listas grandes, cálculos, animações
+  return <div>Hello, {name}</div>
+}
+```
+
+Toda vez que o botão é clicado, `ExpensiveChild` re-renderiza mesmo com `name` sempre sendo `"Alice"`. Desperdício de CPU.
+
+---
+
+## React.memo: A Solução
+
+`React.memo` envolve um componente e **memoriza o resultado renderizado**. Na próxima renderização do pai, o React faz uma comparação rasa (shallow comparison) das props. Se todas as props forem iguais, o componente filho é pulado.
+
+```typescript
+const ExpensiveChild = React.memo(function ExpensiveChild({ name }: { name: string }) {
+  return <div>Hello, {name}</div>
+})
+
+// Alternativa com export nomeado:
+function ExpensiveChildBase({ name }: { name: string }) {
+  return <div>Hello, {name}</div>
+}
+export const ExpensiveChild = React.memo(ExpensiveChildBase)
+```
+
+Agora `ExpensiveChild` só re-renderiza quando `name` mudar. Cliques no botão de count não afetam mais este componente.
+
+---
+
+## Comparação Rasa (Shallow Comparison)
+
+Este é o ponto mais importante para entender React.memo.
+
+**Primitivos** (string, number, boolean, null, undefined) são comparados **por valor**:
+```typescript
+// Estas props são "iguais" para React.memo:
+<Child name="Alice" age={30} active={true} />
+<Child name="Alice" age={30} active={true} />
+```
+
+**Objetos, arrays e funções** são comparados **por referência** — e isso é onde a maioria dos bugs acontece:
+```typescript
+// PROBLEMA: novo objeto literal a cada render
+function Parent() {
+  const [count, setCount] = useState(0)
+  
+  return (
+    <MemoChild 
+      user={{ name: 'Alice' }} // <- NOVO objeto a cada render!
+      onClick={() => console.log('clicked')} // <- NOVA função a cada render!
+    />
+  )
+}
+
+const MemoChild = React.memo(function MemoChild({ user, onClick }) {
+  // Este memo é INÚTIL — props sempre mudam por referência
+  return <button onClick={onClick}>{user.name}</button>
+})
+```
+
+Para que React.memo funcione com objetos e funções, as referências precisam ser **estáveis**.
+
+---
+
+## Combinando com useMemo e useCallback
+
+Você já aprendeu `useMemo` (dia 08) e `useCallback` (dia 09). Eles são os complementos naturais de `React.memo`:
+
+```typescript
+function Parent() {
+  const [count, setCount] = useState(0)
+  const [user, setUser] = useState({ name: 'Alice' })
+  
+  // useMemo estabiliza a referência do objeto
+  const memoizedUser = useMemo(() => ({ name: user.name }), [user.name])
+  
+  // useCallback estabiliza a referência da função
+  const handleClick = useCallback(() => {
+    console.log('clicked')
+  }, []) // sem dependências — referência estável
+  
+  return (
+    <MemoChild user={memoizedUser} onClick={handleClick} />
+  )
+}
+
+const MemoChild = React.memo(function MemoChild({ user, onClick }) {
+  // Agora o memo realmente funciona!
+  return <button onClick={onClick}>{user.name}</button>
+})
+```
+
+---
+
+## O Segundo Argumento: Função de Comparação Customizada
+
+Por padrão, React.memo usa shallow comparison. Mas você pode fornecer sua própria função de comparação:
+
+```typescript
+const MemoChild = React.memo(
+  function MemoChild({ user }: { user: User }) {
+    return <div>{user.name} — {user.email}</div>
+  },
+  (prevProps, nextProps) => {
+    // Retorna true se as props são "iguais" (pular re-render)
+    // Retorna false se as props são "diferentes" (re-renderizar)
+    return prevProps.user.id === nextProps.user.id
+  }
+)
+```
+
+Use a comparação customizada com cuidado. Ela pode introduzir bugs sutis se a lógica de comparação não cobrir todos os campos que afetam o render.
+
+---
+
+## Quando Usar React.memo
+
+**Use quando:**
+- O componente re-renderiza frequentemente por causa do pai
+- As props são estáveis ou você pode estabilizá-las com useMemo/useCallback
+- O render é de fato caro (listas grandes, cálculos pesados, muitos filhos)
+
+**Não use quando:**
+- O componente é simples e rápido de renderizar — o overhead do memo pode ser maior que o benefício
+- As props mudam na maioria dos renders — o React faz a comparação E ainda re-renderiza, pior que sem memo
+- Você está adicionando memo "preventivamente" sem medir — **profile primeiro**
+
+---
+
+## Diagnóstico: React DevTools Profiler
+
+Antes de adicionar React.memo, use o Profiler nas DevTools do React para identificar quais componentes são gargalos reais. Otimização prematura é o maior inimigo da legibilidade.
+
+```
+React DevTools → Profiler → Record → interaja com o app → Stop
+→ Veja o flame graph: componentes grandes/lentos são candidatos a memo
+```
+
+---
+
+## Armadilhas Comuns
+
+```typescript
+// ARMADILHA 1: Context consumers não são protegidos por memo
+const MemoChild = React.memo(function Child() {
+  const theme = useContext(ThemeContext) // se o context mudar, memo não ajuda
+  return <div className={theme}>...</div>
+})
+
+// ARMADILHA 2: Props children derrota memo
+const MemoChild = React.memo(function Child({ children }) {
+  return <div>{children}</div>
+})
+
+<MemoChild>
+  <p>Texto</p> {/* novo JSX element a cada render do pai! */}
+</MemoChild>
+
+// SOLUÇÃO: extrair children para variável estável ou usar useMemo
+const content = useMemo(() => <p>Texto</p>, [])
+<MemoChild>{content}</MemoChild>
+```
+
+---
+
+## Resumo
+
+| Conceito | Detalhe |
+|---|---|
+| `React.memo(Component)` | Pula re-render se props são shallowly iguais |
+| Comparação rasa | Primitivos por valor, objetos/funções por referência |
+| `useCallback` | Estabiliza referência de funções para memo funcionar |
+| `useMemo` (para valores) | Estabiliza referência de objetos para memo funcionar |
+| Comparação customizada | Segundo argumento de React.memo — use com cautela |
+| Profile first | Meça antes de otimizar |
+
+React.memo é uma ferramenta de otimização, não uma regra geral. Use-a cirurgicamente onde os dados mostram que há um gargalo real.

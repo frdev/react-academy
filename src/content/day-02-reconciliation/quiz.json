@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que acontece quando o React encontra um elemento de tipo diferente no mesmo lugar da árvore durante o diffing?",
+      "options": [
+        "O React tenta atualizar o elemento existente com as novas props",
+        "O React desmonta toda a subárvore antiga e monta uma nova do zero",
+        "O React ignora a mudança e mantém o elemento anterior",
+        "O React lança um erro de runtime"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando o tipo muda (ex: div → span, ou ComponenteA → ComponenteB), o React desmonta toda a subárvore existente — incluindo o estado interno de todos os componentes filhos — e monta uma nova subárvore do zero. É por isso que trocar tipos no mesmo lugar causa perda de estado local."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que usar o índice do array como key em listas é problemático?",
+      "options": [
+        "Porque índices são números e keys devem ser strings",
+        "Porque o React não aceita índices como key",
+        "Porque ao remover ou reordenar itens, o React associa o estado interno ao índice errado",
+        "Porque índices causam renders desnecessários"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O React usa a key para identificar qual componente é qual entre renders. Com key={index}, ao remover o primeiro item de uma lista de 3, os índices 0 e 1 passam a apontar para itens diferentes, mas o React reutiliza os componentes das posições 0 e 1 — estado interno (como checkboxes, campos preenchidos) fica associado ao item errado."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que é uma Fiber no React?",
+      "options": [
+        "Um hook para lidar com efeitos assíncronos",
+        "Uma unidade de trabalho representada como nó de uma lista encadeada, que permite pausar e retomar reconciliação",
+        "Um tipo especial de componente que não re-renderiza",
+        "O nome do algoritmo de diffing do React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Fiber é a estrutura de dados interna do React (introduzida no React 16) que representa cada nó da árvore de componentes como um nó de lista encadeada. Isso permite ao React pausar o trabalho de reconciliação, priorizar atualizações urgentes, e retomar trabalho interrompido — base do Concurrent Mode."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Usar key intencionalmente pode ser uma técnica válida para forçar o React a remontar um componente do zero.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Mudar a key de um componente faz com que o React trate-o como um elemento completamente novo, desmontando o antigo e montando um novo. Isso é útil para resetar o estado interno de um componente sem precisar de lógica de reset explícita — por exemplo, `<ProfileForm key={userId} />` reseta o formulário automaticamente ao trocar de usuário."
+    }
+  ]
+}

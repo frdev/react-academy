@@ -1,0 +1,212 @@
+# Feature-Based Architecture: Escalando Projetos React
+
+> **Para engenheiros Angular:** NgModules no Angular são fronteiras explícitas de feature — o framework te obriga a declarar o que é público (`exports`) e o que é interno (`declarations`). React não tem esse mecanismo embutido. A arquitetura feature-based é uma convenção que replica essa ideia usando estrutura de pastas e barrel exports, de forma voluntária mas igualmente eficaz.
+
+## O Problema com Layer-Based Architecture
+
+A maioria dos projetos React começa assim:
+
+```
+src/
+  components/
+    Button.tsx
+    UserCard.tsx
+    ProductCard.tsx
+    OrderSummary.tsx
+    CartItem.tsx
+  hooks/
+    useUser.ts
+    useProducts.ts
+    useCart.ts
+    useOrders.ts
+  utils/
+    formatCurrency.ts
+    formatDate.ts
+    api.ts
+  types/
+    user.ts
+    product.ts
+    cart.ts
+```
+
+Essa estrutura — chamada **layer-based** — agrupa arquivos pelo tipo técnico (componente, hook, util). Funciona muito bem para projetos pequenos. O problema aparece com o crescimento.
+
+Com 50 componentes, `components/` se torna um espaço de nomes sem coesão. Para entender o fluxo de checkout, você precisa pular entre `components/CartItem.tsx`, `hooks/useCart.ts`, `utils/formatCurrency.ts`, e `types/cart.ts` — arquivos espalhados em 4 pastas diferentes, misturados com código completamente não relacionado.
+
+---
+
+## Feature-Based Architecture
+
+A alternativa é agrupar por **domínio** em vez de por tipo técnico:
+
+```
+src/
+  features/
+    user/
+      components/
+        UserCard.tsx
+        UserAvatar.tsx
+      hooks/
+        useUser.ts
+        useUserProfile.ts
+      types.ts
+      utils.ts
+      index.ts          ← barrel export: API pública da feature
+    cart/
+      components/
+        CartItem.tsx
+        CartSummary.tsx
+      hooks/
+        useCart.ts
+      store/
+        cartStore.ts
+      index.ts
+    products/
+      ...
+  shared/               ← código genuinamente compartilhado
+    components/
+      Button.tsx
+      Input.tsx
+    hooks/
+      useDebounce.ts
+    utils/
+      formatCurrency.ts
+```
+
+Agora para entender o checkout: abra `features/cart/`. Todo o código relevante está ali.
+
+---
+
+## O Princípio de Colocation
+
+**Colocation** é a prática de colocar arquivos que mudam juntos próximos uns dos outros.
+
+```
+features/user/
+  components/
+    UserCard.tsx          ← componente
+    UserCard.test.tsx     ← teste ao lado do componente
+    UserCard.stories.tsx  ← storybook ao lado do componente
+  hooks/
+    useUser.ts
+    useUser.test.ts       ← teste do hook ao lado do hook
+```
+
+Por que isso importa? **Reduz o custo cognitivo de navegação.** Quando você muda `UserCard.tsx`, o teste está a um clique de distância — não em uma pasta `__tests__/` paralela na raiz do projeto. Quando você muda `useUser.ts`, o teste está no mesmo diretório.
+
+Colocation também facilita encontrar o que pode ser deletado: se a feature `user` for removida, você deleta a pasta inteira e não deixa testes e tipos órfãos espalhados pelo projeto.
+
+---
+
+## Fronteiras Entre Features
+
+A regra mais importante: **features não importam dos internals de outras features**.
+
+```typescript
+// ❌ ERRADO: cart importa de dentro da feature user
+import { formatUserName } from '../user/utils'
+import { UserAvatar } from '../user/components/UserAvatar'
+
+// ✅ CORRETO: cart importa apenas do barrel export de user
+import { formatUserName, UserAvatar } from '../user'
+```
+
+O `index.ts` de cada feature define a API pública. Se `UserAvatar` não está re-exportado pelo `index.ts`, ela é um detalhe de implementação — outras features não têm permissão de importá-la diretamente.
+
+```typescript
+// features/user/index.ts — define o que é público
+export { UserCard } from './components/UserCard'
+export { UserAvatar } from './components/UserAvatar'
+export { useUser } from './hooks/useUser'
+export type { User } from './types'
+
+// UserCard.internals.ts NÃO está exportado aqui — é detalhe interno
+```
+
+---
+
+## Barrel Exports: A API Pública da Feature
+
+O arquivo `index.ts` (barrel export) serve como **contrato de interface** da feature — análogo ao `exports` de um NgModule Angular.
+
+```typescript
+// features/cart/index.ts
+export { CartItem } from './components/CartItem'
+export { CartSummary } from './components/CartSummary'
+export { useCart } from './hooks/useCart'
+export type { CartItem as CartItemType } from './types'
+
+// cartStore.ts NÃO está exportado — é detalhe interno
+// CartItem.internals.ts NÃO está exportado
+```
+
+**Benefícios:**
+1. Encapsulamento: renomear arquivos internos não quebra importações externas
+2. Clareza: você sabe exatamente o que está disponível para outras partes do app
+3. Refactoring seguro: internals podem ser reorganizados livremente
+
+---
+
+## Quando Dividir uma Feature
+
+A decisão de dividir uma feature não deve ser baseada em número de arquivos. O sinal certo é:
+
+**Separe quando:** A feature tem dois domínios distintos com ciclos de vida diferentes, ou quando partes dela são reutilizadas por features completamente diferentes.
+
+**Não separe ainda:** Quando todos os arquivos se referem ao mesmo domínio de negócio, mesmo que sejam muitos.
+
+O sinal de alarme mais claro: **acoplamento circular entre features**.
+
+```typescript
+// ❌ PROBLEMA: cart e orders importam uma da outra
+// features/cart/index.ts
+export { useCart } from './hooks/useCart'
+// dentro de useCart.ts:
+import { useOrders } from '../orders'  // cart depende de orders
+
+// features/orders/hooks/useOrders.ts
+import { useCart } from '../cart'  // orders depende de cart
+```
+
+Quando duas features formam um ciclo de dependência, na prática são uma feature só. A solução é: extrair o código compartilhado para `shared/`, ou fundir as duas features em uma.
+
+---
+
+## Comparação Angular vs React
+
+| Aspecto | Angular NgModules | React Feature-Based |
+|---|---|---|
+| Fronteiras | Explícitas (compilador verifica) | Por convenção (linter pode verificar) |
+| API pública | `exports` do NgModule | `index.ts` barrel export |
+| Internals | `declarations` não exportadas | Arquivos não re-exportados no index |
+| Lazy loading | `loadChildren` em rotas | `React.lazy` + dynamic import |
+| Forçado pelo framework | Sim | Não — depende da disciplina da equipe |
+
+A diferença mais importante: Angular te obriga a pensar em módulos desde o início. React não. Isso torna a arquitetura feature-based uma escolha consciente — o que é tanto uma liberdade quanto uma responsabilidade.
+
+---
+
+## Feature Slices e Pasta Shared
+
+Em projetos maiores, emerge um padrão com três camadas:
+
+```
+src/
+  features/      ← domínios de negócio (user, cart, checkout)
+  shared/        ← UI components e utils reutilizáveis sem domínio
+  app/           ← configuração, rotas, providers globais
+```
+
+A regra de dependência: `features` podem importar de `shared`, mas `shared` **nunca** importa de `features`. Isso mantém `shared` genuinamente reutilizável.
+
+---
+
+## Key Takeaways
+
+1. Layer-based (components/, hooks/, utils/) falha em escala porque agrupa por tipo técnico, não por domínio
+2. Feature-based agrupa por domínio: todo código de uma feature vive junto
+3. Colocation: arquivos que mudam juntos ficam juntos — incluindo testes
+4. O `index.ts` é a API pública da feature — importe sempre por ele, nunca pelos internals
+5. Acoplamento circular entre features é o sinal para refatorar ou fundir
+6. `shared/` é para código genuinamente sem domínio — não vira uma "segunda pasta components/"
+7. React não impõe essa estrutura — é disciplina de equipe, mas pode ser reforçada com ESLint (import/no-internal-modules)

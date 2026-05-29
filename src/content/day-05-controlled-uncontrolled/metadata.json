@@ -1,0 +1,14 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Controlled vs Uncontrolled Components",
+  "slug": "controlled-uncontrolled",
+  "topics": ["controlled", "uncontrolled", "form", "ref", "defaultValue"],
+  "difficulty": "foundational",
+  "estimatedMinutes": 40,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 80
+}

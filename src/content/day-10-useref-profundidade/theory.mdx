@@ -1,0 +1,207 @@
+# useRef em Profundidade: Muito Além do DOM
+
+> **Para engenheiros Angular:** `ViewChild` com `ElementRef` é o equivalente Angular para acessar o DOM — e é o caso de uso mais conhecido do `useRef`. Mas o `useRef` tem dois outros casos de uso sem paralelo direto no Angular: armazenar valores mutáveis sem disparar re-renders, e resolver o problema das stale closures.
+
+## O Que é useRef?
+
+`useRef` retorna um objeto `{ current: T }` que **persiste entre renderizações** sem causar re-render quando é modificado:
+
+```typescript
+const ref = useRef<HTMLDivElement>(null)
+// ref.current é null inicialmente
+// Após o componente montar: ref.current aponta para o elemento DOM
+
+const countRef = useRef(0)
+countRef.current++ // Modifica sem causar re-render
+```
+
+A distinção chave em relação a `useState`:
+
+| | useState | useRef |
+|---|---|---|
+| Persiste entre renders | Sim | Sim |
+| Disparar re-render ao mudar | Sim | **Não** |
+| Acessado por | `value` | `ref.current` |
+| Mutável diretamente | Não (use setter) | **Sim** |
+
+---
+
+## Os 3 Casos de Uso do useRef
+
+### Caso 1: Acesso ao DOM
+
+O uso mais familiar para quem vem do Angular. `useRef` conecta a um elemento DOM real após a montagem:
+
+```typescript
+function TextInput() {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const focusInput = () => {
+    inputRef.current?.focus()
+  }
+
+  return (
+    <>
+      <input ref={inputRef} type="text" />
+      <button onClick={focusInput}>Focar</button>
+    </>
+  )
+}
+```
+
+Outros exemplos de operações imperativas via ref:
+- `videoRef.current?.play()` / `.pause()` — controle de mídia
+- `containerRef.current?.scrollIntoView()` — scroll programático
+- `inputRef.current?.getBoundingClientRect()` — medir elementos
+- `canvasRef.current?.getContext('2d')` — canvas operations
+
+**Importante:** `ref.current` é `null` durante o render inicial. Só acesse dentro de `useEffect`, handlers de eventos, ou callbacks — nunca durante a fase de render.
+
+### Caso 2: Valor Mutável Sem Re-render
+
+Às vezes você precisa persistir um valor entre renders sem causar re-render. Exemplos clássicos: IDs de timeout/interval, contadores de render, flags de montagem.
+
+```typescript
+function PollingComponent({ interval }: { interval: number }) {
+  const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startPolling = () => {
+    intervalIdRef.current = setInterval(() => {
+      fetchData()
+    }, interval)
+  }
+
+  const stopPolling = () => {
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current)
+      intervalIdRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    startPolling()
+    return () => stopPolling() // cleanup ao desmontar
+  }, [interval])
+}
+```
+
+Se você usasse `useState` para armazenar o `intervalId`, a chamada `setIntervalId(id)` causaria um re-render desnecessário — e provavelmente um loop.
+
+### Caso 3: O Padrão "Latest Value" (Resolvendo Stale Closures)
+
+Este é o caso de uso mais sofisticado e poderoso. Closures em JavaScript fecham sobre valores no momento em que são criadas. Em componentes React, isso significa que callbacks criados em um render capturam o estado daquele render específico — e ficam "stale" (velhos) quando o estado muda.
+
+```typescript
+function Timer() {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      // PROBLEMA: count aqui é sempre 0 — fechou sobre o valor do primeiro render!
+      console.log('Current count:', count)
+    }, 1000)
+    return () => clearInterval(id)
+  }, []) // [] — intencionalmente não quer recriar o interval
+}
+```
+
+A solução com `useRef`:
+
+```typescript
+function Timer() {
+  const [count, setCount] = useState(0)
+  const countRef = useRef(count)
+
+  // Manter a ref sincronizada com o estado
+  useEffect(() => {
+    countRef.current = count
+  })
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      // countRef.current sempre tem o valor mais recente
+      console.log('Current count:', countRef.current)
+    }, 1000)
+    return () => clearInterval(id)
+  }, []) // sem problema de stale closure
+}
+```
+
+`ref.current` não é capturado pela closure — é uma referência ao objeto ref que permanece o mesmo. Ao ler `ref.current`, você sempre lê o valor mais recente.
+
+---
+
+## O Padrão "Previous Value"
+
+Um padrão clássico: capturar o valor anterior de uma prop ou estado.
+
+```typescript
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>()
+
+  useEffect(() => {
+    ref.current = value
+  }) // sem deps — roda após todo render
+
+  return ref.current // retorna o valor do render ANTERIOR
+}
+
+// Uso:
+function Component({ value }: { value: number }) {
+  const previousValue = usePrevious(value)
+
+  return (
+    <p>
+      Antes: {previousValue} → Agora: {value}
+    </p>
+  )
+}
+```
+
+**Por que funciona?** O `useEffect` roda depois que o componente renderizou e o DOM foi atualizado. Portanto, quando o componente renderiza com o novo valor, `ref.current` ainda tem o valor anterior. O `useEffect` só atualiza `ref.current` depois que o JSX já foi retornado — então o return vê o valor antigo.
+
+---
+
+## ref.current é Mutável — React NÃO Rastreia
+
+Esta é a propriedade mais importante (e potencialmente perigosa) do `useRef`:
+
+```typescript
+const ref = useRef(0)
+
+// Isso NÃO dispara re-render
+ref.current = 42
+
+// Isso NÃO é comparado pelo React em nenhum array de dependências
+// (um useEffect com [ref.current] não vai funcionar como esperado!)
+```
+
+**Implicação prática:** Nunca use `ref.current` como dependência em `useEffect`, `useMemo`, ou `useCallback`. O React não detectará mudanças nele. Se precisar reagir a mudanças em `ref.current`, você precisa de outro mecanismo (geralmente `useState`).
+
+---
+
+## Comparação com Angular
+
+Para quem vem do Angular, o mapeamento parcial é:
+
+| React (useRef) | Angular |
+|---|---|
+| DOM access via `ref.current` | `@ViewChild() el: ElementRef` |
+| Mutable storage sem re-render | Propriedade de classe (sem `signal`) |
+| Latest value pattern | Não há equivalente direto |
+
+No Angular com Signals, o equivalente mais próximo para o armazenamento mutável sem reatividade seria uma propriedade de classe regular (não um signal). Para acesso ao DOM, `@ViewChild()` com `ElementRef` é o análogo direto.
+
+A ausência de equivalente direto para o "latest value pattern" é porque no Angular, callbacks geralmente têm acesso ao contexto do componente via `this`, que sempre aponta para a instância atual. No React, funções são closures independentes — daí a necessidade deste padrão.
+
+---
+
+## Key Takeaways
+
+1. `useRef` retorna `{ current: T }` — um container mutável que persiste entre renders
+2. **Caso 1**: Acesso ao DOM — equivalente ao `ElementRef` do Angular
+3. **Caso 2**: Valores mutáveis sem re-render — IDs de timer, flags, counters internos
+4. **Caso 3**: Latest value pattern — resolve stale closures mantendo a ref sempre atualizada
+5. Modificar `ref.current` **não** dispara re-render — diferença fundamental do `useState`
+6. Nunca leia `ref.current` durante a fase de render ou use como dep de hooks
+7. O padrão "previous value" usa o fato de que `useEffect` roda após o render

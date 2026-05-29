@@ -1,0 +1,232 @@
+# Suspense: Coordenando Estados Assíncronos
+
+> **Para engenheiros Angular:** O Angular 17 introduziu os blocos `@defer` — você declara `@defer (on viewport) { <HeavyComponent /> } @placeholder { <Skeleton /> }` e o Angular lida com o carregamento lazy e o estado de placeholder automaticamente. `<Suspense>` no React serve ao mesmo propósito: declarar "enquanto este conteúdo não está pronto, mostre este fallback". A diferença é que o Suspense é mais flexível: funciona para lazy loading, data fetching (com as bibliotecas certas) e renderização no servidor.
+
+## O Que É Suspense?
+
+Suspense é um mecanismo de **coordenação de trabalho assíncrono**. Ele não faz o trabalho assíncrono em si — ele sabe como **detectar** quando um componente filho está "esperando" por algo e exibir um fallback nesse ínterim.
+
+```typescript
+<Suspense fallback={<LoadingSpinner />}>
+  <SlowComponent /> {/* pode "suspender" a renderização */}
+</Suspense>
+```
+
+Quando `SlowComponent` suspende, o React:
+1. Para de renderizar a subárvore abaixo do Suspense
+2. Exibe o `fallback`
+3. Quando o trabalho assíncrono termina, descarta o fallback e renderiza o conteúdo real
+
+---
+
+## Uso Primário: Lazy Loading
+
+A aplicação mais estável e amplamente suportada do Suspense é com `React.lazy` (você viu no Dia 23):
+
+```typescript
+const HeavyPage = lazy(() => import('./HeavyPage'))
+
+function App() {
+  return (
+    <Suspense fallback={<div className="page-skeleton" />}>
+      <HeavyPage />
+    </Suspense>
+  )
+}
+```
+
+Enquanto o chunk JavaScript de `HeavyPage` está sendo baixado, o `fallback` é exibido. Quando o download termina, o conteúdo real aparece.
+
+---
+
+## O Mecanismo Interno: Throwing Promises
+
+Como o Suspense sabe que um componente está "esperando"? O componente **lança uma Promise** durante a renderização.
+
+```typescript
+// Simplificado — como bibliotecas como TanStack Query implementam internamente
+let data: string | null = null
+let promise: Promise<void> | null = null
+
+function fetchData() {
+  if (data !== null) return data
+  
+  if (!promise) {
+    promise = fetch('/api/data')
+      .then(r => r.json())
+      .then(d => { data = d; promise = null })
+  }
+  
+  throw promise // ← Suspense captura esta Promise!
+}
+
+function MyComponent() {
+  const result = fetchData() // pode lançar uma Promise
+  return <div>{result}</div>
+}
+```
+
+React captura a Promise lançada, exibe o fallback do Suspense mais próximo, e quando a Promise resolve, tenta renderizar novamente. Você não precisa implementar isso manualmente — bibliotecas como TanStack Query fazem isso por você.
+
+---
+
+## A Prop `fallback`
+
+O fallback pode ser qualquer elemento React:
+
+```typescript
+// Simples
+<Suspense fallback={<p>Carregando...</p>}>
+
+// Skeleton screen (melhor UX)
+<Suspense fallback={<ArticleSkeleton />}>
+
+// Spinner global
+<Suspense fallback={<FullPageSpinner />}>
+
+// null (sem fallback visível — cuidado com layout shift)
+<Suspense fallback={null}>
+```
+
+**Boas práticas para fallback:**
+- Use skeleton screens que imitam o layout do conteúdo final
+- Evite spinners globais para conteúdo parcial — causam layout shifts dramáticos
+- O fallback não deve ser mais alto/largo que o conteúdo que vai substituir
+
+---
+
+## Suspense Aninhados: Granularidade Fina
+
+Você pode e deve aninhar múltiplos boundaries de Suspense para controlar quais partes da UI mostram fallback de forma independente:
+
+```typescript
+function Dashboard() {
+  return (
+    <div className="dashboard">
+      {/* Sidebar carrega rápido — fallback simples */}
+      <Suspense fallback={<SidebarSkeleton />}>
+        <Sidebar />
+      </Suspense>
+
+      <main>
+        {/* Feed principal pode demorar — skeleton completo */}
+        <Suspense fallback={<FeedSkeleton />}>
+          <ArticleFeed />
+        </Suspense>
+
+        {/* Widget lateral — independente do feed */}
+        <Suspense fallback={<WidgetSkeleton />}>
+          <TrendingWidget />
+        </Suspense>
+      </main>
+    </div>
+  )
+}
+```
+
+Sem Suspense aninhado, se qualquer parte da página "suspender", **toda** a página mostra o fallback. Com boundaries granulares, as partes prontas aparecem enquanto as pendentes mostram skeletons individuais.
+
+---
+
+## Suspense com TanStack Query
+
+TanStack Query suporta Suspense com a opção `suspense`:
+
+```typescript
+import { useSuspenseQuery } from '@tanstack/react-query'
+
+function UserProfile({ userId }: { userId: string }) {
+  // Suspende automaticamente até os dados chegarem
+  const { data: user } = useSuspenseQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId),
+  })
+  
+  // user NUNCA é undefined aqui — Suspense garante isso
+  return <div>{user.name}</div>
+}
+
+// No componente pai:
+<Suspense fallback={<ProfileSkeleton />}>
+  <UserProfile userId="123" />
+</Suspense>
+```
+
+A vantagem: sem estados de loading manuais (`if (isLoading) return ...`). O componente assume que os dados estão disponíveis — o Suspense cuida do estado de carregamento.
+
+---
+
+## Suspense NÃO É Error Boundary
+
+Este é um erro conceitual comum. Suspense lida com estados de **carregamento** (loading). Erros são tratados por **Error Boundaries** (Dia 21).
+
+```typescript
+// CORRETO: usar os dois em conjunto
+function FeatureSection() {
+  return (
+    <ErrorBoundary fallback={<ErrorMessage />}>
+      <Suspense fallback={<LoadingSkeleton />}>
+        <FeatureContent />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+```
+
+Fluxo:
+- Componente carregando → Suspense exibe `<LoadingSkeleton />`
+- Dados chegam → Suspense exibe `<FeatureContent />`
+- Componente lança um Error → Error Boundary exibe `<ErrorMessage />`
+
+Sempre use Error Boundary E Suspense juntos quando há trabalho assíncrono que pode falhar.
+
+---
+
+## Transições com Suspense
+
+Ao navegar entre páginas com lazy loading, pode haver um flash indesejado do fallback. `useTransition` (Dia 25) resolve isso:
+
+```typescript
+function Navigation() {
+  const [isPending, startTransition] = useTransition()
+
+  const navigate = (page: string) => {
+    startTransition(() => {
+      setCurrentPage(page) // mudança de rota
+    })
+  }
+
+  return (
+    <>
+      {isPending && <TopLoadingBar />} {/* barra sutil no topo */}
+      <Suspense fallback={<PageSkeleton />}>
+        <CurrentPage />
+      </Suspense>
+    </>
+  )
+}
+```
+
+Com `startTransition`, o React mantém a página anterior visível enquanto carrega a nova, exibindo o fallback do Suspense apenas se o carregamento demorar mais de um threshold.
+
+---
+
+## Suspense e RSC (React Server Components)
+
+No futuro (e já em Next.js), Suspense é central para **streaming de HTML do servidor**. O servidor pode enviar partes da página à medida que ficam prontas, em vez de esperar tudo terminar.
+
+Para React 19 client-side (foco deste curso), a aplicação principal continua sendo lazy loading + TanStack Query com suspense.
+
+---
+
+## Resumo
+
+| Situação | Use |
+|---|---|
+| Componente lazy loading | `<Suspense fallback={...}>` em volta do componente lazy |
+| Data fetching (TanStack Query) | `useSuspenseQuery` + `<Suspense>` no pai |
+| Partes independentes carregando | Múltiplos Suspense boundaries aninhados |
+| Erro durante carregamento | `<ErrorBoundary>` em volta do Suspense |
+| Transição suave entre páginas | `useTransition` + Suspense |
+
+Suspense é elegante precisamente porque separa o "o que mostrar quando" do "como carregar". Seus componentes descrevem o estado final; Suspense cuida do estado intermediário.

@@ -1,0 +1,14 @@
+{
+  "id": "day-15",
+  "day": 15,
+  "week": 3,
+  "title": "Feature-Based Architecture",
+  "slug": "feature-based-architecture",
+  "topics": ["folder structure", "feature slices", "colocation", "separation of concerns", "scalability"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 130
+}

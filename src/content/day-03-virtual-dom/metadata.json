@@ -1,0 +1,14 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Virtual DOM",
+  "slug": "virtual-dom",
+  "topics": ["virtual dom", "fiber tree", "react elements", "JSX", "createElement"],
+  "difficulty": "foundational",
+  "estimatedMinutes": 40,
+  "prerequisites": ["day-01", "day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 80
+}

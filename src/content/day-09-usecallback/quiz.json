@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-09",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental entre useMemo e useCallback?",
+      "options": [
+        "useMemo é para arrays, useCallback é para objetos",
+        "useMemo memoiza o resultado de uma função, useCallback memoiza a própria função",
+        "useMemo é mais rápido, useCallback é mais correto",
+        "Não há diferença — são aliases um do outro"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useMemo memoiza o RESULTADO: recebe uma função, executa ela, e armazena o valor retornado. useCallback memoiza a FUNÇÃO em si: recebe uma função e retorna a mesma referência enquanto as deps não mudarem. De fato, useCallback(fn, deps) é equivalente a useMemo(() => fn, deps)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em qual situação useCallback é necessário para evitar re-renders desnecessários?",
+      "options": [
+        "Ao passar uma função como prop para qualquer elemento JSX",
+        "Ao passar uma função como prop para um componente envolvido com React.memo",
+        "Ao definir qualquer função dentro de um componente React",
+        "Ao chamar uma função dentro de um useEffect"
+      ],
+      "correctAnswer": 1,
+      "explanation": "useCallback só faz diferença quando a identidade da função importa para comparação. React.memo usa === para comparar props — se a função é recriada a cada render (nova referência), a comparação falha e o componente re-renderiza. Para elementos DOM nativos como <button onClick={fn}>, o React não usa === para comparar handlers, então useCallback não ajuda."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que é uma 'stale closure' no contexto de useCallback?",
+      "options": [
+        "Uma closure que nunca foi executada",
+        "Uma função que usa valores desatualizados porque as dependências não foram incluídas no array",
+        "Uma função que foi memoizada por tempo demais e ocupa muita memória",
+        "Uma closure que referencia um componente já desmontado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Stale closure acontece quando você cria uma função com useCallback mas omite dependências. A função fecha (close over) os valores no momento em que foi criada e os mantém congelados — mesmo quando o estado muda em renders subsequentes. Por exemplo, se count não está nas deps, a função sempre 'vê' o valor inicial de count, não o atual."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Verdadeiro ou Falso: useCallback é útil para otimizar handlers inline como onClick={() => setCount(c => c + 1)} em botões comuns.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Para elementos DOM nativos, o React não usa === para comparar event handlers — ele simplesmente substitui o listener. Embrulhar handlers simples em useCallback adiciona overhead (armazenamento + comparação de deps) sem nenhum benefício de performance. useCallback só é útil quando a referência estável da função importa: props de componentes memoizados ou dependências de useEffect/useMemo."
+    }
+  ]
+}

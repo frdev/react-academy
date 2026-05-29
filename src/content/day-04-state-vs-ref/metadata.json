@@ -1,0 +1,14 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "State vs Ref",
+  "slug": "state-vs-ref",
+  "topics": ["useState", "useRef", "mutable", "renders", "DOM refs"],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 90
+}

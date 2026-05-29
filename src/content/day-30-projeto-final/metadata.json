@@ -1,0 +1,14 @@
+{
+  "id": "day-30",
+  "day": 30,
+  "week": 4,
+  "title": "Projeto Final",
+  "slug": "projeto-final",
+  "topics": ["React.memo", "TanStack Query", "React Hook Form", "Zod", "useReducer", "Suspense", "Error Boundary", "Custom Hooks", "Compound Components", "a11y"],
+  "difficulty": "advanced",
+  "estimatedMinutes": 180,
+  "prerequisites": ["day-29"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 500
+}

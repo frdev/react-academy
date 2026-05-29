@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-23",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o principal benefício de usar React.lazy com dynamic import() em uma aplicação grande?",
+      "options": [
+        "Faz os componentes renderizarem mais rápido em tempo de execução",
+        "Reduz o bundle inicial baixado pelo usuário, melhorando o tempo de carregamento da página",
+        "Permite usar componentes sem importá-los no topo do arquivo",
+        "Elimina a necessidade de usar Suspense"
+      ],
+      "correctAnswer": 1,
+      "explanation": "React.lazy + dynamic import() instrui o bundler (Vite, Webpack) a dividir o bundle em chunks separados. O chunk do componente só é baixado quando o componente é necessário — não no carregamento inicial da página. Em uma SPA com 10 páginas, isso pode reduzir o bundle inicial em 60-80%, melhorando diretamente o First Contentful Paint (FCP) e o Time to Interactive (TTI). O benefício é de rede/parse, não de tempo de render."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que React.lazy exige que o componente importado use export default?",
+      "options": [
+        "É uma limitação técnica do JavaScript — dynamic import() só funciona com default exports",
+        "React.lazy depende de import() retornar uma Promise que resolve para um módulo com propriedade `.default` contendo o componente",
+        "Named exports não funcionam com bundlers modernos",
+        "É apenas uma convenção de estilo sem razão técnica"
+      ],
+      "correctAnswer": 1,
+      "explanation": "React.lazy chama `import('./Component')` que retorna uma Promise. Quando resolvida, ela entrega um módulo ES — um objeto com todas as suas exportações. React.lazy especificamente acessa `.default` nesse objeto para obter o componente. Com named exports, `.default` seria undefined. Solução para componentes com apenas named exports: `lazy(() => import('./file').then(m => ({ default: m.NamedComponent })))`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual estratégia de code splitting tem o maior impacto em aplicações React de página única (SPA)?",
+      "options": [
+        "Splitting por componente individual — cada componente em seu próprio chunk",
+        "Splitting por rota/página — cada rota tem seu próprio chunk carregado sob demanda",
+        "Splitting por módulo utilitário — funções helper em chunks separados",
+        "Não usar splitting — manter tudo em um único bundle é mais eficiente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Splitting por rota é o mais impactante porque: 1) o usuário nunca está em duas páginas ao mesmo tempo — código de /admin nunca é necessário em /, 2) rotas são fronteiras lógicas naturais, 3) o tamanho dos chunks é substancial (páginas inteiras com seus componentes). Splitting por componente individual cria muitos chunks pequenos — o overhead de múltiplas requisições HTTP pode superar o benefício. O equilíbrio ideal é rota + componentes pesados (editores, dashboards)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual dos seguintes é um candidato INADEQUADO para lazy loading?",
+      "options": [
+        "Uma página de administração acessada por menos de 5% dos usuários",
+        "Um editor de texto rico (Monaco Editor) que só aparece ao clicar em 'Editar'",
+        "O componente Header que aparece em todas as páginas e é visível no primeiro carregamento",
+        "Uma modal de configurações avançadas raramente acessada"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O Header é um candidato péssimo para lazy loading porque: 1) é visível imediatamente no primeiro carregamento — lazy loading causaria um flash/layout shift inaceitável, 2) está presente em todas as páginas, então não economiza nada depois do carregamento inicial, 3) geralmente é pequeno — o overhead de uma requisição HTTP separada seria desproporcional. Lazy loading é valioso para código raramente usado ou nunca visível no carregamento inicial."
+    }
+  ]
+}

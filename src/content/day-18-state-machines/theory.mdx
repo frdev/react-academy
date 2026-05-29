@@ -1,0 +1,243 @@
+# State Machines: Modelando UI com Estados Finitos
+
+> **Para engenheiros Angular:** NgRx reducers e effects são essencialmente state machines — você tem estados (no store), actions (eventos), e reducers (transições). A diferença é que NgRx aplica esse modelo a estado global, enquanto state machines no React frequentemente modelam comportamento de componentes individuais. XState, a principal biblioteca de state machines no React, adiciona guards, statecharts e visualização que NgRx não tem nativamente.
+
+## O Problema: Estados Impossíveis com Boolean Flags
+
+O padrão mais comum para estado assíncrono em React parece razoável à primeira vista:
+
+```typescript
+const [isLoading, setIsLoading] = useState(false)
+const [isError, setIsError] = useState(false)
+const [data, setData] = useState<User | null>(null)
+```
+
+O problema: você tem 3 booleans, logo 2³ = 8 combinações possíveis. Mas quantas são válidas?
+
+| isLoading | isError | data | Válido? |
+|-----------|---------|------|---------|
+| false | false | null | ✓ Idle |
+| true | false | null | ✓ Loading |
+| false | false | User | ✓ Success |
+| false | true | null | ✓ Error |
+| **true** | **true** | null | **✗ Impossível** |
+| **true** | false | User | **✗ Impossível** |
+| false | **true** | User | **✗ Impossível** |
+| **true** | **true** | User | **✗ Impossível** |
+
+Metade das combinações são estados impossíveis — mas o TypeScript não as proíbe. Um bug pode colocar o sistema em `isLoading=true && isError=true`, e a UI não sabe o que renderizar.
+
+---
+
+## A Solução: Modelar com Estados Explícitos
+
+Em vez de múltiplos booleans, use um único campo que só aceita valores válidos:
+
+```typescript
+type FetchState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: Error }
+
+const [state, setState] = useState<FetchState<User>>({ status: 'idle' })
+```
+
+Agora os estados impossíveis não existem em nível de tipo. `{ status: 'loading', error: Error }` é um erro de TypeScript — você não pode representar esse estado.
+
+A renderização fica exaustiva e clara:
+
+```typescript
+function UserProfile() {
+  const [state, dispatch] = useReducer(fetchReducer, { status: 'idle' })
+
+  // TypeScript garante que todos os estados são tratados
+  switch (state.status) {
+    case 'idle':
+      return <button onClick={fetchUser}>Carregar Usuário</button>
+    case 'loading':
+      return <Spinner />
+    case 'success':
+      return <UserCard user={state.data} />
+    case 'error':
+      return <ErrorMessage error={state.error} />
+  }
+}
+```
+
+---
+
+## Implementando com useReducer: A State Machine do Pobre
+
+`useReducer` é naturalmente uma state machine: dado o estado atual e um evento (action), retorna o próximo estado.
+
+```typescript
+type FetchAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; data: User }
+  | { type: 'FETCH_ERROR'; error: Error }
+  | { type: 'RESET' }
+
+function fetchReducer(state: FetchState<User>, action: FetchAction): FetchState<User> {
+  switch (state.status) {
+    case 'idle':
+      if (action.type === 'FETCH_START') return { status: 'loading' }
+      return state // ignora outras actions no estado idle
+
+    case 'loading':
+      if (action.type === 'FETCH_SUCCESS') return { status: 'success', data: action.data }
+      if (action.type === 'FETCH_ERROR') return { status: 'error', error: action.error }
+      return state // ignora FETCH_START durante loading
+
+    case 'success':
+    case 'error':
+      if (action.type === 'RESET') return { status: 'idle' }
+      if (action.type === 'FETCH_START') return { status: 'loading' }
+      return state
+  }
+}
+```
+
+A chave: o reducer trata as ações em função do **estado atual**, não apenas da action. `FETCH_START` durante `loading` é ignorada — a state machine não permite a transição de loading para loading.
+
+---
+
+## O Padrão Match para Renderização Exaustiva
+
+Para evitar switch/case verboso na renderização, um helper `match` torna o código mais declarativo:
+
+```typescript
+// Utility simples de match
+function match<T extends { status: string }, R>(
+  state: T,
+  handlers: { [K in T['status']]: (s: Extract<T, { status: K }>) => R }
+): R {
+  return (handlers as any)[state.status](state)
+}
+
+// Uso limpo:
+function UserProfile({ userId }: { userId: string }) {
+  const [state, dispatch] = useReducer(fetchReducer, { status: 'idle' })
+
+  return match(state, {
+    idle: () => <button onClick={() => dispatch({ type: 'FETCH_START' })}>Carregar</button>,
+    loading: () => <Spinner />,
+    success: (s) => <UserCard user={s.data} />,
+    error: (s) => <ErrorMessage error={s.error} onRetry={() => dispatch({ type: 'RESET' })} />,
+  })
+}
+```
+
+O TypeScript verifica que você tratou todos os estados — se adicionar `{ status: 'cancelled' }` à union type e esquecer de adicionar ao `match`, você recebe um erro em tempo de compilação.
+
+---
+
+## XState para Máquinas Complexas
+
+`useReducer` é suficiente para máquinas simples (3-5 estados, transições diretas). Para máquinas complexas, XState oferece:
+
+- **Guards**: transições condicionais (`canSubmit ? 'review' : 'validation-error'`)
+- **Parallel states**: duas sub-máquinas rodando independentemente
+- **Hierarchical states**: estados aninhados (idle > form > validation)
+- **Invoked services**: promises e observables como parte da máquina
+- **Visualização**: o XState visualizer gera diagramas de estados automaticamente
+
+```typescript
+import { createMachine, assign } from 'xstate'
+import { useMachine } from '@xstate/react'
+
+const checkoutMachine = createMachine({
+  id: 'checkout',
+  initial: 'cart',
+  states: {
+    cart: {
+      on: {
+        PROCEED: 'shipping',
+        EMPTY_CART: 'empty',
+      },
+    },
+    shipping: {
+      on: {
+        BACK: 'cart',
+        SUBMIT: {
+          target: 'payment',
+          guard: 'hasValidAddress',
+        },
+      },
+    },
+    payment: {
+      invoke: {
+        src: 'processPayment',
+        onDone: 'success',
+        onError: 'paymentError',
+      },
+    },
+    success: { type: 'final' },
+    paymentError: {
+      on: { RETRY: 'payment' },
+    },
+    empty: { type: 'final' },
+  },
+})
+
+function Checkout() {
+  const [state, send] = useMachine(checkoutMachine, {
+    guards: {
+      hasValidAddress: (ctx) => !!ctx.address,
+    },
+    actors: {
+      processPayment: (ctx) => processPaymentAPI(ctx.paymentData),
+    },
+  })
+
+  if (state.matches('cart')) return <CartView onProceed={() => send({ type: 'PROCEED' })} />
+  if (state.matches('shipping')) return <ShippingForm onSubmit={() => send({ type: 'SUBMIT' })} />
+  if (state.matches('payment')) return <Spinner label="Processando pagamento..." />
+  if (state.matches('success')) return <SuccessScreen />
+  if (state.matches('paymentError')) return <PaymentError onRetry={() => send({ type: 'RETRY' })} />
+}
+```
+
+O diagrama de estados que o XState Visualizer gera a partir desse código é a documentação do comportamento — designers e PMs podem entender o fluxo sem ler código.
+
+---
+
+## Comparação com NgRx
+
+| Aspecto | NgRx | State Machine (useReducer/XState) |
+|---|---|---|
+| Escopo | Global (store) | Componente ou global |
+| Modelo | Actions + Reducers + Effects | Estados + Transições + Guards |
+| Estados inválidos | Possíveis (booleans em state) | Eliminados com union types |
+| Visualização | Redux DevTools | XState Visualizer |
+| Boilerplate | Alto (actions, reducers, effects, selectors) | Baixo (useReducer) a médio (XState) |
+
+A diferença conceitual mais importante: NgRx não força você a pensar em "qual estado o sistema pode estar" — você pode ter booleans contraditórios no store. State machines com union types tornam estados inválidos representáveis impossíveis.
+
+---
+
+## Quando State Machines São Overkill
+
+Não use state machines quando:
+
+- O componente tem apenas 2 estados (ligado/desligado, aberto/fechado) — `useState(boolean)` é suficiente
+- O comportamento é trivial e não tem múltiplas transições
+- O time não está familiarizado com o padrão — adiciona complexidade sem benefício
+
+Use state machines quando:
+
+- O componente tem 3+ estados com diferentes transições possíveis
+- Você já encontrou bugs causados por combinações inválidas de flags
+- O fluxo de UI é complexo o suficiente para merecer um diagrama de estados
+
+---
+
+## Key Takeaways
+
+1. Boolean flags criam estados impossíveis — 3 booleans = 8 combinações, muitas inválidas
+2. Union types TypeScript (`status: 'idle' | 'loading' | 'success' | 'error'`) eliminam estados impossíveis em tempo de compilação
+3. `useReducer` é uma state machine simples: trata actions em função do estado atual, ignora transições inválidas
+4. O padrão `match` torna a renderização exaustiva e legível
+5. XState para máquinas complexas: guards, estados paralelos, invoked services, visualização
+6. A analogia Angular: NgRx reducers são state machines — mas sem a proteção de union types contra estados inválidos
+7. State machines são overkill para comportamentos simples — use quando a complexidade justificar

@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-17",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que diferencia um componente headless de um componente estilizado (styled)?",
+      "options": [
+        "Componentes headless usam CSS-in-JS; componentes estilizados usam classes CSS",
+        "Componentes headless encapsulam apenas comportamento e lógica, sem opinar sobre a UI; componentes estilizados incluem aparência visual",
+        "Componentes headless são criados com class components; componentes estilizados com function components",
+        "Componentes headless não aceitam props; componentes estilizados aceitam"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A distinção fundamental: um componente headless (ou renderless) fornece toda a lógica de interação — estados, eventos, acessibilidade, ARIA — sem nenhuma marcação visual. Quem usa decide como renderizar. Um componente estilizado já vem com HTML e CSS embutidos. Isso é poderoso em sistemas com design system próprio: você não quer a aparência do Radix UI, mas quer a lógica de um dropdown acessível."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como custom hooks implementam o conceito de componente headless?",
+      "options": [
+        "Hooks retornam JSX que pode ser customizado via props",
+        "Hooks encapsulam a lógica de interação e retornam estado + handlers que o componente usa para renderizar como quiser",
+        "Hooks substituem Context para compartilhar estado entre componentes",
+        "Hooks são a única forma de criar componentes headless no React moderno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um hook como useAccordion() retorna { openItems, toggle, getItemProps, getTriggerProps } — estado e props getter. O componente que chama esse hook decide completamente o JSX: pode usar um <div>, um <section>, qualquer markup. O comportamento (qual item está aberto, como alternar, foco de teclado) vive no hook. A UI vive no componente. É separação total de responsabilidades."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando faz sentido usar uma biblioteca como Radix UI em vez de criar seus próprios componentes?",
+      "options": [
+        "Sempre que o projeto usa TypeScript",
+        "Quando você precisa de comportamento complexo (dropdown, dialog, tooltip) com acessibilidade correta, e quer focar no design em vez de reinventar a lógica de interação",
+        "Apenas quando o projeto não tem designer",
+        "Quando o projeto usa Next.js em vez de Vite"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Acessibilidade correta em componentes como dropdowns, modals e tooltips envolve gerenciamento de foco, teclas de atalho (Esc, Arrow), ARIA attributes, e muitos edge cases. Radix UI implementa tudo isso seguindo as especificações WAI-ARIA. Se você tem um design system próprio mas não quer implementar toda essa lógica do zero, Radix é a escolha certa: você customiza 100% da aparência, Radix cuida do comportamento."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a principal vantagem de arquiteturas headless para autores de design systems?",
+      "options": [
+        "Reduzem o bundle size em 50% automaticamente",
+        "Permitem que múltiplos design systems usem a mesma lógica de interação sem impor aparência visual",
+        "Eliminam a necessidade de testes de acessibilidade",
+        "Permitem usar componentes sem JSX"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um design system de empresa pode ter marca própria completamente diferente do Tailwind UI, Chakra, ou qualquer outra biblioteca. Com headless components, você aproveita lógica battle-tested (Radix, Headless UI, TanStack) e aplica seu próprio CSS/Tailwind por cima. Diferentes produtos da mesma empresa podem ter aparências distintas mas compartilhar a mesma base de comportamento e acessibilidade — isso é headless architecture."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "day-21",
+  "day": 21,
+  "week": 3,
+  "title": "Error Boundaries",
+  "slug": "error-boundaries",
+  "topics": ["error boundaries", "class components", "fallback UI", "error recovery", "react-error-boundary"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 110
+}

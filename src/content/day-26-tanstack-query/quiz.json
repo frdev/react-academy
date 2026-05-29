@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-26",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que é um bug definir queryKey como `['user']` quando a queryFn busca um usuário específico por ID?\n\n```\nuseQuery({ queryKey: ['user'], queryFn: () => fetchUser(userId) })\n```",
+      "options": [
+        "queryKey deve ser sempre uma string, não um array",
+        "A queryKey não inclui userId — ao mudar de userId, o React Query não sabe que precisa buscar dados diferentes, reutilizando o cache do usuário anterior",
+        "fetchUser não pode ser chamada dentro de queryFn",
+        "O array precisa ter pelo menos dois elementos para funcionar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "queryKey funciona como o array de dependências do useEffect — tudo que afeta o resultado da queryFn DEVE estar na queryKey. Com `['user']` fixo, quando userId muda de '1' para '2', o React Query vê a mesma key e retorna o cache do usuário 1. O correto é `['user', userId]` — agora cada userId tem seu próprio cache, e quando userId muda, a query é executada novamente. Pense assim: a queryKey é o 'endereço' do dado no cache. Endereços diferentes = dados diferentes."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `staleTime` e `gcTime` (garbage collection time) no TanStack Query?",
+      "options": [
+        "staleTime determina quando fazer retry em caso de erro; gcTime determina quando limpar o cache",
+        "staleTime define por quanto tempo os dados são considerados frescos (sem refetch); gcTime define por quanto tempo o cache é mantido após todos os componentes desmontarem",
+        "São o mesmo conceito — gcTime é apenas o nome antigo de staleTime",
+        "staleTime é configurado por query; gcTime é apenas configurável globalmente no QueryClient"
+      ],
+      "correctAnswer": 1,
+      "explanation": "São conceitos independentes com papéis distintos. `staleTime` (padrão: 0) = janela durante a qual dados são 'frescos'. Se você configurar `staleTime: 60000`, durante 1 minuto, novos mounts do componente usam o cache sem fazer refetch. Após 1 minuto, os dados ficam 'stale' e um refetch é agendado (mas os dados stale ainda são mostrados). `gcTime` (padrão: 5min) = após o último componente que observa essa query desmontar, o cache sobrevive por gcTime antes de ser deletado. Ao remontar dentro desse período, os dados (mesmo stale) estão disponíveis imediatamente."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "No padrão de optimistic update com useMutation, qual é o propósito da função `onMutate`?",
+      "options": [
+        "Executar a mutation no servidor antes de atualizar o estado local",
+        "Atualizar o cache imediatamente com o resultado esperado, salvar um snapshot do estado anterior para rollback em caso de erro, e cancelar refetches pendentes",
+        "Validar os dados antes de enviá-los para a API",
+        "Mostrar um toast de confirmação antes de prosseguir com a operação"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`onMutate` executa ANTES do request ser enviado ao servidor. Ela tem três responsabilidades: 1) `cancelQueries` — cancela qualquer refetch em andamento para evitar que ele sobrescreva nosso update otimístico; 2) `getQueryData` — salva o valor atual do cache como snapshot; 3) `setQueryData` — atualiza o cache com o resultado esperado (otimismo). O snapshot salvo é retornado para ser acessado em `onError`, onde `setQueryData(snapshot)` faz o rollback se o servidor retornar erro. `onSettled` então invalida para garantir consistência."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quando você deve chamar `queryClient.invalidateQueries` após uma mutation bem-sucedida?",
+      "options": [
+        "Nunca — o TanStack Query invalida automaticamente todas as queries após qualquer mutation",
+        "Quando você quer forçar o React Query a buscar dados frescos do servidor para queries que podem ter sido afetadas pela mutation",
+        "Apenas quando useMutation retornar um erro",
+        "Somente quando estiver usando optimistic updates — em mutations normais não é necessário"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TanStack Query não sabe automaticamente quais queries são afetadas por uma mutation — você precisa dizer explicitamente. `invalidateQueries({ queryKey: ['users'] })` marca todas as queries com essa key como stale e, se houver componentes observando-as, dispara um refetch em background. Use no `onSuccess` da mutation quando: você criou/atualizou/deletou dados que aparecem em uma lista, ou quando múltiplos dados relacionados podem ter mudado. A alternativa é `setQueryData` para updates manuais do cache, útil em optimistic updates onde você já tem o novo estado."
+    }
+  ]
+}

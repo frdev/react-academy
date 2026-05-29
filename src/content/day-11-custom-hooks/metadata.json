@@ -1,0 +1,14 @@
+{
+  "id": "day-11",
+  "day": 11,
+  "week": 2,
+  "title": "Custom Hooks",
+  "slug": "custom-hooks",
+  "topics": ["custom hooks", "composition", "reuse", "naming convention", "testing"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-08", "day-09", "day-10"],
+  "hasVisualizer": false,
+  "hasChallenge": true,
+  "xpReward": 120
+}

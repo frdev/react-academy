@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-21",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Que tipos de erros Error Boundaries NÃO conseguem capturar?",
+      "options": [
+        "Erros durante a renderização de componentes filhos",
+        "Erros em event handlers, código assíncrono (setTimeout, fetch), e erros em SSR",
+        "Erros em métodos de ciclo de vida de class components",
+        "Erros em construtores de class components"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Error Boundaries só capturam erros que ocorrem durante o processo de renderização do React (render, lifecycle methods, constructors). Event handlers (onClick, onChange) não passam pelo React durante a execução — use try/catch neles. Código assíncrono (await fetch(), setTimeout) também não é capturado porque executa fora do ciclo de renderização do React. Para erros de SSR, é necessário tratamento server-side separado."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que Error Boundaries precisam ser implementados como class components?",
+      "options": [
+        "Por motivos de performance — class components são mais rápidos para tratamento de erros",
+        "Porque os métodos getDerivedStateFromError e componentDidCatch não têm equivalentes em hooks — é uma limitação atual do React que pode mudar no futuro",
+        "Porque function components não podem ter estado",
+        "Porque hooks não funcionam dentro de blocos try/catch"
+      ],
+      "correctAnswer": 1,
+      "explanation": "getDerivedStateFromError e componentDidCatch são os dois métodos que transformam uma classe em Error Boundary. O React não fornece equivalentes em hooks — não existe useError() que capture erros de renderização em filhos. A razão técnica é que o mecanismo de propagação de erros no React está intimamente ligado à stack de renderização de class components. A equipe do React reconhece essa limitação e pode adicionar suporte a hooks em versões futuras, mas por ora a biblioteca react-error-boundary é a solução prática."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Em qual granularidade você deve posicionar Error Boundaries na árvore de componentes?",
+      "options": [
+        "Apenas um, no topo da aplicação (App.tsx), para capturar qualquer erro",
+        "Em cada componente individual para máxima granularidade",
+        "Por seção funcional (sidebar, feed principal, widget de notificações) para que uma seção com erro não derrube a aplicação inteira",
+        "Apenas em componentes que fazem requisições de rede"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Ter apenas um Error Boundary no topo significa que um erro em qualquer componente derruba toda a UI — o usuário vê uma tela de erro genérica. Por seção funcional é o equilíbrio certo: se o widget de notificações quebra, a sidebar e o conteúdo principal continuam funcionando. O usuário perde apenas a parte afetada. Evite por componente individual — o overhead é alto e a maioria dos erros deve propagar para um boundary contextualmente relevante."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como o mecanismo de reset de um Error Boundary funciona com react-error-boundary?",
+      "options": [
+        "Recarrega a página inteira automaticamente após 5 segundos",
+        "A prop resetKeys monitora valores externos — quando algum muda, o boundary sai do estado de erro e tenta re-renderizar os filhos; onReset permite executar lógica de limpeza",
+        "O reset só funciona se o usuário recarregar manualmente a página",
+        "React reseta Error Boundaries automaticamente após qualquer navegação de rota"
+      ],
+      "correctAnswer": 1,
+      "explanation": "react-error-boundary fornece resetKeys: um array de valores que, quando mudam, automaticamente resetam o boundary. Por exemplo, resetKeys={[route.pathname]} faz o boundary resetar ao navegar para outra página. A prop onReset é chamada quando o reset acontece — útil para limpar estado que causou o erro. Há também resetErrorBoundary, exposta no fallback, que permite ao usuário clicar em 'Tentar novamente' e forçar um reset manual."
+    }
+  ]
+}

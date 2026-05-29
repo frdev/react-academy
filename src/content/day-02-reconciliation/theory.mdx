@@ -1,0 +1,162 @@
+# Reconciliation: Como o React Compara Árvores
+
+## O Que é Reconciliation?
+
+Após a fase Render produzir uma nova descrição da UI, o React precisa descobrir o que realmente mudou para atualizar o DOM de forma eficiente. Este processo — comparar a árvore antiga com a nova — é chamado de **reconciliation** (ou diffing).
+
+Comparar duas árvores arbitrárias tem complexidade O(n³) no pior caso. Com uma árvore de 1000 elementos, isso seria bilhões de operações. Para tornar isso prático, o React usa um algoritmo heurístico com duas premissas que simplificam enormemente o problema.
+
+---
+
+## As Duas Heurísticas Fundamentais
+
+### Heurística 1: Tipos diferentes = Unmount + Remount
+
+Se um nó da árvore muda de tipo (por exemplo, de `<div>` para `<span>`, ou de `<ComponenteA>` para `<ComponenteB>`), o React **descarta toda a subárvore** e monta uma nova do zero.
+
+```jsx
+// Antes do render
+<div>
+  <Counter />
+</div>
+
+// Depois do render — React desmonta Counter e monta Paragraph
+<span>
+  <Paragraph />
+</span>
+```
+
+Isso parece ineficiente, mas na prática é raro mudar o tipo de um elemento sem intenção de redesenhar aquela seção. A premissa faz o algoritmo ser O(n) na maioria dos casos.
+
+**Consequência importante:** Se você renderizar condicionalmente dois componentes diferentes no mesmo lugar, o React vai montar e desmontar um deles a cada troca:
+
+```jsx
+// Cada vez que isLoggedIn muda, o componente atual é desmontado
+// e o outro montado do zero — state interno é perdido!
+{isLoggedIn ? <UserPanel /> : <GuestPanel />}
+```
+
+### Heurística 2: Keys para identificar elementos em listas
+
+A prop `key` diz ao React "este elemento tem esta identidade estável". É especialmente crítica em listas, onde elementos podem ser reordenados, inseridos ou removidos.
+
+```jsx
+// Sem key: React compara por posição — perigoso em listas dinâmicas
+{items.map(item => <Item label={item.label} />)}
+
+// Com key estável: React rastreia cada item pela sua identidade
+{items.map(item => <Item key={item.id} label={item.label} />)}
+```
+
+---
+
+## Comparação Nível a Nível (Level-by-Level Diffing)
+
+O React compara as árvores de cima para baixo, nível por nível, da esquerda para a direita. Nunca "pula" para comparar nós de posições diferentes na hierarquia.
+
+```
+Árvore Antiga:     Árvore Nova:
+    A                  A
+   / \                / \
+  B   C              B   D
+ / \                / \
+D   E              D   E
+```
+
+Neste caso, o React compara A→A (mesmo tipo, mantém), B→B (mantém), C→D (tipos diferentes, desmonta C e remonta D). O React *não* percebe que o D na posição filho-de-B é "o mesmo" D que estava em C — ele usa a posição na árvore como identidade.
+
+---
+
+## O Problema com Index como Key
+
+Um erro clássico é usar o índice do array como `key`:
+
+```jsx
+// PROBLEMÁTICO — nunca faça isso em listas que mudam de ordem
+{items.map((item, index) => (
+  <Item key={index} value={item.value} />
+))}
+```
+
+Se você remover o primeiro item de uma lista de 3, com `key={index}`:
+- Item com index 0 (era "Alice") → agora aponta para "Bob" (mesma key, componente reutilizado)
+- Item com index 1 (era "Bob") → agora aponta para "Carlos"
+- Item com index 2 (era "Carlos") → removido
+
+O React *reutiliza* os componentes com as mesmas keys, apenas atualizando as props. Se o componente tem estado interno (ex: checkbox marcado, campo preenchido), esse estado fica no componente errado. Use sempre um ID estável e único da sua fonte de dados.
+
+---
+
+## Fiber: A Estrutura de Dados por Trás
+
+A **Fiber** é a unidade de trabalho interna do React — uma estrutura de dados que representa cada nó da árvore de componentes. Antes do React 16, o algoritmo de reconciliação era recursivo e síncrono — uma vez iniciado, não podia ser interrompido.
+
+O React 16 reescreveu o reconciliador (o projeto "Fiber") para usar uma lista encadeada em vez de recursão:
+
+```
+Fiber Node {
+  type: 'div' | Component | null
+  key: string | null
+  child: Fiber | null        // primeiro filho
+  sibling: Fiber | null      // próximo irmão
+  return: Fiber | null       // pai
+  pendingProps: Props
+  memoizedProps: Props
+  memoizedState: State
+  effectTag: number          // flags de o que precisa mudar
+  ...
+}
+```
+
+Com essa estrutura, o React pode:
+1. **Pausar** o trabalho de reconciliação e retomar mais tarde
+2. **Priorizar** atualizações urgentes (como input do usuário) sobre atualizações não urgentes (como atualização de dados em background)
+3. **Descartar** trabalho em andamento se uma atualização mais urgente chegar
+
+Isso é a base do **Concurrent Mode** do React 18.
+
+---
+
+## Analogia com Angular
+
+> **Para engenheiros Angular:** A Change Detection do Angular funciona de forma bem diferente. O Angular usa Zone.js para interceptar todos os eventos assíncronos (eventos DOM, Promises, setTimeout, etc.) e dispara um ciclo de verificação de toda a árvore de componentes. Com `ChangeDetectionStrategy.OnPush`, o Angular só verifica um componente se suas `@Input()` referencias mudaram ou se um evento interno ocorreu — similar a como `React.memo` funciona no React. O React, por sua vez, não tem um "loop" de verificação — cada setState explicitamente agenda um re-render apenas para aquele componente e seus descendentes.
+
+---
+
+## Bugs Clássicos de Reconciliação
+
+### 1. Perda de estado por troca de tipo
+```jsx
+// Bug: componente perde o estado quando isEditing muda
+function Form({ isEditing }) {
+  return isEditing ? <EditForm /> : <ViewForm />
+  // Se EditForm e ViewForm têm inputs com estado local,
+  // esse estado é destruído em cada troca
+}
+```
+
+### 2. Estado "escapando" para o componente errado em listas
+```jsx
+// Bug: remover Alice faz os checkboxes de Bob aparecerem no lugar de Alice
+<ul>
+  {users.map((user, i) => (
+    <UserRow key={i} user={user} /> // Checkbox interno perde referência
+  ))}
+</ul>
+```
+
+### 3. Forçar remount com key (técnica válida!)
+```jsx
+// Intencional: resetar completamente o form ao trocar de usuário
+<ProfileForm key={userId} userId={userId} />
+```
+
+---
+
+## Key Takeaways
+
+1. O React usa heurísticas O(n) para diffing — tipo diferente significa unmount+remount da subárvore inteira.
+2. `key` é a identidade de um elemento dentro de uma lista. Sem ela, o React usa posição — o que causa bugs em listas dinâmicas.
+3. Nunca use o índice do array como key em listas que podem mudar de ordem ou tamanho.
+4. Fiber é uma lista encadeada de nós que permite ao React pausar e retomar reconciliação.
+5. Você pode usar `key` intencionalmente para forçar o React a desmontar e remontar um componente.

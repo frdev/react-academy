@@ -1,0 +1,255 @@
+# Global State com Zustand
+
+> **Para engenheiros Angular:** NgRx Store é o padrão de facto para estado global em Angular — actions, reducers, selectors, effects, com um fluxo unidirecional rigoroso. Zustand resolve o mesmo problema com uma API radicalmente mais simples: você define estado e actions juntos, sem cerimônia. O padrão de selectors para evitar re-renders desnecessários é o mesmo conceito do NgRx, implementado de forma mais direta.
+
+## Quando Você Precisa de Estado Global
+
+A primeira pergunta é: **você realmente precisa de estado global?**
+
+Estado local (`useState`) e passagem de props são corretos para a maioria dos casos. Estado elevado com `useContext` resolve casos de "estado compartilhado entre componentes próximos". Estado global é para casos específicos:
+
+```
+✓ Dados de sessão do usuário autenticado — acessados em toda a aplicação
+✓ Preferências do usuário (tema, idioma) — lidas em muitos lugares
+✓ Carrinho de compras — atualizado em páginas diferentes
+✓ Notificações globais — disparadas de qualquer lugar
+
+✗ Qual accordion está aberto — estado de componente, não global
+✗ Dados de um formulário — local ao componente
+✗ Estado de loading de uma requisição — gerenciado pelo TanStack Query (Dia 20)
+✗ Dados do servidor — gerenciados pelo TanStack Query, não pelo estado global
+```
+
+---
+
+## Context API vs Zustand: A Diferença Fundamental
+
+Context API causa re-render em **todos os consumidores** quando qualquer parte do valor muda:
+
+```typescript
+// PROBLEMA com Context para estado global
+const AppContext = createContext({ user: null, theme: 'dark', cart: [] })
+
+function Header() {
+  const { theme } = useContext(AppContext) // só usa theme
+  // Mas re-renderiza quando user ou cart muda também!
+}
+```
+
+Se `cart` muda (o usuário adiciona um item), `Header` re-renderiza mesmo que só use `theme`. Para 3 campos isso é tolerável. Para uma store com 20+ campos, é um problema de performance.
+
+Zustand usa subscriptions granulares:
+
+```typescript
+// Zustand — re-render apenas quando o slice selecionado muda
+function Header() {
+  const theme = useStore(state => state.theme) // selector
+  // Só re-renderiza quando theme muda — mudanças em cart, user não afetam
+}
+```
+
+---
+
+## Criando uma Store com Zustand
+
+```typescript
+import { create } from 'zustand'
+
+interface UserStore {
+  // Estado
+  user: User | null
+  isAuthenticated: boolean
+
+  // Actions co-localizadas com o estado
+  setUser: (user: User) => void
+  logout: () => void
+  updateProfile: (updates: Partial<User>) => void
+}
+
+const useUserStore = create<UserStore>((set) => ({
+  // Estado inicial
+  user: null,
+  isAuthenticated: false,
+
+  // Actions
+  setUser: (user) => set({ user, isAuthenticated: true }),
+  logout: () => set({ user: null, isAuthenticated: false }),
+  updateProfile: (updates) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...updates } : null,
+    })),
+}))
+```
+
+Três diferenças em relação ao NgRx que engenheiros Angular notam:
+
+1. **Actions e estado juntos** — sem arquivo separado para actions
+2. **Sem reducers separados** — a lógica de transição está nas actions da própria store
+3. **Sem boilerplate de action types** — `setUser` é direto, sem `{ type: 'SET_USER', payload: user }`
+
+---
+
+## Selectors: Granularidade de Re-renders
+
+O selector é a função passada para `useStore` que extrai o dado necessário:
+
+```typescript
+// Lê apenas o que precisa — re-render granular
+function Avatar() {
+  const user = useUserStore(state => state.user)
+  const logout = useUserStore(state => state.logout)
+
+  return (
+    <div>
+      <img src={user?.avatar} alt={user?.name} />
+      <button onClick={logout}>Sair</button>
+    </div>
+  )
+}
+
+// Selector computado — re-render apenas quando user.name muda
+function PageTitle() {
+  const displayName = useUserStore(
+    state => state.user ? `${state.user.firstName} ${state.user.lastName}` : 'Visitante'
+  )
+  return <h1>Olá, {displayName}</h1>
+}
+```
+
+**Comparação com NgRx selectors:**
+
+```typescript
+// NgRx — createSelector com memoização
+const selectDisplayName = createSelector(
+  selectUser,
+  (user) => user ? `${user.firstName} ${user.lastName}` : 'Visitante'
+)
+
+// Zustand — função inline ou exportada
+const selectDisplayName = (state: UserStore) =>
+  state.user ? `${state.user.firstName} ${state.user.lastName}` : 'Visitante'
+
+function PageTitle() {
+  const displayName = useUserStore(selectDisplayName)
+  return <h1>Olá, {displayName}</h1>
+}
+```
+
+O conceito é idêntico. A implementação do Zustand é mais simples porque não exige criação explícita de selectors memoizados — Zustand compara por shallow equality por padrão.
+
+---
+
+## Slice Pattern para Stores Grandes
+
+Em projetos grandes, uma única store pode ter muitos domínios. O slice pattern divide a store em fatias:
+
+```typescript
+// userSlice.ts
+interface UserSlice {
+  user: User | null
+  setUser: (user: User) => void
+  logout: () => void
+}
+
+const createUserSlice = (set: SetState<AppStore>): UserSlice => ({
+  user: null,
+  setUser: (user) => set({ user }),
+  logout: () => set({ user: null }),
+})
+
+// cartSlice.ts
+interface CartSlice {
+  items: CartItem[]
+  addItem: (item: CartItem) => void
+  removeItem: (id: string) => void
+  total: number
+}
+
+const createCartSlice = (set: SetState<AppStore>): CartSlice => ({
+  items: [],
+  addItem: (item) => set((state) => ({ items: [...state.items, item] })),
+  removeItem: (id) => set((state) => ({ items: state.items.filter(i => i.id !== id) })),
+  get total() { return 0 }, // computed em selectors
+})
+
+// store.ts — combina os slices
+type AppStore = UserSlice & CartSlice
+
+const useStore = create<AppStore>()((...args) => ({
+  ...createUserSlice(...args),
+  ...createCartSlice(...args),
+}))
+```
+
+---
+
+## DevTools e Middleware
+
+Zustand integra com Redux DevTools para inspeção de estado:
+
+```typescript
+import { devtools, persist } from 'zustand/middleware'
+
+const useStore = create<UserStore>()(
+  devtools(
+    persist(
+      (set) => ({
+        user: null,
+        setUser: (user) => set({ user }, false, 'setUser'), // nome da action no DevTools
+        logout: () => set({ user: null }, false, 'logout'),
+      }),
+      {
+        name: 'user-storage', // chave no localStorage
+        partialize: (state) => ({ user: state.user }), // só persiste user, não actions
+      }
+    ),
+    { name: 'UserStore' } // nome no DevTools
+  )
+)
+```
+
+**Immer middleware** para atualizações imutáveis mais ergonômicas:
+
+```typescript
+import { immer } from 'zustand/middleware/immer'
+
+const useStore = create<CartStore>()(
+  immer((set) => ({
+    items: [],
+    addItem: (item) =>
+      set((state) => {
+        state.items.push(item) // mutação direta — Immer cria o novo objeto imutável
+      }),
+    updateQuantity: (id, qty) =>
+      set((state) => {
+        const item = state.items.find(i => i.id === id)
+        if (item) item.quantity = qty // parecer mutação, mas é imutável
+      }),
+  }))
+)
+```
+
+---
+
+## Quando NÃO Usar Estado Global
+
+Estado global aumenta o acoplamento implícito — qualquer componente em qualquer lugar pode ler e modificar. Isso dificulta raciocinar sobre quem está causando mudanças.
+
+Não use estado global para:
+
+- **Dados do servidor** — use TanStack Query (Dia 20). Colocar dados de API no Zustand significa gerenciar cache manualmente
+- **Estado de UI local** — modals abertos, accordions, tabs selecionadas pertencem ao componente
+- **Estado de formulários** — React Hook Form, Formik, ou `useState` local é mais apropriado
+- **Estado por rota** — dados específicos de uma página não devem contaminar o estado global
+
+---
+
+## Key Takeaways
+
+1. Estado global é para dados acessados por partes distantes da árvore que mudam com frequência — não para tudo
+2. Context causa re-render em todos os consumidores; Zustand usa selectors granulares
+3. Zustand co-localiza actions com estado — sem actions separadas, sem reducers separados
+4. Selectors extraem fatias específicas do estado; componentes só re-renderizam quando sua fatia muda
+5. Slice pattern para stores grandes — divide por domínio, combina na store central
+6. Devtools middleware integra com Redux DevTools; Immer middleware simplifica atualizações imutáveis
+7. Dados do servidor não pertencem ao Zustand — TanStack Query (Dia 20) é a ferramenta certa para isso

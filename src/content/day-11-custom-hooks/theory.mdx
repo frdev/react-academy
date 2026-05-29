@@ -1,0 +1,258 @@
+# Custom Hooks: Composição de Lógica Reutilizável
+
+> **Para engenheiros Angular:** Services no Angular encapsulam lógica reutilizável — você injeta um serviço onde precisar dele. Custom hooks são o equivalente no React: funções que encapsulam lógica com estado e efeitos, reutilizáveis em qualquer componente. A diferença: enquanto services Angular são singletons injetados pelo DI system, cada chamada de um custom hook cria uma instância isolada de estado.
+
+## O Que É Um Custom Hook?
+
+Um custom hook é simplesmente uma **função JavaScript que começa com `use` e chama outros hooks do React**.
+
+```typescript
+// Isso É um custom hook — começa com "use" e chama hooks
+function useWindowSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const update = () => setSize({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', update)
+    update() // leitura inicial
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
+  return size
+}
+
+// Isso NÃO é um custom hook — não começa com "use"
+function getWindowSize() { // ← sem prefixo "use"
+  // Não pode chamar hooks aqui!
+}
+```
+
+---
+
+## Por Que o Prefixo `use` Importa?
+
+A regra não é arbitrária. O ESLint plugin `eslint-plugin-react-hooks` usa o prefixo `use` para identificar onde hooks podem ser chamados. As **Regras dos Hooks** do React exigem que hooks sejam chamados:
+
+1. Apenas no nível superior de funções React (componentes ou hooks)
+2. Não dentro de condicionais, loops, ou funções aninhadas
+
+```typescript
+// ERRO: chamar hook dentro de condição
+function useConditionalData(condition: boolean) {
+  if (condition) {
+    const [data] = useState(null) // ← violação das regras dos hooks!
+  }
+}
+
+// CORRETO: condição dentro do hook, hook no nível superior
+function useConditionalData(condition: boolean) {
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    if (condition) {
+      fetchData().then(setData)
+    }
+  }, [condition])
+
+  return data
+}
+```
+
+O linter sabe que `useConditionalData` é um hook porque começa com `use`, e vai aplicar as regras corretamente. Sem o prefixo, o linter não verificaria as chamadas de hooks internas.
+
+---
+
+## Quando Extrair para um Custom Hook
+
+A decisão de extrair lógica para um custom hook versus um componente é:
+
+**Use um componente** quando você quer reutilizar **JSX** (estrutura visual).
+
+**Use um custom hook** quando você quer reutilizar **comportamento com estado** (lógica, efeitos, dados).
+
+```typescript
+// Antes: lógica de localStorage misturada no componente
+function Settings() {
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') ?? 'dark'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  return <select value={theme} onChange={e => setTheme(e.target.value)}>...</select>
+}
+
+// Depois: lógica extraída para custom hook
+function useLocalStorage<T>(key: string, initialValue: T) {
+  const [value, setValue] = useState<T>(() => {
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : initialValue
+  })
+
+  const setValueAndStore = useCallback((newValue: T) => {
+    setValue(newValue)
+    localStorage.setItem(key, JSON.stringify(newValue))
+  }, [key])
+
+  return [value, setValueAndStore] as const
+}
+
+// Uso limpo no componente:
+function Settings() {
+  const [theme, setTheme] = useLocalStorage('theme', 'dark')
+  return <select value={theme} onChange={e => setTheme(e.target.value)}>...</select>
+}
+```
+
+---
+
+## Exemplos Reais de Custom Hooks
+
+### useDebounce
+
+```typescript
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay)
+    return () => clearTimeout(timer)
+  }, [value, delay])
+
+  return debouncedValue
+}
+
+// Uso:
+function SearchInput() {
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 300)
+
+  useEffect(() => {
+    if (debouncedQuery) fetchResults(debouncedQuery)
+  }, [debouncedQuery])
+}
+```
+
+### useFetch
+
+```typescript
+function useFetch<T>(url: string) {
+  const [data, setData] = useState<T | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    setIsLoading(true)
+    fetch(url)
+      .then(r => r.json())
+      .then(data => { if (!cancelled) setData(data) })
+      .catch(err => { if (!cancelled) setError(err) })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+
+    return () => { cancelled = true } // cleanup — evita state update em componente desmontado
+  }, [url])
+
+  return { data, isLoading, error }
+}
+```
+
+### useWindowSize
+
+Já vimos acima — escuta resize events e expõe as dimensões atuais da janela.
+
+---
+
+## Composição: Custom Hooks Chamando Custom Hooks
+
+Um custom hook pode chamar outros custom hooks — isso é composição:
+
+```typescript
+function useUserProfile(userId: string) {
+  const { data: user, isLoading } = useFetch<User>(`/api/users/${userId}`)
+  const windowSize = useWindowSize()
+  const [isMobile] = useState(windowSize.width < 768)
+
+  const displayName = useMemo(
+    () => user ? `${user.firstName} ${user.lastName}` : 'Carregando...',
+    [user]
+  )
+
+  return { user, isLoading, displayName, isMobile }
+}
+```
+
+Cada hook encapsula uma responsabilidade, e o hook de nível mais alto os compõe.
+
+---
+
+## Testando Custom Hooks
+
+Custom hooks são testados com `renderHook` da Testing Library:
+
+```typescript
+import { renderHook, act } from '@testing-library/react'
+import { useLocalStorage } from './useLocalStorage'
+
+describe('useLocalStorage', () => {
+  it('retorna o valor inicial quando não há nada no storage', () => {
+    const { result } = renderHook(() => useLocalStorage('key', 'default'))
+    expect(result.current[0]).toBe('default')
+  })
+
+  it('persiste o valor no localStorage', () => {
+    const { result } = renderHook(() => useLocalStorage('key', ''))
+    act(() => {
+      result.current[1]('novo valor')
+    })
+    expect(result.current[0]).toBe('novo valor')
+    expect(localStorage.getItem('key')).toBe('"novo valor"')
+  })
+})
+```
+
+A grande vantagem: como custom hooks são funções puras (no sentido de não terem JSX), eles são muito fáceis de testar em isolamento — sem precisar renderizar componentes completos.
+
+---
+
+## Comparação com Angular Services
+
+| Aspecto | Angular Service | React Custom Hook |
+|---|---|---|
+| Escopo de estado | Singleton (por padrão) | Uma instância por chamada |
+| Inicialização | DI container | Chamada da função |
+| Acesso a ciclo de vida | Via hooks de ciclo de vida | Via useEffect |
+| Reatividade | RxJS / Signals | State + callbacks |
+| Testabilidade | Jest + TestBed | Jest + renderHook |
+
+A diferença mais significativa: **escopo**. Um Angular service é um singleton — todos os componentes que injetam o mesmo service compartilham o mesmo estado. Um custom hook cria estado isolado para cada componente que o chama.
+
+```typescript
+// ANGULAR: todos compartilham o mesmo ThemeService
+@Component({ ... })
+class HeaderComponent {
+  constructor(private themeService: ThemeService) {}
+}
+
+// REACT: cada componente tem seu próprio estado de useLocalStorage
+function Header() {
+  const [theme] = useLocalStorage('theme', 'dark') // estado próprio
+}
+```
+
+Se você precisar de estado compartilhado no React, combine custom hooks com Context (Dia 13) ou uma store externa como Zustand.
+
+---
+
+## Key Takeaways
+
+1. Custom hook = função que começa com `use` e chama hooks do React
+2. O prefixo `use` é funcional: permite ao linter aplicar as Regras dos Hooks
+3. Use componente para reutilizar JSX; use custom hook para reutilizar lógica com estado
+4. Custom hooks podem chamar outros custom hooks — isso é composição, não herança
+5. `renderHook` da Testing Library facilita o teste unitário de hooks
+6. Diferente de Angular services: cada chamada cria uma instância isolada de estado
+7. Para estado compartilhado: combine hooks com Context ou store externa

@@ -1,0 +1,253 @@
+# Server State com TanStack Query
+
+> **Para engenheiros Angular:** O padrão Angular para dados do servidor é um service com HttpClient retornando Observables, consumido com async pipe ou subscribe. NgRx + Effects adiciona cache e gerenciamento de estado. TanStack Query é conceitualmente mais próximo de um service Angular com cache automático embutido — você descreve "o que buscar" (queryKey + queryFn), e a biblioteca gerencia o cache, re-fetch em background, loading states, e sincronização.
+
+## Cliente State vs Server State: Problemas Fundamentalmente Diferentes
+
+```typescript
+// ESTADO DO CLIENTE — você controla 100%
+const [isModalOpen, setIsModalOpen] = useState(false)
+const [selectedTab, setSelectedTab] = useState('overview')
+// Síncrono, nunca fica desatualizado, você decide quando muda
+
+// ESTADO DO SERVIDOR — você não controla
+const [users, setUsers] = useState<User[]>([])
+// Assíncrono, pode mudar a qualquer momento, precisa de sincronização
+```
+
+Estado do servidor tem problemas que estado do cliente não tem:
+
+- **Cache**: a mesma lista de usuários é buscada em 5 componentes — você quer 1 request, não 5
+- **Stale data**: o usuário abre a página, os dados do cache podem estar 10 minutos desatualizados
+- **Background sync**: quando o usuário volta para a aba, você quer dados frescos
+- **Deduplicação**: dois componentes buscando os mesmos dados simultaneamente devem compartilhar a promise
+- **Loading/Error states**: gerenciar `isLoading`, `isError`, `data` em todo fetch é repetitivo
+
+TanStack Query resolve todos esses problemas.
+
+---
+
+## useQuery: Buscando Dados
+
+```typescript
+import { useQuery } from '@tanstack/react-query'
+
+function UserList() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => fetch('/api/users').then(r => r.json()),
+    staleTime: 5 * 60 * 1000, // dados frescos por 5 minutos
+  })
+
+  if (isLoading) return <Spinner />
+  if (isError) return <ErrorMessage error={error} />
+
+  return (
+    <ul>
+      {data.map(user => <UserCard key={user.id} user={user} />)}
+    </ul>
+  )
+}
+```
+
+Sem TanStack Query, isso seriam ~20 linhas de useEffect + useState. Com TanStack Query, é um hook.
+
+### Queries com Parâmetros
+
+```typescript
+function UserProfile({ userId }: { userId: string }) {
+  const { data: user } = useQuery({
+    queryKey: ['users', userId],  // queryKey inclui o parâmetro
+    queryFn: () => fetchUser(userId),
+    enabled: !!userId,  // não busca se userId for undefined
+  })
+
+  return user ? <Profile user={user} /> : null
+}
+```
+
+Quando `userId` muda, `queryKey` muda, e uma nova entrada de cache é criada automaticamente. O TanStack Query mantém cache separado para `['users', '1']`, `['users', '2']`, etc.
+
+---
+
+## QueryKey: A Chave do Cache
+
+O `queryKey` é o identificador único do cache. É análogo a como o NgRx identifica diferentes "slices" do store.
+
+```typescript
+// Queries diferentes → caches diferentes
+useQuery({ queryKey: ['users'] })               // lista de todos usuários
+useQuery({ queryKey: ['users', userId] })        // usuário específico
+useQuery({ queryKey: ['users', userId, 'posts'] }) // posts de um usuário
+useQuery({ queryKey: ['products', { category: 'electronics' }] }) // com filtros
+```
+
+**Regra:** inclua no `queryKey` tudo que a `queryFn` usa para buscar dados. Se `queryFn` usa `userId`, ele deve estar no `queryKey`.
+
+---
+
+## Stale-While-Revalidate: UX Instantânea
+
+A estratégia padrão do TanStack Query é `stale-while-revalidate`:
+
+```
+1. Componente monta → TanStack Query verifica o cache
+2. Se dados em cache existem → exibe imediatamente (mesmo que stale)
+3. Simultaneamente → faz fetch em background para dados frescos
+4. Quando dados frescos chegam → atualiza a UI silenciosamente
+```
+
+```typescript
+useQuery({
+  queryKey: ['users'],
+  queryFn: fetchUsers,
+  staleTime: 60 * 1000,    // dados ficam "frescos" por 1 minuto
+  gcTime: 5 * 60 * 1000,   // cache fica na memória por 5 minutos após inativo
+})
+```
+
+- `staleTime: 0` (padrão) — dados são stale imediatamente após busca. Sempre refaz fetch ao montar
+- `staleTime: 60000` — dados ficam frescos por 1 minuto. Sem re-fetch durante esse período
+- `staleTime: Infinity` — dados nunca ficam stale. Busca apenas uma vez por sessão
+
+O usuário sempre vê dados instantaneamente (do cache), e a UI silenciosamente se atualiza quando dados frescos chegam — zero loading spinners em navegações subsequentes.
+
+---
+
+## useMutation: Escrita + Invalidação de Cache
+
+Mutations são operações de escrita (POST, PUT, DELETE):
+
+```typescript
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+
+function CreateUserForm() {
+  const queryClient = useQueryClient()
+
+  const { mutate, isPending, isError } = useMutation({
+    mutationFn: (newUser: CreateUserDTO) =>
+      fetch('/api/users', {
+        method: 'POST',
+        body: JSON.stringify(newUser),
+      }).then(r => r.json()),
+
+    onSuccess: (createdUser) => {
+      // Invalida o cache da lista — próxima leitura vai re-buscar
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+
+      // Alternativa: atualizar o cache diretamente (optimistic update)
+      queryClient.setQueryData(['users', createdUser.id], createdUser)
+    },
+
+    onError: (error) => {
+      toast.error(`Erro ao criar usuário: ${error.message}`)
+    },
+  })
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault()
+      mutate({ name: formData.name, email: formData.email })
+    }}>
+      {/* form fields */}
+      <button type="submit" disabled={isPending}>
+        {isPending ? 'Criando...' : 'Criar Usuário'}
+      </button>
+    </form>
+  )
+}
+```
+
+---
+
+## Optimistic Updates: UX Imediata
+
+Para UX ainda melhor, você pode atualizar o cache antes da mutation completar:
+
+```typescript
+const { mutate } = useMutation({
+  mutationFn: toggleUserStatus,
+
+  onMutate: async (userId) => {
+    // Cancela queries em flight para evitar sobrescrever o optimistic update
+    await queryClient.cancelQueries({ queryKey: ['users'] })
+
+    // Salva snapshot do estado atual para rollback
+    const previousUsers = queryClient.getQueryData<User[]>(['users'])
+
+    // Atualiza o cache otimisticamente
+    queryClient.setQueryData<User[]>(['users'], (old) =>
+      old?.map(u => u.id === userId ? { ...u, isActive: !u.isActive } : u)
+    )
+
+    return { previousUsers }
+  },
+
+  onError: (err, userId, context) => {
+    // Rollback em caso de erro
+    if (context?.previousUsers) {
+      queryClient.setQueryData(['users'], context.previousUsers)
+    }
+  },
+
+  onSettled: () => {
+    // Refetch para garantir sincronização com o servidor
+    queryClient.invalidateQueries({ queryKey: ['users'] })
+  },
+})
+```
+
+O usuário vê a mudança instantaneamente. Se o servidor rejeitar, a UI reverte. Essa técnica é usada em UIs como o toggle de like do Twitter.
+
+---
+
+## Por Que Não Colocar Dados do Servidor no Zustand?
+
+É tentador usar Zustand para tudo:
+
+```typescript
+// ❌ Não faça isso
+const useStore = create((set) => ({
+  users: [],
+  fetchUsers: async () => {
+    const users = await api.getUsers()
+    set({ users })
+  },
+}))
+```
+
+Os problemas:
+
+1. **Cache invalidation manual** — quando criar um usuário, você precisa refazer o fetch ou atualizar o array manualmente
+2. **Sem deduplicação** — dois componentes chamando `fetchUsers` fazem dois requests
+3. **Sem background sync** — dados ficam stale até você explicitamente refazer o fetch
+4. **Loading/error state manual** — você precisa de `isLoading` e `isError` em cada "slice"
+
+TanStack Query resolve tudo isso automaticamente. Use Zustand para estado do cliente (UI state, preferências do usuário); use TanStack Query para dados do servidor.
+
+---
+
+## Comparação: Padrão Angular vs TanStack Query
+
+| Aspecto | Angular (HttpClient + NgRx) | TanStack Query |
+|---|---|---|
+| Fetch | HttpClient.get() | queryFn |
+| Cache | NgRx Store manual | Automático por queryKey |
+| Loading state | isLoading$ no store | { isLoading } do hook |
+| Re-fetch em background | Effects manuais | Automático com staleTime |
+| Invalidação | Actions no NgRx | queryClient.invalidateQueries |
+| Deduplicação | Manual ou ngRx deduplication | Automática |
+
+TanStack Query é especializado em "dados do servidor com cache" — faz uma coisa e faz muito bem.
+
+---
+
+## Key Takeaways
+
+1. Estado do servidor é fundamentalmente diferente do estado do cliente — cache, stale data, sincronização são problemas únicos
+2. `queryKey` é o identificador do cache — inclua tudo que a queryFn usa para buscar dados
+3. `staleTime` controla por quanto tempo dados são considerados frescos — `0` refaz sempre, `Infinity` nunca refaz
+4. Stale-while-revalidate: exibe dados do cache instantaneamente, atualiza silenciosamente em background
+5. `useMutation` + `invalidateQueries` é o padrão para escrita + sincronização de cache
+6. Optimistic updates para UX imediata com rollback automático em caso de erro
+7. Não coloque dados do servidor no Zustand — TanStack Query é a ferramenta certa para esse problema

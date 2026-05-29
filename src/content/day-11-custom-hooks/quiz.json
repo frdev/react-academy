@@ -1,0 +1,58 @@
+{
+  "lessonId": "day-11",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é obrigatório para que uma função seja considerada um custom hook pelo React?",
+      "options": [
+        "Deve retornar um array com exatamente dois elementos",
+        "Deve ser declarada com a keyword function, não como arrow function",
+        "Deve começar com 'use' e pode chamar outros hooks React",
+        "Deve receber pelo menos um argumento e retornar um objeto"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A única regra obrigatória é que o nome comece com 'use'. Isso permite ao ESLint plugin (eslint-plugin-react-hooks) saber que essa função pode chamar hooks e aplicar as Regras dos Hooks dentro dela. A sintaxe (function vs arrow), os parâmetros, e o formato do retorno são livres."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença de escopo de estado entre um custom hook React e um service Angular?",
+      "options": [
+        "Não há diferença — ambos são singletons compartilhados",
+        "Custom hooks criam estado isolado por chamada; services Angular são singletons compartilhados por padrão",
+        "Services Angular são mais rápidos pois usam o sistema de DI",
+        "Custom hooks são globais, services Angular são locais ao componente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Cada chamada de um custom hook cria uma instância independente de estado — dois componentes chamando useLocalStorage('theme', 'dark') têm estados separados que não se afetam. Um service Angular com providedIn: 'root' é um singleton — todos os componentes que injetam o serviço compartilham o mesmo estado. Para estado compartilhado no React, você precisa combinar o custom hook com Context ou uma store externa."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como testar um custom hook em isolamento sem renderizar um componente completo?",
+      "options": [
+        "Com jest.mock() para mockar o hook",
+        "Criando um componente de teste especial apenas para o hook",
+        "Com renderHook() da Testing Library",
+        "Custom hooks não podem ser testados em isolamento"
+      ],
+      "correctAnswer": 2,
+      "explanation": "renderHook da @testing-library/react permite executar e testar um hook diretamente, sem precisar criar um componente de UI. Você chama renderHook(() => useMyHook(args)) e acessa result.current para ler o valor retornado. Para simular interações que causam mudanças de estado, use act() do Testing Library."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quando você deve extrair lógica para um custom hook ao invés de um componente?",
+      "options": [
+        "Quando o código tem mais de 50 linhas",
+        "Quando a lógica usa useEffect",
+        "Quando você quer reutilizar comportamento com estado/efeitos (sem JSX), ao invés de estrutura visual",
+        "Quando o componente recebe mais de 3 props"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A heurística é: componente para reutilizar JSX (estrutura visual), custom hook para reutilizar comportamento com estado. Se você quer reusa a lógica de 'armazenar no localStorage', 'fazer fetch com estados de loading/error', ou 'debounce de um valor' — esses são casos para custom hook. Se você quer reutilizar um botão com estilo específico ou um card layout — esses são casos para componente."
+    }
+  ]
+}

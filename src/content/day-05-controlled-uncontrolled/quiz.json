@@ -1,0 +1,53 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre passar `value` e `defaultValue` para um input?",
+      "options": [
+        "São equivalentes — ambos definem o valor inicial do input",
+        "value torna o input controlled (React controla o valor); defaultValue define apenas o valor inicial e deixa o DOM controlar depois",
+        "defaultValue é para TypeScript e value é para JavaScript",
+        "value funciona apenas com inputs de texto; defaultValue funciona com todos os tipos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`value` torna o input controlled: o React sobrescreve o valor do input a cada render com o valor do state. Sem um `onChange` correspondente, o input fica somente-leitura. `defaultValue` apenas define o valor inicial — após isso, o DOM controla o valor livremente (uncontrolled). Nunca use os dois juntos no mesmo input."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que o React Hook Form (RHF) usa inputs uncontrolled por padrão?",
+      "options": [
+        "Porque inputs uncontrolled são mais seguros contra XSS",
+        "Para evitar re-renders a cada keystroke — em formulários grandes, isso elimina centenas de renders desnecessários",
+        "Porque o React não suporta inputs controlled em formulários complexos",
+        "Para compatibilidade com versões antigas do React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com inputs controlled, cada keystroke trigera um re-render do componente (porque o state muda). Em formulários com muitos campos, isso pode ser custoso. O RHF registra inputs via ref, lê valores diretamente do DOM quando necessário (no submit ou na validação), e só trigera re-renders quando realmente necessário — resultando em muito melhor performance."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "É possível criar um input do tipo `file` controlled no React, passando `value` para ele.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Inputs do tipo `file` são SEMPRE uncontrolled por razões de segurança do browser. O browser não permite que JavaScript controle programaticamente quais arquivos estão selecionados num input[type='file']. Você sempre usa `ref` para ler `inputRef.current.files` quando precisa do arquivo selecionado."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual abordagem é mais adequada para um campo que precisa formatar o CPF enquanto o usuário digita (ex: 123.456.789-09)?",
+      "options": [
+        "Uncontrolled com ref — ler o valor no evento blur",
+        "Controlled com state — interceptar onChange, formatar o valor e atualizar o state",
+        "defaultValue com mask library — deixar o DOM aplicar a máscara",
+        "Qualquer uma das opções acima — não há diferença para formatação em tempo real"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Formatação em tempo real requer um input controlled. Você intercepta o onChange, aplica a formatação (remover não-numéricos, inserir pontos e hífen), e atualiza o state com o valor formatado. O React então renderiza o input com o valor formatado — o DOM reflete imediatamente. Com uncontrolled, você não teria como impor o formato enquanto o usuário digita."
+    }
+  ]
+}
