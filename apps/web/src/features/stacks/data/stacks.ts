@@ -1,6 +1,7 @@
 import type { Stack } from '../types'
 
 export const STACKS: Stack[] = [
+  
   {
     id: 'html',
     name: 'HTML Semântico & Acessibilidade',
