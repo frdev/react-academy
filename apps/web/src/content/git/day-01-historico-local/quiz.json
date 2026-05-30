@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é o staging area (index) no Git?",
+      "options": [
+        "A pasta onde o Git guarda o código de produção",
+        "A prévia do próximo commit — onde você escolhe, com `git add`, o que será incluído",
+        "Um backup automático do working tree",
+        "O histórico completo de todos os commits"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O staging area (ou index) é a prévia do próximo commit. Você usa `git add` para mover mudanças do working tree para o staging, escolhendo exatamente o que entra em cada commit. Ele fica entre o working tree (arquivos no disco) e o repositório (commits gravados)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que caracteriza um bom commit \"atômico\"?",
+      "options": [
+        "Um commit que altera o maior número possível de arquivos de uma vez",
+        "Um commit que faz uma única coisa coerente, fácil de revisar e reverter",
+        "Um commit feito sem mensagem para ser mais rápido",
+        "Um commit que só pode ser desfeito com `--hard`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um commit atômico faz uma única coisa coerente. Isso o torna fácil de revisar, de entender no histórico e de reverter sem afetar mudanças não relacionadas. Misturar correção de bug com renomeações, por exemplo, deveria ser dois commits."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Seguindo Conventional Commits, qual tipo você usa para uma correção de bug?",
+      "options": [
+        "feat",
+        "fix",
+        "docs",
+        "chore"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`fix` é o tipo para correção de bug. `feat` é para nova funcionalidade, `docs` para mudanças só de documentação e `chore` para manutenção (dependências, config). Ferramentas de versionamento usam `fix` para indicar um incremento de `patch` e `feat` para `minor`."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "`git reset --hard HEAD~1` é seguro porque sempre dá para recuperar facilmente as mudanças descartadas depois.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. `git reset --hard` descarta o commit E as mudanças no working tree de forma irreversível na prática (não ficam no staging nem no working tree). Use `--hard` só quando tiver certeza de que quer jogar o trabalho fora; para apenas desfazer o commit mantendo as mudanças, use `--soft` ou `--mixed`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual modo de `git reset` desfaz o commit mas mantém as mudanças já no staging area, prontas para recommitar?",
+      "options": [
+        "git reset --hard",
+        "git reset --mixed",
+        "git reset --soft",
+        "git restore"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`git reset --soft` move a branch para trás mas deixa as mudanças no staging area, prontas para um novo commit — ideal para refazer um commit mal feito. `--mixed` (padrão) deixa as mudanças no working tree (não staged); `--hard` descarta tudo."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Você commitou e já deu `push`; o commit está no remoto e o time já o baixou. Como desfazê-lo com segurança?",
+      "options": [
+        "git reset --hard HEAD~1",
+        "git revert HEAD",
+        "git restore .",
+        "git reset --soft HEAD~1"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`git revert HEAD` cria um commit novo que desfaz as mudanças do anterior, sem reescrever o histórico — seguro quando o commit já é compartilhado. `reset` reescreveria o histórico que outras pessoas já têm, causando divergência. Regra: commit local → `reset`; commit compartilhado → `revert`."
+    }
+  ]
+}
