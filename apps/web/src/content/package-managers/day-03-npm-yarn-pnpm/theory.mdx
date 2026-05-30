@@ -1,0 +1,78 @@
+# npm vs yarn vs pnpm
+
+Os três gerenciadores baixam dos mesmos pacotes, do mesmo registry, e usam o mesmo `package.json`. Então por que existem três? Porque cada um nasceu para resolver um problema do anterior. Entender essa história não é trivia — ela explica *por que* o pnpm, o mais novo, é mais rápido e mais correto, e ajuda você a escolher com critério em vez de copiar o que viu num tutorial.
+
+## Uma breve história
+
+**npm** é o original, embutido no Node desde sempre. Nos seus primeiros anos, porém, tinha duas dores: instalações **lentas** e **não-determinísticas** (antes dos lockfiles, dois `npm install` podiam gerar `node_modules` diferentes).
+
+**yarn** surgiu em 2016 (criado no Facebook) justamente para resolver isso: trouxe lockfile por padrão, instalação paralela (mais rápida) e cache offline. Foi tão influente que o próprio npm copiou as boas ideias — hoje, npm e yarn (clássico) são bastante parecidos em comportamento.
+
+**pnpm** ("performant npm") atacou um problema mais profundo, que npm e yarn **compartilham** até hoje: o jeito como o `node_modules` é montado. Para entender o pnpm, precisamos ver esse problema.
+
+## O `node_modules` "flat" e as phantom dependencies
+
+npm e yarn montam um `node_modules` **achatado** (*flat*). Se seu app depende de `A`, e `A` depende de `B`, ambos `A` e `B` acabam no **mesmo nível** na raiz do `node_modules`:
+
+```text
+node_modules/
+├── A/
+└── B/        ← subiu para o topo, mesmo você nunca tendo pedido B
+```
+
+Esse achatamento foi uma solução para evitar duplicação e caminhos profundos. Mas ele cria um efeito colateral perigoso: como `B` está fisicamente acessível na raiz, seu código consegue fazer `import 'B'` **mesmo sem `B` estar no seu `package.json`**. Funciona na sua máquina... até o dia em que `A` atualiza, para de depender de `B`, e o `import 'B'` quebra do nada.
+
+Isso se chama **phantom dependency** (dependência fantasma): você usa um pacote que nunca declarou, só porque ele "vazou" para a raiz como dependência de outra coisa. npm e yarn não te protegem disso.
+
+## A solução do pnpm: store global + symlinks
+
+O **pnpm** resolve os dois problemas (espaço em disco e phantom dependencies) com uma arquitetura diferente.
+
+**1. Um content-addressable store global.** Em vez de copiar os pacotes para dentro de cada projeto, o pnpm guarda **uma única cópia** de cada versão de cada pacote num armazém global na sua máquina (normalmente `~/.pnpm-store`). O `node_modules` de cada projeto não contém os arquivos de verdade — contém **hard links** que apontam para esse armazém.
+
+A consequência é enorme: se você tem 10 projetos usando `react@19`, npm/yarn baixam e armazenam o React 10 vezes; o pnpm o guarda **uma vez** e linka. Isso economiza gigabytes de disco e torna as instalações muito mais rápidas (nada para baixar se a versão já está no store).
+
+**2. Um `node_modules` não-flat, com symlinks.** O pnpm monta o `node_modules` de forma que **só as dependências que você declarou** ficam acessíveis no topo. As dependências transitivas (como o `B` do exemplo) ficam num diretório interno (`.pnpm`) e são ligadas por symlinks apenas para quem realmente precisa delas.
+
+```text
+node_modules/
+├── A → (symlink) .pnpm/A@1.0.0/node_modules/A
+└── .pnpm/
+    ├── A@1.0.0/  (A enxerga B aqui dentro)
+    └── B@2.0.0/
+            ↑ B NÃO está acessível na raiz; seu app não consegue importá-lo
+```
+
+Resultado: se você tentar `import 'B'` sem declarar `B`, **dá erro na hora** — o pnpm é **estrito**. Isso transforma a phantom dependency de um bug silencioso de produção num erro imediato de desenvolvimento. É mais chato no começo e muito mais seguro no fim.
+
+## Workspaces e monorepos
+
+Os três suportam workspaces, mas é em **monorepos** que a diferença de arquitetura mais pesa. Num repositório com 20 pacotes que compartilham dependências, o store global + links do pnpm evita multiplicar gigabytes por pacote, e a estritude evita que um pacote use por acaso uma dependência de outro. Por isso o pnpm virou o padrão de fato em monorepos grandes — e é exatamente o que este **React Academy** usa:
+
+```json
+{
+  "scripts": {
+    "dev": "pnpm --filter @academy/web dev"
+  }
+}
+```
+
+O `--filter` roda um script num pacote específico do workspace — uma ergonomia que o pnpm oferece de forma limpa.
+
+## Então, qual usar?
+
+A comparação, de forma honesta:
+
+| | npm | yarn (clássico) | pnpm |
+|---|---|---|---|
+| Vem com o Node | ✅ | ❌ | ❌ |
+| Velocidade | ok | boa | **excelente** |
+| Uso de disco | alto | alto | **baixo** (store global) |
+| Phantom deps | permite | permite | **bloqueia** (estrito) |
+| Monorepos | ok | bom | **excelente** |
+
+**A recomendação:** para projetos novos, especialmente monorepos, **prefira o pnpm** — ele é mais rápido, economiza disco e te protege de phantom dependencies, sem custo real. Use **npm** quando quiser zero fricção e o denominador comum universal (ele já está lá, todo tutorial assume ele). Encontre **yarn** principalmente em projetos legados ou times que já o adotaram — não há razão forte para migrar *para* o yarn clássico hoje, mas também não há urgência em sair dele.
+
+O mais importante: **escolha um por projeto e comite o lockfile correspondente**. Misturar gerenciadores no mesmo repositório (um `package-lock.json` e um `pnpm-lock.yaml` convivendo) é fonte garantida de confusão. A consistência vale mais do que a ferramenta "perfeita".
+
+> **Resumo:** Os três gerenciadores usam o mesmo registry e `package.json`, mas resolvem problemas de gerações diferentes. O **npm** é o original (embutido no Node); o **yarn** (2016) trouxe lockfile, paralelismo e cache — ideias que o npm depois copiou. O **pnpm** ataca um problema que npm e yarn ainda têm: o `node_modules` **flat**, que deixa dependências transitivas acessíveis na raiz e permite **phantom dependencies** (importar pacotes nunca declarados, que quebram quando a dependência intermediária some). O pnpm resolve com um **content-addressable store global** (uma cópia de cada pacote, ligada por hard links — economiza disco e acelera) e um `node_modules` **não-flat com symlinks**, que é **estrito**: importar algo não declarado dá erro imediato. Por isso o pnpm brilha em **monorepos** e é o que este projeto usa. Recomendação: **pnpm** para projetos novos, **npm** pelo alcance universal, **yarn** sobretudo em legado — e, acima de tudo, **um gerenciador por projeto** com seu lockfile commitado.

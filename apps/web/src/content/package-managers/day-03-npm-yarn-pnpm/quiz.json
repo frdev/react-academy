@@ -1,0 +1,74 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que o yarn foi criado em 2016?",
+      "options": [
+        "Para usar um registry diferente do npm",
+        "Para resolver dores do npm da época: instalações lentas e não-determinísticas, trazendo lockfile, paralelismo e cache",
+        "Para substituir o Node.js",
+        "Porque o npm parou de ser mantido"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O yarn surgiu para resolver problemas do npm da época: instalações lentas e não-determinísticas (antes dos lockfiles). Trouxe lockfile por padrão, instalação paralela e cache offline — ideias tão boas que o próprio npm acabou as adotando. Ele usa o mesmo registry do npm."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que é uma 'phantom dependency'?",
+      "options": [
+        "Um pacote que foi removido mas continua no lockfile",
+        "Importar e usar um pacote que você nunca declarou no `package.json`, acessível só porque vazou para a raiz do node_modules flat",
+        "Uma dependência que só existe em produção",
+        "Um pacote com vulnerabilidade de segurança"
+      ],
+      "correctAnswer": 1,
+      "explanation": "No `node_modules` flat do npm/yarn, dependências transitivas sobem para a raiz e ficam fisicamente acessíveis. Isso permite importar um pacote que você nunca declarou — uma phantom dependency. Funciona até a dependência intermediária parar de depender dele, e o import quebra sem aviso."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como o pnpm economiza espaço em disco em relação ao npm/yarn?",
+      "options": [
+        "Compactando o node_modules em um arquivo zip",
+        "Removendo as devDependencies após o build",
+        "Guardando uma única cópia de cada versão de pacote num store global e ligando por hard links em cada projeto",
+        "Baixando apenas metade dos arquivos de cada pacote"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O pnpm usa um content-addressable store global (ex.: `~/.pnpm-store`): cada versão de cada pacote é guardada uma única vez na máquina, e o `node_modules` de cada projeto contém hard links para o store. Se 10 projetos usam `react@19`, o npm/yarn armazenam 10 cópias; o pnpm guarda uma só."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "No pnpm, tentar importar um pacote que não está declarado no `package.json` resulta em erro imediato.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. O pnpm monta um `node_modules` não-flat: apenas as dependências declaradas ficam acessíveis na raiz, e as transitivas ficam isoladas em `.pnpm`. Por isso ele é estrito — importar algo não declarado falha na hora, transformando uma phantom dependency (bug silencioso) num erro imediato de desenvolvimento."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Para um projeto novo organizado como monorepo, qual gerenciador o conteúdo recomenda e por quê?",
+      "options": [
+        "npm, porque é o mais antigo",
+        "yarn, porque tem o melhor cache",
+        "pnpm, por ser rápido, econômico em disco e estrito (evita phantom deps) — vantagens que pesam ainda mais em monorepos",
+        "Tanto faz, todos são idênticos em monorepos"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A recomendação é pnpm para projetos novos, especialmente monorepos: o store global evita multiplicar gigabytes por pacote, e a estritude evita que um pacote use por acaso a dependência de outro. É por isso que o pnpm virou padrão de fato em monorepos — e é o que este React Academy usa."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "É uma boa prática manter dois lockfiles diferentes (ex.: `package-lock.json` e `pnpm-lock.yaml`) no mesmo repositório para dar flexibilidade.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Misturar gerenciadores no mesmo projeto é fonte garantida de confusão e instalações inconsistentes. A prática correta é escolher um gerenciador por projeto e commitar apenas o lockfile correspondente. A consistência vale mais do que tentar combinar ferramentas."
+    }
+  ]
+}
