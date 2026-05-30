@@ -43,7 +43,7 @@ export const STACKS: Stack[] = [
   },
   {
     id: 'ai',
-    name: 'AI Moderna',
+    name: 'AI Moderna com Anthropic',
     tagline: '14 dias construindo com AI: da API aos agentes',
     description: 'LLMs, Anthropic API, tool use, RAG, MCP, Skills, agents e multi-agentes — hands-on, do zero ao sistema agêntico.',
     totalDays: 14,
