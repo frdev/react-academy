@@ -102,6 +102,22 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-29': () => import('@/content/typescript/day-29-type-checker-performance/theory.mdx'),
     'day-30': () => import('@/content/typescript/day-30-projeto-final-query-builder/theory.mdx'),
   },
+  algorithms: {
+    'day-01': () => import('@/content/algorithms/day-01-big-o-complexidade/theory.mdx'),
+    'day-02': () => import('@/content/algorithms/day-02-arrays-two-pointers/theory.mdx'),
+    'day-03': () => import('@/content/algorithms/day-03-hash-maps-sets/theory.mdx'),
+    'day-04': () => import('@/content/algorithms/day-04-recursao/theory.mdx'),
+    'day-05': () => import('@/content/algorithms/day-05-busca-binaria/theory.mdx'),
+    'day-06': () => import('@/content/algorithms/day-06-linked-lists/theory.mdx'),
+    'day-07': () => import('@/content/algorithms/day-07-stacks-queues/theory.mdx'),
+    'day-08': () => import('@/content/algorithms/day-08-sorting-merge-quick/theory.mdx'),
+    'day-09': () => import('@/content/algorithms/day-09-arvores-bst/theory.mdx'),
+    'day-10': () => import('@/content/algorithms/day-10-heaps-priority-queue/theory.mdx'),
+    'day-11': () => import('@/content/algorithms/day-11-grafos-bfs/theory.mdx'),
+    'day-12': () => import('@/content/algorithms/day-12-grafos-dfs/theory.mdx'),
+    'day-13': () => import('@/content/algorithms/day-13-backtracking/theory.mdx'),
+    'day-14': () => import('@/content/algorithms/day-14-programacao-dinamica/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content

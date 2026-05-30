@@ -9,6 +9,7 @@ export const STACKS: Stack[] = [
     totalDays: 30,
     status: 'available',
     color: 'yellow',
+    weekThemes: ['Fundamentos da Linguagem', 'Async & Estruturas', 'Metaprogramação', 'Internals & Performance'],
   },
   {
     id: 'typescript',
@@ -18,6 +19,7 @@ export const STACKS: Stack[] = [
     totalDays: 30,
     status: 'available',
     color: 'indigo',
+    weekThemes: ['Sistema de Tipos', 'Generics & Narrowing', 'Type-Level Programming', 'Ferramentas & Internals'],
   },
   {
     id: 'react',
@@ -27,6 +29,7 @@ export const STACKS: Stack[] = [
     totalDays: 30,
     status: 'available',
     color: 'blue',
+    weekThemes: ['Fundamentos Profundos', 'Hooks Avançados', 'Arquitetura', 'Performance'],
   },
   {
     id: 'nodejs',
@@ -36,6 +39,7 @@ export const STACKS: Stack[] = [
     totalDays: 30,
     status: 'coming-soon',
     color: 'green',
+    weekThemes: ['APIs & Módulos', 'Streams & Eventos', 'Performance', 'Arquitetura'],
   },
   {
     id: 'ai',
@@ -45,15 +49,17 @@ export const STACKS: Stack[] = [
     totalDays: 14,
     status: 'coming-soon',
     color: 'purple',
+    weekThemes: ['Fundamentos & Ferramentas', 'Agentes & Produção'],
   },
   {
     id: 'algorithms',
     name: 'Algoritmos & Estruturas de Dados',
-    tagline: '30 dias de DSA com JavaScript, do Big-O ao grafo',
-    description: 'Complexidade, arrays, hash maps, listas, pilhas, filas, recursão, sorting, árvores, heaps, tries, grafos (BFS/DFS) e programação dinâmica — tudo em JavaScript.',
-    totalDays: 30,
-    status: 'coming-soon',
+    tagline: '14 dias de DSA com JavaScript, do Big-O à programação dinâmica',
+    description: 'Complexidade, arrays, hash maps, listas, pilhas, filas, recursão, busca binária, sorting, árvores, heaps, grafos (BFS/DFS), backtracking e programação dinâmica — tudo em JavaScript.',
+    totalDays: 14,
+    status: 'available',
     color: 'orange',
+    weekThemes: ['Fundamentos & Estruturas Lineares', 'Algoritmos & Estruturas Não-Lineares'],
   },
 ]
 

@@ -1,0 +1,82 @@
+{
+  "lessonId": "day-09",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é a 'altura' de uma árvore?",
+      "options": [
+        "O número total de nós",
+        "O caminho mais longo da raiz até uma folha",
+        "A quantidade de folhas",
+        "O número de filhos da raiz"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A altura é o comprimento do maior caminho da raiz a uma folha — e ela determina o custo das operações em uma BST."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em uma BST, qual traversal visita os valores em ordem crescente?",
+      "options": ["Pre-order", "In-order", "Post-order", "Level-order"],
+      "correctAnswer": 1,
+      "explanation": "O in-order (esquerda → raiz → direita) percorre os valores de uma BST em ordem crescente — uma propriedade chave."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual estrutura de dados o traversal em largura (level-order) utiliza?",
+      "options": ["Pilha", "Fila", "Hash map", "Heap"],
+      "correctAnswer": 1,
+      "explanation": "O level-order usa uma fila (FIFO) para processar os nós nível por nível, na ordem em que são descobertos."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual o invariante de uma Binary Search Tree?",
+      "options": [
+        "Todos os nós têm dois filhos",
+        "Para todo nó, a subárvore esquerda só tem valores menores e a direita só valores maiores",
+        "A árvore é sempre balanceada",
+        "Os valores são todos iguais"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Numa BST, esquerda < nó < direita para todo nó — é o que permite buscar como na busca binária."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que acontece com a altura de uma BST ao inserir valores já ordenados (1,2,3,4...)?",
+      "options": [
+        "Permanece O(log n)",
+        "Degenera para O(n), virando essencialmente uma lista encadeada",
+        "Vira O(1)",
+        "A inserção é rejeitada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Inserções ordenadas criam uma árvore 'torta' (cada nó só tem filho à direita), com altura O(n) e busca O(n)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que existem árvores como AVL e red-black?",
+      "options": [
+        "Para usar menos memória",
+        "Para se auto-balancearem via rotações, garantindo altura O(log n) e operações rápidas",
+        "Para permitir valores duplicados",
+        "Para eliminar a recursão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Árvores auto-balanceadas se reorganizam a cada inserção/remoção para manter a altura logarítmica, evitando a degeneração para O(n)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de busca em uma BST balanceada?",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "correctAnswer": 1,
+      "explanation": "Numa BST balanceada a altura é O(log n), e a busca desce um caminho da raiz à folha, custando O(log n)."
+    }
+  ]
+}

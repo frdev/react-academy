@@ -1,0 +1,82 @@
+{
+  "lessonId": "day-11",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de ESPAÇO de uma lista de adjacência?",
+      "options": ["O(V²)", "O(V + E)", "O(E²)", "O(V)"],
+      "correctAnswer": 1,
+      "explanation": "A lista guarda, para cada vértice, seus vizinhos — total O(V + E). A matriz, por outro lado, ocupa O(V²)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Quando a matriz de adjacência é preferível à lista?",
+      "options": [
+        "Em grafos esparsos",
+        "Em grafos densos ou quando se consulta 'existe aresta i-j?' o tempo todo (O(1))",
+        "Sempre",
+        "Quando há poucos vértices e muitas listas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A matriz custa O(V²) de espaço mas responde 'existe aresta?' em O(1) — vantajosa em grafos densos ou com muitas consultas de aresta."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual estrutura de dados o BFS utiliza para controlar a ordem de visita?",
+      "options": ["Pilha", "Fila", "Heap", "Árvore"],
+      "correctAnswer": 1,
+      "explanation": "O BFS usa uma fila (FIFO) para explorar os vértices camada por camada, na ordem em que foram descobertos."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que o BFS encontra o menor caminho em grafos NÃO-ponderados?",
+      "options": [
+        "Porque ordena as arestas",
+        "Porque explora em camadas, então a primeira vez que alcança um vértice é pelo menor número de arestas",
+        "Porque usa uma pilha",
+        "Porque usa recursão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A expansão por camadas garante que a primeira vez que um vértice é alcançado corresponde ao caminho com menos arestas."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de tempo do BFS com lista de adjacência?",
+      "options": ["O(V²)", "O(V + E)", "O(E log V)", "O(V · E)"],
+      "correctAnswer": 1,
+      "explanation": "Cada vértice é enfileirado uma vez e cada aresta examinada uma vez, totalizando O(V + E)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "No BFS, em que momento devemos marcar um vértice como visitado?",
+      "options": [
+        "Ao desenfileirá-lo",
+        "Ao enfileirá-lo, para evitar que entre na fila múltiplas vezes",
+        "Só no final",
+        "Nunca, o BFS não precisa de visitados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Marcar ao enfileirar evita que o mesmo vértice seja adicionado várias vezes à fila por vizinhos diferentes."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que o BFS simples NÃO resolve menor caminho em grafos ponderados?",
+      "options": [
+        "Porque grafos ponderados não têm caminhos",
+        "Porque o caminho com menos arestas pode ter custo total maior; é preciso Dijkstra (BFS + priority queue)",
+        "Porque o BFS só funciona em árvores",
+        "Porque pesos tornam o grafo cíclico"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com pesos, menos arestas não significa menor custo. Dijkstra usa uma fila de prioridade para expandir sempre o vértice de menor custo acumulado."
+    }
+  ]
+}

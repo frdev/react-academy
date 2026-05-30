@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a pré-condição obrigatória para usar busca binária?",
+      "options": [
+        "O array deve ter tamanho par",
+        "O array deve estar ordenado",
+        "O array não pode ter duplicatas",
+        "O array deve ser de números"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A busca binária depende da ordenação para decidir, com uma comparação, em qual metade o alvo pode estar."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de tempo da busca binária?",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "correctAnswer": 1,
+      "explanation": "Cada passo descarta metade do espaço de busca, resultando em no máximo log₂(n) comparações."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que `meio = esq + Math.floor((dir - esq) / 2)` é preferível a `(esq + dir) / 2`?",
+      "options": [
+        "É mais rápido",
+        "Evita overflow da soma esq + dir em linguagens de inteiros de tamanho fixo",
+        "Retorna um índice diferente",
+        "Funciona com arrays não ordenados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "esq + dir pode estourar o limite de inteiros; a forma com (dir - esq) é o idioma robusto e portável para o cálculo do meio."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que é o 'invariante de loop' na busca binária?",
+      "options": [
+        "Que o array nunca muda",
+        "A garantia de que, se o alvo existe, ele está sempre dentro da janela [esq, dir]",
+        "Que esq é sempre 0",
+        "Que o meio nunca muda"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O invariante é a promessa mantida a cada iteração: o alvo, se existir, permanece em [esq, dir], e a janela encolhe rumo à resposta."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que o 'lower bound' retorna?",
+      "options": [
+        "O maior elemento do array",
+        "O primeiro índice i onde arr[i] >= alvo",
+        "O índice do meio",
+        "O último índice onde arr[i] <= alvo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "lower bound encontra a fronteira: o primeiro índice cujo valor é >= alvo, útil para contar ocorrências e inserir mantendo a ordem."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Quando é possível aplicar 'busca binária na resposta'?",
+      "options": [
+        "Sempre que houver um array",
+        "Quando existe uma propriedade monótona (falso...falso, verdadeiro...verdadeiro) sobre as respostas possíveis",
+        "Apenas com números inteiros",
+        "Apenas em arrays com duplicatas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se a viabilidade de uma resposta é monótona, pode-se buscar binariamente a fronteira entre inviável e viável, mesmo sem um array para procurar."
+    }
+  ]
+}

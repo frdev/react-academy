@@ -1,0 +1,20 @@
+{
+  "id": "day-13",
+  "day": 13,
+  "week": 2,
+  "title": "Backtracking",
+  "slug": "backtracking",
+  "topics": [
+    "espaço de estados",
+    "escolher-explorar-desfazer",
+    "permutações e subconjuntos",
+    "poda (pruning)",
+    "N-rainhas"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-04", "day-12"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

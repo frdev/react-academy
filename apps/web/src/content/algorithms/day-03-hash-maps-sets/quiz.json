@@ -1,0 +1,82 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade MÉDIA de busca em um hash map?",
+      "options": ["O(n)", "O(log n)", "O(1)", "O(n log n)"],
+      "correctAnswer": 2,
+      "explanation": "Com boa distribuição de hash e load factor controlado, a busca é O(1) em média. O pior caso (muitas colisões) é O(n)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que é uma colisão em uma tabela hash?",
+      "options": [
+        "Quando o array fica cheio",
+        "Quando duas chaves diferentes produzem o mesmo índice de bucket",
+        "Quando uma chave é nula",
+        "Quando o hash retorna um número negativo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Como há infinitas chaves para um número finito de buckets, chaves distintas podem mapear para o mesmo bucket — isso é uma colisão."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "No pior caso (todas as chaves colidindo no mesmo bucket), a busca em um hash map degrada para:",
+      "options": ["O(1)", "O(log n)", "O(n)", "Permanece O(1)"],
+      "correctAnswer": 2,
+      "explanation": "Se tudo cai no mesmo bucket, percorrer a lista encadeada vira O(n) — o pior caso do hashing."
+    },
+    {
+      "id": "q4",
+      "type": "code-output",
+      "question": "Qual o valor de `o.size` depois de:\n```js\nconst o = {}\no[1] = 'a'\no['1'] = 'b'\n```\n(considerando `Object.keys(o).length`)",
+      "options": ["2", "1", "0", "undefined"],
+      "correctAnswer": 1,
+      "explanation": "Objetos coagem chaves para string: 1 e '1' viram a mesma chave \"1\", então 'b' sobrescreve 'a' e há apenas 1 chave. Um Map manteria as duas."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que preferir `Map` ao objeto literal em muitos casos?",
+      "options": [
+        "Map é sempre mais rápido para tudo",
+        "Map não coage chaves, não tem chaves herdadas do prototype e mantém ordem de inserção",
+        "Objetos não suportam .get()",
+        "Map usa menos memória"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Map aceita chaves de qualquer tipo sem coerção, não traz chaves do prototype e preserva a ordem de inserção — vantagens sobre o objeto literal."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "No padrão Two Sum com hash map, qual é o trade-off em relação à solução com loop aninhado?",
+      "options": [
+        "Gasta O(n) de espaço para reduzir o tempo de O(n²) para O(n)",
+        "Gasta mais tempo para economizar espaço",
+        "Não há trade-off, é melhor em tudo",
+        "Reduz o espaço para O(1)"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Armazenamos os valores já vistos (O(n) de espaço) para evitar o segundo loop, trocando O(n²) por O(n) de tempo."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que acontece quando o load factor de uma hash table ultrapassa o limite (~0,75)?",
+      "options": [
+        "A tabela para de aceitar inserções",
+        "Ocorre um resize: mais buckets são criados e tudo é re-hasheado (O(n) amortizado)",
+        "Todas as chaves são apagadas",
+        "A busca vira O(log n)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O resize cria mais buckets para manter as listas curtas, re-hasheando os elementos. É um custo O(n) ocasional, amortizado entre as inserções."
+    }
+  ]
+}

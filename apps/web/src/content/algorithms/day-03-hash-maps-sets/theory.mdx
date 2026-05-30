@@ -1,0 +1,104 @@
+# Hash Maps & Sets
+
+Se two pointers é a otimização do dia anterior, o hash map é a ferramenta que mais transforma `O(n²)` em `O(n)` na prática. Entender **por que** ele oferece acesso `O(1)` é entender uma das ideias mais elegantes da computação.
+
+## A ideia: transformar uma chave em um índice
+
+Um array dá acesso `O(1)` por índice numérico. E se pudéssemos transformar **qualquer** chave (uma string, um objeto) em um índice? É isso que uma **função hash** faz: pega a chave e devolve um número dentro de um intervalo de "baldes" (buckets).
+
+```text
+"gato"  → hash → 4  → bucket[4]
+"casa"  → hash → 1  → bucket[1]
+"sol"   → hash → 4  → bucket[4]  ← colisão!
+```
+
+Como o cálculo do hash e o acesso ao bucket são `O(1)`, inserção, busca e remoção ficam `O(1)` **em média**.
+
+## Colisões: o problema inevitável
+
+Como infinitas chaves mapeiam para um número finito de buckets, **colisões** são certas. A estratégia mais comum é o **encadeamento (chaining)**: cada bucket guarda uma lista dos pares que caíram ali.
+
+```text
+bucket[4] → [("gato", v1), ("sol", v2)]
+```
+
+Quando você busca `"sol"`, calcula o hash (`4`), vai ao bucket e percorre a listinha. Com uma boa função hash e o array de buckets bem dimensionado, essas listas ficam minúsculas — daí o `O(1)` médio. No **pior caso** (todas as chaves colidindo), degenera para `O(n)`.
+
+> O **load factor** (nº de elementos ÷ nº de buckets) controla isso. Quando passa de um limite (~0,75), a estrutura faz **resize**: cria mais buckets e re-hasheia tudo. É um custo `O(n)` ocasional, amortizado entre as inserções — exatamente como o `push` em arrays.
+
+## `Map`, `Set` e o objeto literal em JavaScript
+
+JavaScript te dá três estruturas baseadas em hashing:
+
+```js
+// Map — chave/valor, chaves de qualquer tipo, mantém ordem de inserção
+const m = new Map()
+m.set('idade', 30)
+m.set(42, 'resposta')      // chave numérica
+m.get('idade')             // 30   — O(1)
+m.has(42)                  // true — O(1)
+m.delete('idade')          // O(1)
+m.size                     // O(1)
+
+// Set — apenas valores únicos
+const s = new Set([1, 2, 2, 3])
+s.has(2)                   // true — O(1)
+s.add(4); s.size           // 4
+
+// Objeto literal — também é hash, mas com pegadinhas
+const o = { idade: 30 }
+o['idade']                 // 30 — O(1)
+```
+
+**Por que preferir `Map` ao objeto?**
+
+```js
+// Objeto coage chaves para string e tem chaves herdadas do prototype
+const o = {}
+o[1] = 'a'; o['1'] = 'b'   // mesma chave! "1"
+o.toString                 // function — herdada, não é sua
+
+// Map não coage e não tem chaves fantasma
+const m = new Map()
+m.set(1, 'a'); m.set('1', 'b')  // duas chaves distintas
+m.size                          // 2
+```
+
+Use `Map` quando as chaves não forem strings simples, quando a ordem importar, ou quando você fizer muitas inserções/remoções.
+
+## O padrão que resolve metade dos problemas: "lookup em uma passada"
+
+O hash map brilha quando você precisa lembrar **"já vi isso antes?"** enquanto percorre os dados.
+
+```js
+// Two Sum: existem dois índices cujos valores somam `alvo`?
+function twoSum(nums, alvo) {
+  const visto = new Map()           // valor → índice
+  for (let i = 0; i < nums.length; i++) {
+    const complemento = alvo - nums[i]
+    if (visto.has(complemento)) {
+      return [visto.get(complemento), i]
+    }
+    visto.set(nums[i], i)
+  }
+  return null
+}
+// O(n) tempo, O(n) espaço — vs O(n²) com loop aninhado
+```
+
+Outros usos canônicos: contar frequências, detectar duplicatas, agrupar por chave.
+
+```js
+// Frequência de cada elemento
+function frequencias(arr) {
+  const freq = new Map()
+  for (const x of arr) freq.set(x, (freq.get(x) ?? 0) + 1)
+  return freq
+}
+```
+
+## O trade-off
+
+O hash map quase sempre **gasta `O(n)` de memória para comprar tempo**. É o exemplo mais puro do trade-off tempo × espaço: você aceita armazenar dados auxiliares para evitar varreduras repetidas. Quando o problema diz "encontre/conte/agrupe rapidamente", pense em hash primeiro.
+
+> **Resumo:** Hash maps transformam chaves em índices via função hash, oferecendo inserção/busca/remoção `O(1)` em média (`O(n)` no pior caso, sob muitas colisões). Colisões são resolvidas por encadeamento, e o load factor dispara resizes amortizados. Em JS, prefira `Map`/`Set` ao objeto literal quando precisar de chaves não-string, ordem ou performance previsível. O padrão "lookup em uma passada" troca `O(n)` de espaço por reduzir `O(n²)` para `O(n)`.

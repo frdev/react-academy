@@ -1,0 +1,74 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de acessar o elemento de índice i em uma linked list?",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+      "correctAnswer": 2,
+      "explanation": "Diferente do array, a lista não tem acesso direto: é preciso seguir os ponteiros a partir do head, custando O(n)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que inserir no início de uma linked list é O(1), enquanto no array é O(n)?",
+      "options": [
+        "Porque a lista é menor",
+        "Porque basta religar ponteiros, sem deslocar/reindexar elementos",
+        "Porque a lista é ordenada",
+        "Porque o array é imutável"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Na lista, inserir no início só ajusta o novo nó e o head. No array, todos os elementos precisam ser deslocados (O(n))."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a vantagem de uma doubly linked list sobre uma singly?",
+      "options": [
+        "Usa menos memória",
+        "Permite navegar nos dois sentidos e remover um nó conhecido em O(1)",
+        "Tem acesso O(1) por índice",
+        "Não pode ter ciclos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com o ponteiro prev, a doubly linked permite andar para trás e remover um nó dado em O(1), ao custo de um ponteiro extra por nó."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Ao reverter uma singly linked list iterativamente, qual é o erro clássico?",
+      "options": [
+        "Esquecer de criar nós novos",
+        "Sobrescrever atual.next sem antes guardar a referência para o próximo nó",
+        "Usar três ponteiros",
+        "Retornar o head antigo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se você inverte atual.next antes de guardar 'proximo', perde o resto da lista. Por isso guardamos o próximo antes de religar."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Na técnica fast & slow, quando o ponteiro rápido (2 passos) chega ao fim, onde está o lento (1 passo)?",
+      "options": ["No início", "No meio da lista", "No fim", "Em um ciclo"],
+      "correctAnswer": 1,
+      "explanation": "Como o rápido anda o dobro, ao chegar ao fim o lento percorreu metade — fica no meio da lista."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a vantagem de detectar ciclo com fast & slow em vez de usar um Set de nós visitados?",
+      "options": [
+        "É mais legível",
+        "Resolve em O(1) de espaço, contra O(n) do Set",
+        "É mais rápido em tempo",
+        "Funciona em arrays"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os dois ponteiros detectam o ciclo sem estrutura auxiliar, usando O(1) de espaço; o Set custaria O(n) de memória."
+    }
+  ]
+}

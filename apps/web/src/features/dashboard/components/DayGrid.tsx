@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router'
 import { useProgressStore } from '@/features/progress/store/progressStore'
 import { getLessonsForStack } from '@/features/curriculum/data/index'
+import { getStackById } from '@/features/stacks/data/stacks'
 import { cn } from '@academy/ui'
 import type { LessonMetadata } from '@/features/curriculum/types'
 
@@ -81,14 +82,16 @@ export function DayGrid({ stackId }: { stackId: string }) {
   const lessonProgress = useProgressStore(state => state.lessonProgress)
 
   const stackLessons = getLessonsForStack(stackId)
-  const allLessons: LessonMetadata[] = Array.from({ length: 30 }, (_, i) => {
+  const totalDays = getStackById(stackId)?.totalDays ?? 30
+  const allLessons: LessonMetadata[] = Array.from({ length: totalDays }, (_, i) => {
     const day = i + 1
     return stackLessons.find(l => l.day === day) ?? getPlaceholderLesson(day)
   })
+  const numWeeks = Math.max(...allLessons.map(l => l.week))
 
   return (
     <div className="space-y-8">
-      {[1, 2, 3, 4].map(week => {
+      {Array.from({ length: numWeeks }, (_, i) => i + 1).map(week => {
         const weekLessons = allLessons.filter(l => l.week === week)
         return (
           <div key={week}>

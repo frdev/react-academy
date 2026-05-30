@@ -1,0 +1,77 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Quais são os dois ingredientes obrigatórios de uma recursão correta?",
+      "options": [
+        "Um loop e uma condição",
+        "Um caso base e um caso recursivo que se aproxima dele",
+        "Uma pilha e uma fila",
+        "Memoization e tail call"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem caso base (parada) ou sem um caso recursivo que caminhe até ele, a recursão é infinita e estoura a pilha."
+    },
+    {
+      "id": "q2",
+      "type": "code-output",
+      "question": "Qual o retorno de `fatorial(4)`?\n```js\nfunction fatorial(n) {\n  if (n <= 1) return 1\n  return n * fatorial(n - 1)\n}\n```",
+      "options": ["10", "24", "16", "4"],
+      "correctAnswer": 1,
+      "explanation": "4 * 3 * 2 * 1 = 24. A pilha sobe até fatorial(1)=1 e multiplica os resultados na volta."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que causa um 'Maximum call stack size exceeded'?",
+      "options": [
+        "Usar memoization",
+        "Recursão profunda demais ou sem caso base alcançável, esgotando a call stack",
+        "Retornar um valor errado",
+        "Usar um loop infinito"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A call stack tem tamanho finito; muitos frames empilhados (recursão profunda/infinita) causam stack overflow."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de tempo do Fibonacci recursivo ingênuo `fib(n-1) + fib(n-2)`?",
+      "options": ["O(n)", "O(n log n)", "O(2ⁿ)", "O(n²)"],
+      "correctAnswer": 2,
+      "explanation": "Duas chamadas por nível fazem a árvore de chamadas crescer exponencialmente, recalculando subproblemas — O(2ⁿ)."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Aplicar memoization ao Fibonacci recursivo muda a complexidade de tempo para:",
+      "options": ["O(1)", "O(log n)", "O(n)", "Continua O(2ⁿ)"],
+      "correctAnswer": 2,
+      "explanation": "Guardando cada resultado calculado, cada n é resolvido uma única vez — O(n) de tempo (e O(n) de espaço)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que é uma 'tail call'?",
+      "options": [
+        "Uma chamada que retorna undefined",
+        "A chamada recursiva como última operação da função, sem trabalho pendente após ela",
+        "A primeira chamada da recursão",
+        "Uma chamada dentro de um loop"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Numa tail call não há operação pendente após a chamada recursiva, o que em teoria permitiria reusar o frame (TCO)."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "O motor V8 (Chrome/Node) implementa Tail Call Optimization, então recursão em cauda nunca estoura a pilha em JavaScript.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Apesar de estar na especificação ES2015, a maioria dos motores (incluindo o V8) não implementa TCO — para profundidade grande, prefira iteração."
+    }
+  ]
+}

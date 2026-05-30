@@ -1,0 +1,115 @@
+# Grafos: Representação & BFS
+
+Grafos são a estrutura mais geral da computação — árvores e listas são casos particulares deles. Mapas, redes sociais, dependências de tarefas, a própria web: tudo é grafo. Hoje vemos como representá-los e como percorrê-los em largura.
+
+## O que é um grafo
+
+Um grafo é um conjunto de **vértices** (nós) conectados por **arestas** (relações). As variações importam:
+
+- **Não-dirigido:** aresta é mão dupla (amizade). **Dirigido (dígrafo):** aresta tem sentido (seguir alguém).
+- **Não-ponderado:** todas as arestas valem igual. **Ponderado:** cada aresta tem um custo/peso (distância).
+- **Cíclico / acíclico:** se há ou não caminhos que voltam ao ponto de partida.
+
+```text
+   A --- B          A → B          A -3- B
+   |     |          ↓   ↑          |     |
+   C --- D          C → D          2     1
+ (não-dirigido)   (dirigido)    (ponderado)
+```
+
+## Duas formas de representar
+
+**Lista de adjacência** — para cada vértice, a lista de seus vizinhos. É a representação padrão na prática.
+
+```js
+// Grafo como Map: vértice → array de vizinhos
+const grafo = new Map([
+  ['A', ['B', 'C']],
+  ['B', ['A', 'D']],
+  ['C', ['A', 'D']],
+  ['D', ['B', 'C']],
+])
+```
+
+**Matriz de adjacência** — uma matriz `n × n` onde `m[i][j] = 1` se há aresta de `i` para `j`.
+
+```js
+//     A  B  C  D
+const m = [
+  [0, 1, 1, 0], // A
+  [1, 0, 0, 1], // B
+  [1, 0, 0, 1], // C
+  [0, 1, 1, 0], // D
+]
+```
+
+**Quando usar qual?** O critério é a densidade do grafo:
+
+```text
+                    lista de adj.    matriz de adj.
+espaço              O(V + E)         O(V²)
+"existe aresta?"    O(grau)          O(1)
+percorrer vizinhos  O(grau)          O(V)
+melhor para         grafos esparsos  grafos densos
+```
+
+A maioria dos grafos reais é **esparsa** (poucas arestas por vértice), então a lista de adjacência — com espaço `O(V + E)` — quase sempre vence. A matriz brilha quando o grafo é denso ou quando você consulta "existe aresta entre i e j?" o tempo todo.
+
+## BFS: busca em largura
+
+O **BFS** (*Breadth-First Search*) explora o grafo em **camadas**: primeiro todos os vizinhos diretos, depois os vizinhos dos vizinhos, e assim por diante. Usa uma **fila** (dia 7) e um conjunto de **visitados** para não repetir.
+
+```js
+function bfs(grafo, inicio) {
+  const visitados = new Set([inicio])
+  const fila = [inicio]
+  const ordem = []
+  while (fila.length) {
+    const atual = fila.shift()           // FIFO: sai o mais antigo
+    ordem.push(atual)
+    for (const vizinho of grafo.get(atual)) {
+      if (!visitados.has(vizinho)) {
+        visitados.add(vizinho)            // marca AO enfileirar (evita duplicar)
+        fila.push(vizinho)
+      }
+    }
+  }
+  return ordem
+}
+```
+
+Complexidade: `O(V + E)` — cada vértice entra na fila uma vez e cada aresta é examinada uma vez. O conjunto de visitados é o que impede loops infinitos em grafos cíclicos.
+
+> Detalhe importante: marque o vértice como visitado **ao enfileirá-lo**, não ao desenfileirá-lo. Marcar tarde permite que o mesmo vértice entre na fila várias vezes.
+
+## A superpotência do BFS: menor caminho não-ponderado
+
+Como o BFS expande por camadas, **a primeira vez que ele alcança um vértice é pelo caminho mais curto** (em número de arestas). Isso o torna o algoritmo de menor caminho em grafos **não-ponderados**.
+
+```js
+function menorCaminho(grafo, inicio, destino) {
+  const fila = [[inicio, 0]]               // [vértice, distância]
+  const visitados = new Set([inicio])
+  while (fila.length) {
+    const [atual, dist] = fila.shift()
+    if (atual === destino) return dist      // 1ª vez = mais curto
+    for (const v of grafo.get(atual)) {
+      if (!visitados.has(v)) {
+        visitados.add(v)
+        fila.push([v, dist + 1])
+      }
+    }
+  }
+  return -1                                 // inalcançável
+}
+```
+
+É exatamente assim que se resolve "menor número de movimentos" num tabuleiro, distância de grau de separação numa rede social, ou o caminho mínimo num labirinto sem pesos.
+
+> Quando as arestas **têm pesos**, o BFS simples não basta — o caminho com menos arestas pode ter custo maior. Aí entra o **Dijkstra**, que troca a fila comum por uma **fila de prioridade** (dia 10) para sempre expandir o vértice de menor custo acumulado.
+
+## Performance da fila
+
+Lembre do dia 7: `fila.shift()` é `O(n)`. Em BFS sobre grafos grandes, isso degrada o desempenho. Para produção, use uma fila com ponteiro de cabeça ou estrutura de deque — o algoritmo continua `O(V + E)`, mas sem o custo escondido do `shift`.
+
+> **Resumo:** Um grafo são vértices ligados por arestas (dirigidas/ponderadas/cíclicas ou não). Represente com **lista de adjacência** (`O(V+E)` espaço, ideal para grafos esparsos) ou **matriz** (`O(V²)`, consulta de aresta `O(1)`, boa para densos). O **BFS** percorre em camadas com uma **fila** + **visitados**, custa `O(V+E)`, e encontra o **menor caminho não-ponderado** porque alcança cada vértice primeiro pelo caminho mais curto. Com pesos, use **Dijkstra** (BFS + priority queue).

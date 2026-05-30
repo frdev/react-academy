@@ -1,0 +1,20 @@
+{
+  "id": "day-09",
+  "day": 9,
+  "week": 2,
+  "title": "Árvores Binárias & BST",
+  "slug": "arvores-bst",
+  "topics": [
+    "terminologia de árvores",
+    "traversals (pre/in/post/level-order)",
+    "binary search tree",
+    "balanceamento",
+    "altura e complexidade"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

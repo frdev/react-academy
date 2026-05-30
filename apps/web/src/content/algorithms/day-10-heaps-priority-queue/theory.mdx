@@ -1,0 +1,128 @@
+# Heaps & Priority Queue
+
+E se você só precisa, repetidamente, do **menor** (ou maior) elemento — sem ordenar tudo? Manter um array ordenado é exagero. O **heap** resolve exatamente isso: acesso `O(1)` ao extremo e inserção/remoção em `O(log n)`. É a estrutura por trás da fila de prioridade.
+
+## O que é um heap binário
+
+Um **heap binário** é uma árvore binária **completa** (todos os níveis cheios, exceto talvez o último, preenchido da esquerda para a direita) que obedece à **propriedade de heap**:
+
+- **Min-heap:** todo nó é **menor ou igual** aos seus filhos → o **mínimo** está na raiz.
+- **Max-heap:** todo nó é **maior ou igual** aos filhos → o **máximo** está na raiz.
+
+```text
+Min-heap:        2          ← raiz é sempre o menor
+                / \
+               5   8
+              / \
+             9   6
+```
+
+Atenção: o heap **não** é totalmente ordenado como uma BST. Ele só garante a relação pai-filho. Por isso é mais barato de manter — ele faz *menos* promessas.
+
+## O truque genial: uma árvore guardada num array
+
+Por ser uma árvore *completa*, o heap dispensa ponteiros — é armazenado num **array simples**, com a navegação feita por aritmética de índices:
+
+```text
+índice:  0   1   2   3   4
+valor:  [2,  5,  8,  9,  6]
+
+para o nó no índice i:
+  pai     → (i - 1) >> 1     (divisão inteira por 2)
+  filho esquerdo → 2*i + 1
+  filho direito  → 2*i + 2
+```
+
+Isso dá localidade de cache (memória contígua) e simplicidade. As duas operações fundamentais restauram a propriedade de heap após mudanças.
+
+## Sift-up e sift-down
+
+**Sift-up** (subir): ao inserir no fim, o novo elemento "borbulha" para cima enquanto for menor que o pai.
+
+**Sift-down** (descer): ao remover a raiz, movemos o último elemento para o topo e ele "afunda" trocando com o menor filho.
+
+```js
+class MinHeap {
+  constructor() { this.h = [] }
+
+  push(x) {
+    this.h.push(x)
+    this._siftUp(this.h.length - 1)
+  }
+
+  pop() {                              // remove e retorna o mínimo
+    const min = this.h[0]
+    const ultimo = this.h.pop()
+    if (this.h.length) { this.h[0] = ultimo; this._siftDown(0) }
+    return min
+  }
+
+  peek() { return this.h[0] }          // mínimo sem remover — O(1)
+
+  _siftUp(i) {
+    while (i > 0) {
+      const pai = (i - 1) >> 1
+      if (this.h[i] >= this.h[pai]) break
+      [this.h[i], this.h[pai]] = [this.h[pai], this.h[i]]
+      i = pai
+    }
+  }
+
+  _siftDown(i) {
+    const n = this.h.length
+    while (true) {
+      let menor = i
+      const e = 2 * i + 1, d = 2 * i + 2
+      if (e < n && this.h[e] < this.h[menor]) menor = e
+      if (d < n && this.h[d] < this.h[menor]) menor = d
+      if (menor === i) break
+      [this.h[i], this.h[menor]] = [this.h[menor], this.h[i]]
+      i = menor
+    }
+  }
+}
+```
+
+Como a altura de uma árvore completa é `O(log n)`, tanto `push` quanto `pop` percorrem no máximo um caminho raiz-folha: `O(log n)`. O `peek` é `O(1)`.
+
+```text
+operação    custo
+peek        O(1)
+push        O(log n)
+pop         O(log n)
+construir   O(n)   ← heapify de baixo para cima é O(n), não O(n log n)
+```
+
+## Priority Queue: o uso prático
+
+Uma **fila de prioridade** entrega sempre o elemento de maior (ou menor) prioridade, não o que chegou primeiro. Um heap é a implementação canônica.
+
+```js
+// Tarefas processadas por prioridade (menor número = mais urgente)
+const pq = new MinHeap()
+pq.push(3); pq.push(1); pq.push(2)
+pq.pop()  // 1  (mais urgente sai primeiro)
+pq.pop()  // 2
+```
+
+Filas de prioridade são o motor de algoritmos como **Dijkstra** (menor caminho) e da compressão de **Huffman** — onde sempre se precisa do próximo menor elemento.
+
+## O padrão Top-K
+
+Encontrar os **K maiores** elementos de `n` itens sem ordenar tudo: mantenha um **min-heap de tamanho K**. Se um novo elemento é maior que o menor do heap (a raiz), troque.
+
+```js
+function topK(nums, k) {
+  const heap = new MinHeap()
+  for (const x of nums) {
+    if (heap.h.length < k) heap.push(x)
+    else if (x > heap.peek()) { heap.pop(); heap.push(x) }
+  }
+  return heap.h
+}
+// O(n log k) — muito melhor que O(n log n) de ordenar tudo quando k << n
+```
+
+> O **heapsort** usa essa mesma máquina: construa um heap (`O(n)`) e extraia o mínimo `n` vezes (`O(n log n)`), produzindo um sort in-place `O(n log n)` — porém instável.
+
+> **Resumo:** Um heap binário é uma árvore completa com a propriedade pai ≤ (ou ≥) filhos, dando acesso `O(1)` ao extremo e `push`/`pop` em `O(log n)`. Ele é guardado num **array** com índices `2i+1`, `2i+2` e `(i-1)/2`, e mantido por **sift-up/sift-down**. É a base da **priority queue** (Dijkstra, Huffman), do padrão **Top-K** (`O(n log k)`) e do **heapsort**.

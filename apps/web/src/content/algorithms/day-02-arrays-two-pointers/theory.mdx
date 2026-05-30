@@ -1,0 +1,116 @@
+# Arrays, Two Pointers & Sliding Window
+
+O array é a estrutura de dados mais fundamental — e dominar dois padrões sobre ele (**two pointers** e **sliding window**) resolve uma fração enorme dos problemas de algoritmos com complexidade ótima.
+
+## Como arrays vivem na memória
+
+Um array é um bloco **contíguo** de memória. Por isso o acesso por índice é `O(1)`: o computador calcula `endereço_base + índice * tamanho_do_elemento` e vai direto. Esse mesmo layout explica por que inserir no início é caro.
+
+```js
+const arr = [10, 20, 30, 40]
+arr[2]          // O(1) — acesso direto
+
+arr.push(50)    // O(1) amortizado — insere no fim
+arr.pop()       // O(1)
+
+arr.unshift(5)  // O(n) — todos os elementos são reindexados
+arr.shift()     // O(n) — idem
+```
+
+> Em JavaScript, arrays são na verdade objetos com chaves numéricas, e o motor (V8) os otimiza como **arrays dinâmicos** contíguos enquanto você os usa de forma "bem comportada" (índices densos, tipos homogêneos). Misturar tipos ou criar buracos (`arr[1000] = 1`) pode degradar essa otimização.
+
+## Two Pointers: dois índices, uma passada
+
+A ideia: em vez de loops aninhados (`O(n²)`), use **dois ponteiros** que se movem pelo array de forma coordenada, geralmente reduzindo para `O(n)`.
+
+**Padrão 1 — Ponteiros nas extremidades** (útil em arrays ordenados):
+
+```js
+// Existe um par que soma exatamente `alvo`? (array ordenado)
+function temPar(arr, alvo) {
+  let esq = 0
+  let dir = arr.length - 1
+  while (esq < dir) {
+    const soma = arr[esq] + arr[dir]
+    if (soma === alvo) return true
+    if (soma < alvo) esq++   // precisa de mais → avança o menor
+    else dir--               // precisa de menos → recua o maior
+  }
+  return false
+}
+// O(n) tempo, O(1) espaço — sem loop aninhado
+```
+
+**Padrão 2 — Ponteiros rápido/lento** (para reescrever in-place):
+
+```js
+// Remove duplicatas de um array ordenado, in-place
+function removeDuplicatas(arr) {
+  if (arr.length === 0) return 0
+  let lento = 0
+  for (let rapido = 1; rapido < arr.length; rapido++) {
+    if (arr[rapido] !== arr[lento]) {
+      lento++
+      arr[lento] = arr[rapido]
+    }
+  }
+  return lento + 1 // novo tamanho lógico
+}
+```
+
+**In-place** significa modificar o próprio array sem alocar outro — `O(1)` de espaço.
+
+## Sliding Window: a janela que desliza
+
+Quando o problema fala em **subarray contíguo** (uma soma, um tamanho, uma faixa), a janela deslizante evita recalcular tudo a cada passo.
+
+**Janela de tamanho fixo** — maior soma de `k` elementos consecutivos:
+
+```js
+function maiorSomaK(arr, k) {
+  let soma = 0
+  for (let i = 0; i < k; i++) soma += arr[i]   // primeira janela
+  let melhor = soma
+  for (let i = k; i < arr.length; i++) {
+    soma += arr[i] - arr[i - k]                 // entra um, sai um
+    melhor = Math.max(melhor, soma)
+  }
+  return melhor
+}
+// O(n) — cada elemento entra e sai da janela uma vez
+```
+
+A força angular do padrão: ao deslizar, **somamos o que entra e subtraímos o que sai**, em vez de re-somar a janela inteira (`O(n·k)` → `O(n)`).
+
+**Janela de tamanho variável** — menor subarray com soma ≥ alvo:
+
+```js
+function menorSubarray(arr, alvo) {
+  let esq = 0, soma = 0, melhor = Infinity
+  for (let dir = 0; dir < arr.length; dir++) {
+    soma += arr[dir]                  // expande a janela
+    while (soma >= alvo) {            // contrai enquanto válida
+      melhor = Math.min(melhor, dir - esq + 1)
+      soma -= arr[esq++]
+    }
+  }
+  return melhor === Infinity ? 0 : melhor
+}
+```
+
+## Prefix sum: pré-computar para consultar em O(1)
+
+Quando você precisa de **muitas** somas de faixas `[i, j]`, pré-calcule somas acumuladas:
+
+```js
+function construirPrefix(arr) {
+  const prefix = [0]
+  for (let i = 0; i < arr.length; i++) prefix[i + 1] = prefix[i] + arr[i]
+  return prefix
+}
+// soma de arr[i..j] = prefix[j + 1] - prefix[i]  → O(1) por consulta
+```
+
+Troca-se `O(n)` por consulta por `O(n)` de pré-processamento + `O(1)` por consulta — um clássico trade-off tempo × espaço.
+
+> **Resumo:** Arrays dão acesso `O(1)` por índice por serem contíguos, mas inserir/remover no início é `O(n)`. **Two pointers** colapsa loops aninhados em uma passada `O(n)` (extremidades em arrays ordenados, ou rápido/lento para edição in-place). **Sliding window** evita recomputar subarrays contíguos somando o que entra e subtraindo o que sai. **Prefix sum** troca pré-processamento por consultas `O(1)`.

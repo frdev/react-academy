@@ -1,0 +1,20 @@
+{
+  "id": "day-14",
+  "day": 14,
+  "week": 2,
+  "title": "Programação Dinâmica",
+  "slug": "programacao-dinamica",
+  "topics": [
+    "subproblemas sobrepostos",
+    "subestrutura ótima",
+    "memoization (top-down)",
+    "tabulação (bottom-up)",
+    "otimização de espaço"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 65,
+  "prerequisites": ["day-04", "day-13"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

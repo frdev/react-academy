@@ -1,0 +1,112 @@
+# Programação Dinâmica
+
+Chegamos ao tema que assusta — e que, depois de hoje, vai parecer natural. A Programação Dinâmica (DP) não é um algoritmo, é uma **técnica de otimização**: resolver cada subproblema **uma única vez** e reaproveitar a resposta. Tudo que você viu (recursão, memoization, backtracking) converge aqui.
+
+## As duas condições para usar DP
+
+Um problema é resolvível por DP quando tem:
+
+1. **Subproblemas sobrepostos** — a mesma subpergunta aparece muitas vezes. (Lembre do Fibonacci ingênuo do dia 4, recalculando `fib(3)` repetidamente.)
+2. **Subestrutura ótima** — a solução ótima do problema pode ser construída a partir das soluções ótimas dos subproblemas.
+
+Se há sobreposição mas **não** há subestrutura ótima, não é DP. Se há subestrutura ótima mas **não** há sobreposição, é divisão e conquista (como o merge sort) — DP seria desperdício.
+
+## Memoization (top-down): recursão + cache
+
+A forma mais intuitiva: escreva a recursão natural e **guarde** cada resultado num cache. Antes de computar, cheque se já resolveu. É exatamente o que fizemos com Fibonacci no dia 4.
+
+```js
+function fib(n, memo = new Map()) {
+  if (n < 2) return n
+  if (memo.has(n)) return memo.get(n)     // já resolvido? reaproveita
+  const r = fib(n - 1, memo) + fib(n - 2, memo)
+  memo.set(n, r)                          // guarda antes de retornar
+  return r
+}
+// O(2ⁿ) → O(n): cada subproblema resolvido uma vez
+```
+
+**Top-down** = começa pelo problema grande e desce recursivamente, preenchendo o cache sob demanda. Vantagem: você só calcula os subproblemas realmente necessários.
+
+## Tabulação (bottom-up): da base para cima
+
+A mesma ideia, sem recursão: preencha uma **tabela** dos casos menores para os maiores, iterativamente.
+
+```js
+function fibTab(n) {
+  if (n < 2) return n
+  const dp = new Array(n + 1)
+  dp[0] = 0; dp[1] = 1
+  for (let i = 2; i <= n; i++) {
+    dp[i] = dp[i - 1] + dp[i - 2]         // usa resultados já calculados
+  }
+  return dp[n]
+}
+// O(n) tempo, O(n) espaço
+```
+
+**Bottom-up** = começa pelos casos base e constrói até a resposta. Vantagem: sem call stack (sem risco de stack overflow) e geralmente com constantes menores.
+
+## Otimização de espaço
+
+Muitas vezes, cada estado só depende dos **últimos poucos** estados. Aí dá para jogar fora o resto da tabela e reduzir o espaço de `O(n)` para `O(1)`:
+
+```js
+function fibOtimo(n) {
+  if (n < 2) return n
+  let anterior = 0, atual = 1
+  for (let i = 2; i <= n; i++) {
+    [anterior, atual] = [atual, anterior + atual]
+  }
+  return atual
+}
+// O(n) tempo, O(1) espaço
+```
+
+Reconhecer essa dependência local é o passo final que transforma uma solução boa em ótima.
+
+## A receita para resolver qualquer DP
+
+1. **Defina o estado:** o que `dp[i]` (ou `dp[i][j]`) significa? Essa é a decisão mais importante.
+2. **Encontre a recorrência:** como um estado se expressa em termos de estados menores?
+3. **Defina os casos base:** os valores iniciais conhecidos.
+4. **Decida a ordem:** top-down (memo) ou bottom-up (tabela)?
+5. **Otimize o espaço** se cada estado depender só dos vizinhos recentes.
+
+## Exemplo guiado: coin change (troco mínimo)
+
+Qual o menor número de moedas para formar `valor`, dadas as denominações?
+
+```js
+function trocoMinimo(moedas, valor) {
+  // estado: dp[v] = mínimo de moedas para formar o valor v
+  const dp = new Array(valor + 1).fill(Infinity)
+  dp[0] = 0                                  // caso base: 0 moedas p/ valor 0
+  for (let v = 1; v <= valor; v++) {
+    for (const m of moedas) {
+      if (m <= v && dp[v - m] + 1 < dp[v]) {  // recorrência
+        dp[v] = dp[v - m] + 1
+      }
+    }
+  }
+  return dp[valor] === Infinity ? -1 : dp[valor]
+}
+trocoMinimo([1, 3, 4], 6)  // 2  (3 + 3)
+// O(valor · nº de moedas)
+```
+
+Repare: o algoritmo guloso ("pegue sempre a maior moeda") falharia aqui (daria 4+1+1 = 3 moedas). A DP considera **todas** as combinações de forma eficiente — essa é a diferença entre guloso e DP.
+
+## A galeria de problemas clássicos
+
+Cada um vira um exercício de definir estado + recorrência:
+
+- **Kadane** — subarray de soma máxima. `dp[i]` = maior soma terminando em `i`. `O(n)`.
+- **LIS** — maior subsequência crescente. `O(n²)` (ou `O(n log n)` com busca binária — dia 5!).
+- **LCS** — maior subsequência comum entre duas strings. `dp[i][j]`. `O(n·m)`.
+- **Edit distance** — mínimo de edições para transformar uma string em outra. `O(n·m)`.
+- **0/1 Knapsack** — valor máximo numa mochila de capacidade limitada. `O(n·W)`.
+
+> Note como a DP fecha o círculo do curso: ela é **recursão** (dia 4) com **memoization** (hash map, dia 3), frequentemente otimizada com truques de **busca binária** (dia 5), e é a alternativa eficiente ao **backtracking** (dia 13) quando há subproblemas sobrepostos.
+
+> **Resumo:** Programação Dinâmica resolve cada subproblema **uma vez** e reaproveita — exige **subproblemas sobrepostos** e **subestrutura ótima**. Há duas formas equivalentes: **memoization** (top-down: recursão + cache, calcula só o necessário) e **tabulação** (bottom-up: tabela iterativa, sem call stack), muitas vezes com o espaço reduzido a `O(1)`. A receita é **estado → recorrência → caso base → ordem → otimizar**. Domine os clássicos (coin change, Kadane, LIS, LCS, edit distance, knapsack) e você terá fechado a jornada de DSA.

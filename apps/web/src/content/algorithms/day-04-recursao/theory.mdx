@@ -1,0 +1,106 @@
+# Recursão & Call Stack
+
+Recursão é uma função que resolve um problema chamando a si mesma com uma versão menor do problema. É a base de algoritmos de divisão e conquista, de árvores e de grafos — e entender a **call stack** é entender por que ela funciona (e onde ela quebra).
+
+## A anatomia: caso base + caso recursivo
+
+Toda recursão correta tem dois ingredientes:
+
+- **Caso base** — a condição de parada, onde a resposta é direta.
+- **Caso recursivo** — reduz o problema e chama a si mesma rumo ao caso base.
+
+```js
+function fatorial(n) {
+  if (n <= 1) return 1          // caso base
+  return n * fatorial(n - 1)    // caso recursivo
+}
+fatorial(4) // 24
+```
+
+Sem caso base — ou com um caso recursivo que não se aproxima dele — a recursão é infinita e estoura a pilha.
+
+## A call stack: onde a mágica acontece
+
+Cada chamada de função empilha um **frame** na call stack com seus parâmetros e variáveis locais. A função só resolve quando suas chamadas internas resolvem — a pilha cresce e depois desempilha.
+
+```text
+fatorial(4)
+└ 4 * fatorial(3)
+      └ 3 * fatorial(2)
+            └ 2 * fatorial(1)
+                  └ 1            ← caso base, começa a voltar
+            └ 2 * 1 = 2
+      └ 3 * 2 = 6
+└ 4 * 6 = 24
+```
+
+A pilha sobe até o caso base e depois "desmonta", combinando os resultados na volta. Essa estrutura LIFO (last-in, first-out) é literalmente uma pilha — a mesma estrutura que estudaremos explicitamente em breve.
+
+## Stack overflow: o limite físico
+
+A call stack tem tamanho finito. Recursão profunda demais (ou infinita) estoura:
+
+```js
+function semFim(n) {
+  return semFim(n + 1)   // nunca atinge caso base
+}
+semFim(0) // RangeError: Maximum call stack size exceeded
+```
+
+Em JavaScript o limite costuma ficar na casa de ~10⁴ frames. Por isso, processar uma lista de um milhão de elementos por recursão linear é arriscado — um loop é mais seguro. **Toda recursão pode ser reescrita iterativamente** (usando uma pilha explícita, se necessário).
+
+## Recursão em árvore: quando há mais de uma chamada
+
+Quando o caso recursivo chama a si mesmo **duas ou mais** vezes, o número de chamadas explode. O exemplo clássico é Fibonacci ingênuo:
+
+```js
+function fib(n) {
+  if (n < 2) return n
+  return fib(n - 1) + fib(n - 2)   // duas chamadas
+}
+```
+
+Isso é `O(2ⁿ)` — `fib(40)` já faz mais de um bilhão de chamadas, recalculando os mesmos valores incontáveis vezes:
+
+```text
+              fib(5)
+         /            \
+     fib(4)          fib(3)
+     /    \          /    \
+  fib(3) fib(2)   fib(2) fib(1)   ← fib(3) e fib(2) recalculados
+```
+
+> A cura é a **memoization**: guardar resultados já calculados num hash map. Isso transforma `O(2ⁿ)` em `O(n)` — é a porta de entrada para a Programação Dinâmica, tema do nosso último dia.
+
+```js
+function fibMemo(n, memo = new Map()) {
+  if (n < 2) return n
+  if (memo.has(n)) return memo.get(n)
+  const r = fibMemo(n - 1, memo) + fibMemo(n - 2, memo)
+  memo.set(n, r)
+  return r
+}
+// O(n) tempo e espaço
+```
+
+## Tail call: a recursão que não cresce a pilha
+
+Uma **tail call** ocorre quando a chamada recursiva é a **última** operação da função — não há trabalho pendente após ela. Em teoria, o motor pode reaproveitar o frame atual (Tail Call Optimization), mantendo a pilha constante.
+
+```js
+// Recursão normal: `n * (...)` fica pendente na volta
+function fatorial(n) {
+  if (n <= 1) return 1
+  return n * fatorial(n - 1)
+}
+
+// Versão tail-recursive: nada pendente após a chamada
+function fatorialTail(n, acc = 1) {
+  if (n <= 1) return acc
+  return fatorialTail(n - 1, n * acc)   // última operação
+}
+```
+
+> Atenção prática: embora a TCO faça parte da especificação do ES2015, a maioria dos motores JavaScript (incluindo o V8) **não a implementa**. Então, em JS, não confie nela para evitar stack overflow — para profundidade grande, prefira iteração.
+
+> **Resumo:** Recursão precisa de um **caso base** e de um **caso recursivo** que caminhe até ele. Cada chamada empilha um frame na **call stack** (LIFO); profundidade excessiva causa **stack overflow**. Recursão em árvore (duas chamadas) tende a `O(2ⁿ)` e pede **memoization** para virar `O(n)`. **Tail calls** poderiam manter a pilha constante, mas o V8 não otimiza — para profundidades grandes em JS, prefira iteração.

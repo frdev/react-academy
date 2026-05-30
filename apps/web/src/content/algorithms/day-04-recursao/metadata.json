@@ -1,0 +1,20 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "Recursão & Call Stack",
+  "slug": "recursao",
+  "topics": [
+    "caso base e caso recursivo",
+    "call stack",
+    "stack overflow",
+    "recursão em árvore",
+    "tail call"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 110
+}

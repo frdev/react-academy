@@ -1,0 +1,69 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que o acesso `arr[i]` é O(1) em um array?",
+      "options": [
+        "Porque o JavaScript guarda um índice secreto",
+        "Porque a memória é contígua e o endereço é calculado diretamente",
+        "Porque arrays são objetos",
+        "Porque o motor percorre até a posição i"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Arrays ocupam memória contígua, então o endereço de qualquer elemento é base + i * tamanho — cálculo direto, O(1)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de `arr.unshift(x)` (inserir no início)?",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+      "correctAnswer": 2,
+      "explanation": "unshift precisa reindexar todos os elementos existentes uma posição à frente, custando O(n)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "A técnica de two pointers nas extremidades de um array ordenado tipicamente reduz a complexidade de O(n²) para:",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "correctAnswer": 2,
+      "explanation": "Dois ponteiros que convergem percorrem o array uma única vez, transformando a busca por par de O(n²) em O(n)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "No sliding window de tamanho fixo, qual é o truque que mantém o algoritmo em O(n)?",
+      "options": [
+        "Recalcular a soma da janela inteira a cada passo",
+        "Ordenar o array antes",
+        "Somar o elemento que entra e subtrair o que sai",
+        "Usar recursão"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Ao deslizar, atualizamos a soma com +entra -sai em vez de re-somar k elementos, mantendo O(1) por passo e O(n) no total."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que significa uma operação ser 'in-place'?",
+      "options": [
+        "Ela roda no lugar certo do código",
+        "Ela modifica a estrutura original sem alocar memória proporcional à entrada",
+        "Ela é sempre O(1) de tempo",
+        "Ela cria uma cópia segura"
+      ],
+      "correctAnswer": 1,
+      "explanation": "In-place significa transformar a própria estrutura usando apenas memória extra constante (O(1) de espaço)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Com um prefix sum já construído, a soma de arr[i..j] é calculada em:",
+      "options": ["O(n)", "O(log n)", "O(1)", "O(j - i)"],
+      "correctAnswer": 2,
+      "explanation": "prefix[j+1] - prefix[i] dá a soma da faixa em tempo constante após o pré-processamento O(n)."
+    }
+  ]
+}

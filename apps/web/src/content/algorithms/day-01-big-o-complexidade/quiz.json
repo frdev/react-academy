@@ -1,0 +1,72 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de tempo de `3n + 5n² + 100`?",
+      "options": ["O(n)", "O(n²)", "O(3n)", "O(n² + n)"],
+      "correctAnswer": 1,
+      "explanation": "Mantemos apenas o termo dominante e descartamos constantes: 5n² domina, então a complexidade é O(n²)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Dois loops aninhados, cada um de 0 a n, resultam em qual complexidade?",
+      "options": ["O(2n)", "O(n)", "O(n²)", "O(log n)"],
+      "correctAnswer": 2,
+      "explanation": "Loops aninhados multiplicam: O(n) * O(n) = O(n²). Loops sequenciais é que somariam (O(n) + O(n) = O(n))."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Um algoritmo que divide a entrada pela metade a cada passo tem complexidade:",
+      "options": ["O(n)", "O(n²)", "O(log n)", "O(1)"],
+      "correctAnswer": 2,
+      "explanation": "Dividir pela metade repetidamente leva log₂(n) passos — é a assinatura de O(log n), como na busca binária."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que a complexidade de ESPAÇO mede?",
+      "options": [
+        "O tempo de execução em segundos",
+        "A memória adicional alocada além da entrada",
+        "O número de linhas de código",
+        "A quantidade de loops"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Complexidade de espaço mede a memória extra que o algoritmo usa em função de n, além da própria entrada."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `array.push` é considerado O(1) mesmo realocando ocasionalmente?",
+      "options": [
+        "Porque nunca realoca",
+        "Por complexidade amortizada — o custo raro se dilui entre muitas operações baratas",
+        "Porque o JavaScript é compilado",
+        "Porque arrays têm tamanho fixo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A realocação ocasional O(n) é amortizada ao longo de muitas operações O(1), resultando em custo médio constante por push."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Trocar `arr.includes(x)` dentro de um loop por `set.has(x)` muda a complexidade de O(n²) para:",
+      "options": ["O(n²)", "O(n log n)", "O(n)", "O(1)"],
+      "correctAnswer": 2,
+      "explanation": "set.has é O(1) (hashing) contra O(n) de includes. Dentro de um loop O(n), isso reduz o total de O(n²) para O(n)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por padrão, a notação Big-O descreve qual cenário?",
+      "options": ["O melhor caso", "O caso médio", "O pior caso", "O caso aleatório"],
+      "correctAnswer": 2,
+      "explanation": "Big-O (O) expressa o pior caso — a garantia superior. Ω (ômega) é o melhor caso e Θ (theta) o caso médio."
+    }
+  ]
+}

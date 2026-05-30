@@ -1,0 +1,82 @@
+{
+  "lessonId": "day-08",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual o limite inferior de complexidade para algoritmos de ordenação baseados em comparação (pior caso)?",
+      "options": ["O(n)", "O(n log n)", "O(n²)", "O(log n)"],
+      "correctAnswer": 1,
+      "explanation": "Distinguir as n! ordenações possíveis exige ~log₂(n!) ≈ n log n comparações — daí o teto O(n log n) para sorts por comparação."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de tempo do merge sort no PIOR caso?",
+      "options": ["O(n²)", "O(n log n)", "O(n)", "O(log n)"],
+      "correctAnswer": 1,
+      "explanation": "Merge sort divide sempre ao meio e mescla, garantindo O(n log n) em pior, médio e melhor caso."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é o pior caso do quick sort e quando ocorre?",
+      "options": [
+        "O(n log n), sempre",
+        "O(n²), quando o pivô é sempre o menor ou maior elemento (ex.: array já ordenado com pivô na ponta)",
+        "O(n), com pivô aleatório",
+        "O(log n), com array pequeno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se o pivô gera partições totalmente desbalanceadas a cada passo, a recursão vira O(n²). Pivô aleatório/mediana de três mitiga isso."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Em relação a espaço, qual a diferença entre merge sort e quick sort?",
+      "options": [
+        "Ambos usam O(n)",
+        "Merge sort usa O(n) (arrays auxiliares); quick sort é in-place, O(log n) da recursão",
+        "Quick sort usa O(n²)",
+        "Merge sort é O(1)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Merge sort precisa de memória auxiliar O(n) para mesclar; quick sort particiona in-place, gastando apenas O(log n) na pilha."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que significa um algoritmo de ordenação ser 'estável'?",
+      "options": [
+        "Nunca falha",
+        "Mantém a ordem relativa de elementos com chaves iguais",
+        "É sempre O(n log n)",
+        "Usa pouca memória"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Estabilidade preserva a ordem original entre elementos de mesma chave — essencial ao ordenar por múltiplos critérios em sequência."
+    },
+    {
+      "id": "q6",
+      "type": "code-output",
+      "question": "Qual o resultado de `[10, 2, 1].sort()` em JavaScript?",
+      "options": ["[1, 2, 10]", "[1, 10, 2]", "[10, 2, 1]", "[2, 1, 10]"],
+      "correctAnswer": 1,
+      "explanation": "Sem comparador, sort converte os elementos para string: '1' < '10' < '2'. Para números, use sort((a,b) => a - b)."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Como radix sort e counting sort conseguem O(n), abaixo do limite O(n log n)?",
+      "options": [
+        "Usam recursão",
+        "Não comparam elementos entre si; exploram a estrutura das chaves (inteiros em intervalo limitado)",
+        "São instáveis",
+        "Usam menos memória"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Por não serem baseados em comparação, eles escapam do limite O(n log n) — mas só funcionam sob hipóteses fortes sobre as chaves."
+    }
+  ]
+}

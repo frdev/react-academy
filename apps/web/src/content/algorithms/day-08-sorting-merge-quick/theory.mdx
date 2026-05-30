@@ -1,0 +1,104 @@
+# Sorting: Merge Sort & Quick Sort
+
+Ordenar é a operação mais estudada da computação, e dois algoritmos de **divisão e conquista** dominam a prática: merge sort e quick sort. Ambos atingem `O(n log n)`, mas por caminhos opostos — e a comparação entre eles ensina princípios que vão muito além de ordenar.
+
+## Por que `O(n log n)` é o teto dos algoritmos de comparação
+
+Qualquer algoritmo que ordene **comparando** elementos não pode ser, no pior caso, melhor que `O(n log n)`. A intuição: há `n!` ordenações possíveis e cada comparação tem 2 resultados, então são necessárias pelo menos `log₂(n!) ≈ n log n` comparações para distinguir todas. Algoritmos simples como bubble, insertion e selection são `O(n²)` — quadráticos, didáticos, mas inviáveis em escala.
+
+> Algoritmos **não baseados em comparação**, como **radix sort** e **counting sort**, podem atingir `O(n)` — mas só funcionam sob hipóteses fortes (chaves inteiras num intervalo limitado). Eles fogem do limite porque não comparam elementos entre si.
+
+## Divisão e conquista: a estratégia comum
+
+Ambos seguem o mesmo esqueleto recursivo (lembre do dia 4):
+
+1. **Divide** o array em partes menores.
+2. **Conquista** ordenando cada parte recursivamente.
+3. **Combina** as partes ordenadas.
+
+A diferença está em *onde* mora o trabalho pesado: no merge sort, na combinação; no quick sort, na divisão.
+
+## Merge Sort: trabalho na combinação
+
+Divide sempre ao meio (divisão trivial) e gasta o esforço **mesclando** duas metades já ordenadas.
+
+```js
+function mergeSort(arr) {
+  if (arr.length <= 1) return arr                  // caso base
+  const meio = Math.floor(arr.length / 2)
+  const esq = mergeSort(arr.slice(0, meio))        // ordena metade esquerda
+  const dir = mergeSort(arr.slice(meio))           // ordena metade direita
+  return merge(esq, dir)                            // combina ordenado
+}
+
+function merge(a, b) {
+  const res = []
+  let i = 0, j = 0
+  while (i < a.length && j < b.length) {
+    if (a[i] <= b[j]) res.push(a[i++])             // <= preserva estabilidade
+    else res.push(b[j++])
+  }
+  return res.concat(a.slice(i)).concat(b.slice(j))
+}
+```
+
+**Características:**
+- Tempo: `O(n log n)` **garantido** — pior, médio e melhor caso.
+- Espaço: `O(n)` — precisa de arrays auxiliares para mesclar.
+- **Estável** (veja adiante).
+- Previsível: ótimo quando o pior caso importa, ou para ordenar dados externos/linked lists.
+
+## Quick Sort: trabalho na divisão
+
+Escolhe um **pivô**, particiona o array (menores à esquerda, maiores à direita) e ordena cada lado. A combinação é trivial — o array já fica no lugar.
+
+```js
+function quickSort(arr, lo = 0, hi = arr.length - 1) {
+  if (lo >= hi) return arr
+  const p = particiona(arr, lo, hi)   // posiciona o pivô
+  quickSort(arr, lo, p - 1)
+  quickSort(arr, p + 1, hi)
+  return arr
+}
+
+function particiona(arr, lo, hi) {
+  const pivo = arr[hi]                // pivô = último elemento
+  let i = lo
+  for (let j = lo; j < hi; j++) {
+    if (arr[j] < pivo) {
+      [arr[i], arr[j]] = [arr[j], arr[i]]
+      i++
+    }
+  }
+  [arr[i], arr[hi]] = [arr[hi], arr[i]]
+  return i
+}
+```
+
+**Características:**
+- Tempo: `O(n log n)` no **caso médio**; `O(n²)` no **pior caso** (pivô sempre o menor/maior — ex.: array já ordenado com pivô na ponta).
+- Espaço: `O(log n)` — in-place, só a pilha de recursão.
+- **Instável**.
+- Na prática, costuma ser o mais rápido pela boa localidade de cache.
+
+> A cura para o pior caso é escolher o pivô melhor: **pivô aleatório** ou **mediana de três** tornam o `O(n²)` improvável na prática.
+
+## Estabilidade: por que importa
+
+Um sort é **estável** se mantém a ordem relativa de elementos com chaves iguais. Importa quando você ordena por múltiplos critérios em sequência.
+
+```text
+Ordenar por idade, mantendo a ordem alfabética anterior:
+  [Ana 30, Bia 25, Caio 30]  → estável → [Bia 25, Ana 30, Caio 30]
+  (Ana antes de Caio porque já estavam assim)
+```
+
+Merge sort é estável; quick sort não é (a partição embaralha iguais). O `Array.prototype.sort` do JavaScript é **garantidamente estável** desde o ES2019, e os motores usam variações híbridas como **Timsort** (merge + insertion) por baixo.
+
+```js
+// Lembre-se: sort padrão compara como STRING!
+[10, 2, 1].sort()              // [1, 10, 2]  ← errado para números
+[10, 2, 1].sort((a, b) => a - b) // [1, 2, 10]  ← comparador numérico
+```
+
+> **Resumo:** Sorts por comparação têm teto `O(n log n)`; radix/counting fogem dele sob hipóteses especiais. **Merge sort** gasta o esforço na combinação, é `O(n log n)` garantido, estável, mas usa `O(n)` de espaço. **Quick sort** gasta na partição, é in-place (`O(log n)` de espaço) e rápido na média, mas `O(n²)` no pior caso (mitigado por pivô aleatório). **Estabilidade** preserva a ordem de iguais — e o `sort` nativo do JS é estável, mas compara como string sem um comparador.

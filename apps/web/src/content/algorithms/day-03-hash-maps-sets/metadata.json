@@ -1,0 +1,20 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Hash Maps & Sets",
+  "slug": "hash-maps-sets",
+  "topics": [
+    "função hash",
+    "Map vs objeto",
+    "Set",
+    "tratamento de colisões",
+    "trade-off tempo x espaço"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 110
+}

@@ -6,4 +6,5 @@ export interface Stack {
   totalDays: number
   status: 'available' | 'coming-soon'
   color: string
+  weekThemes?: string[]
 }
