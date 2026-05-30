@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AchievementToast } from '@/features/progress/components/AchievementToast'
 import type { ReactNode } from 'react'
 
 const queryClient = new QueryClient({
@@ -19,7 +18,6 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <AchievementToast />
     </QueryClientProvider>
   )
 }
