@@ -7,7 +7,7 @@ export const STACKS: Stack[] = [
     tagline: '7 dias da base semântica e acessível da web',
     description: 'Estrutura de documentos, tags semânticas, formulários, ARIA e WCAG — a fundação que todo front pressupõe.',
     totalDays: 7,
-    status: 'coming-soon',
+    status: 'available',
     level: 'fundamentos',
     color: 'red',
     weekThemes: ['Estrutura & Acessibilidade'],
