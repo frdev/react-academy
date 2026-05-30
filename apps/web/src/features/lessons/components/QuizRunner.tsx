@@ -133,6 +133,22 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-13': () => import('@/content/ai/day-13-eval-observabilidade-guardrails/quiz.json'),
     'day-14': () => import('@/content/ai/day-14-projeto-final-sistema-agentico/quiz.json'),
   },
+  css: {
+    'day-01': () => import('@/content/css/day-01-layout-intrinseco/quiz.json'),
+    'day-02': () => import('@/content/css/day-02-subgrid-masonry/quiz.json'),
+    'day-03': () => import('@/content/css/day-03-container-queries/quiz.json'),
+    'day-04': () => import('@/content/css/day-04-propriedades-logicas/quiz.json'),
+    'day-05': () => import('@/content/css/day-05-custom-properties-at-property/quiz.json'),
+    'day-06': () => import('@/content/css/day-06-cascade-layers/quiz.json'),
+    'day-07': () => import('@/content/css/day-07-has-is-where/quiz.json'),
+    'day-08': () => import('@/content/css/day-08-cor-moderna/quiz.json'),
+    'day-09': () => import('@/content/css/day-09-tipografia-fluida/quiz.json'),
+    'day-10': () => import('@/content/css/day-10-nesting-scope/quiz.json'),
+    'day-11': () => import('@/content/css/day-11-ui-moderna/quiz.json'),
+    'day-12': () => import('@/content/css/day-12-scroll-driven-animations/quiz.json'),
+    'day-13': () => import('@/content/css/day-13-view-transitions/quiz.json'),
+    'day-14': () => import('@/content/css/day-14-projeto-final-design-system/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

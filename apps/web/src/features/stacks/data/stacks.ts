@@ -61,6 +61,16 @@ export const STACKS: Stack[] = [
     color: 'orange',
     weekThemes: ['Fundamentos & Estruturas Lineares', 'Algoritmos & Estruturas Não-Lineares'],
   },
+  {
+    id: 'css',
+    name: 'CSS Moderno & Avançado',
+    tagline: '14 dias de CSS de ponta: do layout intrínseco às View Transitions',
+    description: 'Container queries, subgrid, :has(), cascade layers, propriedades lógicas, cor moderna (oklch/color-mix), nesting nativo, scroll-driven animations e View Transitions — técnicas, padrões e novidades.',
+    totalDays: 14,
+    status: 'available',
+    color: 'pink',
+    weekThemes: ['Layout, Arquitetura & Seletores', 'Cor, Movimento & Novidades'],
+  },
 ]
 
 export function getStackById(id: string): Stack | undefined {
