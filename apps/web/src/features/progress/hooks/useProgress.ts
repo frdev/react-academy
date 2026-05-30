@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useProgressStore, useLessonProgressById, useUserStats, useProgressActions, useIsProgressLoaded } from '../store/progressStore'
+import { getCompletedCountsByStack } from '../db/progressDb'
 import { getLessonsForStack } from '@/features/curriculum/data/index'
 
 export function useInitProgress(stackId?: string) {
@@ -22,6 +23,21 @@ export function useCompletedDaysCount(): number {
   return useProgressStore(state =>
     Object.values(state.lessonProgress).filter(p => p.status === 'completed').length
   )
+}
+
+/** Loads the number of completed lessons per stack from IndexedDB (for the stack selector). */
+export function useCompletedCountsByStack(): Record<string, number> {
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let active = true
+    getCompletedCountsByStack().then(c => {
+      if (active) setCounts(c)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+  return counts
 }
 
 export function useWeekProgress(week: number): { completed: number; total: number } {

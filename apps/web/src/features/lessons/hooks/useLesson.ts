@@ -1,11 +1,12 @@
 import { getLessonsForStack } from '@/features/curriculum/data/index'
+import { getStackById } from '@/features/stacks/data/stacks'
 import type { LessonMetadata } from '@/features/curriculum/types'
 
-function getPlaceholderLesson(id: string): LessonMetadata | undefined {
+function getPlaceholderLesson(id: string, maxDay = 30): LessonMetadata | undefined {
   const match = id.match(/^day-(\d+)$/)
   if (!match) return undefined
   const day = parseInt(match[1])
-  if (day < 1 || day > 30) return undefined
+  if (day < 1 || day > maxDay) return undefined
   const week = day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : 4
   return {
     id,
@@ -25,7 +26,10 @@ function getPlaceholderLesson(id: string): LessonMetadata | undefined {
 
 export function useLesson(lessonId: string, stackId = 'react'): LessonMetadata | undefined {
   const lessons = getLessonsForStack(stackId)
-  return lessons.find(l => l.id === lessonId) ?? getPlaceholderLesson(lessonId)
+  const found = lessons.find(l => l.id === lessonId)
+  if (found) return found
+  const totalDays = getStackById(stackId)?.totalDays ?? 30
+  return getPlaceholderLesson(lessonId, totalDays)
 }
 
 export type LessonStep = 'theory' | 'visualizer' | 'challenge' | 'quiz' | 'complete'

@@ -168,6 +168,11 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-02': () => import('@/content/package-managers/day-02-npm-na-pratica/quiz.json'),
     'day-03': () => import('@/content/package-managers/day-03-npm-yarn-pnpm/quiz.json'),
   },
+  'git': {
+    'day-01': () => import('@/content/git/day-01-historico-local/quiz.json'),
+    'day-02': () => import('@/content/git/day-02-branches-merge-rebase/quiz.json'),
+    'day-03': () => import('@/content/git/day-03-remotes-prs-conflitos/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

@@ -1,0 +1,21 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Commits, Conventional Commits e Como Desfazer",
+  "slug": "historico-local",
+  "topics": [
+    "staging area: working tree, index e commit",
+    "anatomia de um bom commit (atômico, mensagem)",
+    "Conventional Commits",
+    "git restore: descartar mudanças",
+    "git reset: --soft, --mixed, --hard",
+    "git revert: desfazer com segurança"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

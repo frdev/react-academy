@@ -5,9 +5,10 @@ interface ProgressBarProps {
   className?: string
   showLabel?: boolean
   color?: 'blue' | 'green' | 'amber'
+  barClassName?: string // overrides the fill color (e.g. "bg-teal-600")
 }
 
-export function ProgressBar({ value, className, showLabel = false, color = 'blue' }: ProgressBarProps) {
+export function ProgressBar({ value, className, showLabel = false, color = 'blue', barClassName }: ProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, value))
   return (
     <div className={cn('w-full', className)}>
@@ -17,7 +18,7 @@ export function ProgressBar({ value, className, showLabel = false, color = 'blue
             'bg-blue-500': color === 'blue',
             'bg-green-500': color === 'green',
             'bg-amber-500': color === 'amber',
-          })}
+          }, barClassName)}
           style={{ width: `${clamped}%` }}
         />
       </div>

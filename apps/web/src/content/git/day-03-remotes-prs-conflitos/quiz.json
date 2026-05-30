@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "No Git, o que normalmente é o `origin`?",
+      "options": [
+        "A branch principal do projeto",
+        "O nome convencional do remote principal (o repositório hospedado, ex.: no GitHub)",
+        "O primeiro commit do repositório",
+        "Um arquivo de configuração local"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`origin` é o nome convencional do remote principal — a cópia do repositório hospedada em um servidor como o GitHub. É para ele que você dá `push` e de onde você faz `fetch`/`pull`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença entre `git fetch` e `git pull`?",
+      "options": [
+        "Não há diferença, são sinônimos",
+        "`fetch` só baixa os commits do remoto; `pull` baixa e já mescla na sua branch atual",
+        "`fetch` envia commits e `pull` baixa commits",
+        "`fetch` funciona offline e `pull` precisa de internet"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`fetch` apenas baixa os commits novos do remoto, sem mexer na sua branch — você inspeciona antes de integrar. `pull` é `fetch` + `merge`: baixa e já mescla na sua branch atual em um passo só."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que times usam Pull Requests em vez de dar push direto na main?",
+      "options": [
+        "Porque o push direto na main é tecnicamente impossível",
+        "Para criar um ponto de revisão (code review) antes de integrar as mudanças na main",
+        "Porque PRs deixam o repositório mais leve",
+        "Para evitar a necessidade de commits"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O Pull Request cria um ponto de revisão: outra pessoa lê o código, comenta, sugere e aprova antes de a mudança virar parte da main. É onde a qualidade é discutida — não é uma limitação técnica, e sim uma prática de colaboração."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Um conflito de merge significa que você cometeu um erro e fez algo errado no Git.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Um conflito acontece quando duas mudanças tocam a mesma região do mesmo arquivo de formas diferentes, e o Git — corretamente — não adivinha qual manter. É um pedido de decisão humana, não um erro seu."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Você abriu um arquivo e viu marcadores `<<<<<<<`, `=======` e `>>>>>>>`. O que fazer?",
+      "options": [
+        "Rodar `git reset --hard` imediatamente para apagar tudo",
+        "Editar o arquivo escolhendo/combinando as versões, remover os marcadores e dar `git add` + `git commit`",
+        "Deletar o arquivo inteiro e recriá-lo do zero",
+        "Ignorar os marcadores, pois o Git os remove sozinho"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Esses marcadores delimitam as duas versões em conflito (HEAD vs a outra branch). Você resolve editando o arquivo à mão — escolhendo uma versão, combinando as duas ou escrevendo algo novo — e apagando os marcadores. Depois, `git add` marca como resolvido e `git commit` conclui o merge."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `git push -u origin feature` faz além de enviar a branch?",
+      "options": [
+        "Apaga a branch local depois de enviar",
+        "Configura a branch local para rastrear a branch remota (tracking), simplificando push/pull futuros",
+        "Faz merge da feature na main automaticamente",
+        "Cria um Pull Request no GitHub"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A flag `-u` (`--set-upstream`) configura a branch local para rastrear a remota. Depois disso, um simples `git push` ou `git pull` (sem argumentos) já sabe com qual branch remota falar. Abrir o PR ainda é um passo manual no GitHub."
+    }
+  ]
+}

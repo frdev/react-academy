@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router'
 import { STACKS, groupStacksByLevel } from './data/stacks'
 import type { Stack } from './types'
-import { Badge } from '@academy/ui'
+import { useCompletedCountsByStack } from '@/features/progress/hooks/useProgress'
+import { Badge, ProgressBar } from '@academy/ui'
 
 const COLOR_MAP: Record<string, { ring: string; bg: string; text: string; icon: string; hoverBorder: string }> = {
   blue:    { ring: 'ring-blue-500',    bg: 'bg-blue-600',    text: 'text-blue-400',    icon: 'bg-blue-500/10',    hoverBorder: 'hover:border-blue-500/50' },
@@ -36,10 +37,12 @@ const STACK_ICONS: Record<string, string> = {
   regex:                   '.*',
 }
 
-function StackCard({ stack }: { stack: Stack }) {
+function StackCard({ stack, completed }: { stack: Stack; completed: number }) {
   const navigate = useNavigate()
   const colors = COLOR_MAP[stack.color] ?? COLOR_MAP.blue
   const isAvailable = stack.status === 'available'
+  const done = Math.min(completed, stack.totalDays)
+  const pct = stack.totalDays > 0 ? Math.round((done / stack.totalDays) * 100) : 0
 
   return (
     <div
@@ -68,16 +71,21 @@ function StackCard({ stack }: { stack: Stack }) {
       <p className="text-sm text-gray-400 leading-relaxed">{stack.description}</p>
 
       {isAvailable && (
-        <div className={`mt-5 inline-flex items-center gap-2 text-sm font-medium ${colors.text} group-hover:gap-3 transition-all`}>
-          Começar agora
-          <span>→</span>
+        <div className="mt-5">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-gray-500">
+              {done >= stack.totalDays ? 'Concluído 🎉' : `${done}/${stack.totalDays} dias`}
+            </span>
+            <span className={`text-xs font-semibold ${colors.text}`}>{pct}%</span>
+          </div>
+          <ProgressBar value={pct} barClassName={colors.bg} />
         </div>
       )}
     </div>
   )
 }
 
-function StackSection({ title, subtitle, stacks }: { title: string; subtitle: string; stacks: Stack[] }) {
+function StackSection({ title, subtitle, stacks, completedCounts }: { title: string; subtitle: string; stacks: Stack[]; completedCounts: Record<string, number> }) {
   if (stacks.length === 0) return null
   return (
     <section className="mb-16">
@@ -87,7 +95,7 @@ function StackSection({ title, subtitle, stacks }: { title: string; subtitle: st
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {stacks.map(stack => (
-          <StackCard key={stack.id} stack={stack} />
+          <StackCard key={stack.id} stack={stack} completed={completedCounts[stack.id] ?? 0} />
         ))}
       </div>
     </section>
@@ -96,6 +104,7 @@ function StackSection({ title, subtitle, stacks }: { title: string; subtitle: st
 
 export default function StackSelectorPage() {
   const { fundamentos, avancado } = groupStacksByLevel(STACKS)
+  const completedCounts = useCompletedCountsByStack()
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -116,11 +125,13 @@ export default function StackSelectorPage() {
           title="Fundamentos"
           subtitle="A base do desenvolvimento frontend — comece por aqui."
           stacks={fundamentos}
+          completedCounts={completedCounts}
         />
         <StackSection
           title="Avançado"
           subtitle="Mergulhos profundos para dominar cada tecnologia."
           stacks={avancado}
+          completedCounts={completedCounts}
         />
       </main>
     </div>

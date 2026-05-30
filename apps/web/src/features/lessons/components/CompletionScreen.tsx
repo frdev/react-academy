@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router'
 import { useLesson } from '../hooks/useLesson'
 import { useLessonProgressById } from '@/features/progress/hooks/useProgress'
+import { getStackById } from '@/features/stacks/data/stacks'
 import { Button } from '@academy/ui'
 
 export function CompletionScreen() {
@@ -9,8 +10,9 @@ export function CompletionScreen() {
   const lesson = useLesson(dayId ?? '', stackId)
   const progress = useLessonProgressById(dayId ?? '')
 
-  const nextDay = lesson ? `day-${String(lesson.day + 1).padStart(2, '0')}` : null
-  const isLastDay = lesson?.day === 30
+  const totalDays = getStackById(stackId)?.totalDays ?? 30
+  const isLastDay = !lesson || lesson.day >= totalDays
+  const nextDay = !isLastDay ? `day-${String(lesson.day + 1).padStart(2, '0')}` : null
 
   return (
     <div className="text-center py-16">

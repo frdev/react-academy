@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { db, getLessonProgress, upsertLessonProgress, getUserStats, upsertUserStats } from './progressDb'
+import { db, getLessonProgress, upsertLessonProgress, getUserStats, upsertUserStats, getCompletedCountsByStack } from './progressDb'
 
 describe('progressDb', () => {
   beforeEach(async () => {
@@ -40,6 +40,20 @@ describe('progressDb', () => {
     expect(all).toHaveLength(1)
     expect(all[0].status).toBe('completed')
     expect(all[0].timeSpentSeconds).toBe(300)
+  })
+
+  it('counts completed lessons grouped by stack', async () => {
+    const base = { timeSpentSeconds: 0, attempts: 1, lastAccessedAt: new Date().toISOString() }
+    await upsertLessonProgress({ ...base, stackId: 'react', lessonId: 'day-01', status: 'completed' })
+    await upsertLessonProgress({ ...base, stackId: 'react', lessonId: 'day-02', status: 'completed' })
+    await upsertLessonProgress({ ...base, stackId: 'git', lessonId: 'day-01', status: 'completed' })
+    await upsertLessonProgress({ ...base, stackId: 'html', lessonId: 'day-01', status: 'in-progress' })
+
+    const counts = await getCompletedCountsByStack()
+
+    expect(counts.react).toBe(2)
+    expect(counts.git).toBe(1)
+    expect(counts.html ?? 0).toBe(0) // in-progress is not counted
   })
 
   it('gets and sets user stats', async () => {

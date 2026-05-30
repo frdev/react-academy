@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é uma branch no Git?",
+      "options": [
+        "Uma cópia completa de todos os arquivos do projeto",
+        "Um ponteiro leve para um commit",
+        "Um backup compactado do repositório",
+        "Uma pasta separada dentro de node_modules"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma branch é apenas um ponteiro leve para um commit — uma etiqueta que marca a ponta de uma corrente de commits. Por isso criar uma branch é barato e instantâneo, independentemente do tamanho do projeto: nada é copiado."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é o comando moderno para criar uma branch nova e já trocar para ela?",
+      "options": [
+        "git branch -c feature",
+        "git switch -c feature",
+        "git merge feature",
+        "git checkout feature"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`git switch -c feature` cria a branch `feature` e muda para ela. `git switch` é o comando moderno; o antigo `git checkout -b feature` faz o mesmo, mas `checkout` é sobrecarregado (também restaura arquivos), então `switch` é preferível."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando um merge é resolvido como fast-forward (sem criar merge commit)?",
+      "options": [
+        "Quando a branch de destino não recebeu commits novos desde que a feature foi criada",
+        "Sempre que se usa `git merge`",
+        "Apenas quando há conflitos",
+        "Quando a feature tem mais commits que a main"
+      ],
+      "correctAnswer": 0,
+      "explanation": "O fast-forward acontece quando a branch de destino (ex.: main) não avançou desde que a feature foi criada. Como não houve divergência, o Git só move a etiqueta da main para frente, sem criar um merge commit. Se a main recebeu commits próprios, as histórias divergem e um merge commit é criado."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Um merge commit tem dois pais.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Um merge commit costura duas linhas de histórico que divergiram, então ele aponta para dois pais — o último commit de cada branch envolvida. É isso que o torna distinto de um commit normal (que tem um único pai)."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que o `git rebase main` (estando na feature) faz com os commits da feature?",
+      "options": [
+        "Apaga os commits da feature permanentemente",
+        "Reaplica os commits no topo da main, criando novos commits e um histórico linear",
+        "Cria um merge commit com dois pais",
+        "Move a main para o topo da feature"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O rebase reaplica os commits da feature no topo da main, como se você tivesse começado a partir dali. Isso gera commits novos (mesmo conteúdo, pai diferente) e um histórico linear, sem merge commit — ao custo de reescrever os commits originais."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual é a \"golden rule\" do rebase?",
+      "options": [
+        "Sempre rebase antes de cada commit",
+        "Nunca faça rebase de commits que já foram compartilhados (já estão no remoto)",
+        "Só use rebase em repositórios sem branches",
+        "Rebase sempre cria conflitos, então evite-o"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A golden rule: nunca faça rebase de commits já compartilhados. Como o rebase reescreve commits, se outra pessoa já baixou o histórico original, as cópias divergem e a sincronização vira um pesadelo. Rebase é seguro nos seus commits locais; para integrar o que já é público, use merge."
+    }
+  ]
+}

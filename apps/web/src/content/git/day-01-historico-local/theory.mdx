@@ -1,0 +1,106 @@
+# Commits, Conventional Commits e Como Desfazer
+
+Você já usou `git add` e `git commit` — então já sabe gravar um ponto no histórico. Mas saber *gravar* é diferente de manter um histórico que ajuda você (e seu time) seis meses depois. Este dia é sobre isso: fazer commits que contam uma história clara, padronizar as mensagens, e — o mais importante para quem está começando — **desfazer com segurança** quando algo dá errado.
+
+## O staging area, em 30 segundos
+
+Antes de fazer melhor, vale alinhar o vocabulário. Toda mudança passa por três áreas:
+
+```text
+working tree   →   staging area (index)   →   repositório (commits)
+  você edita         git add                    git commit
+```
+
+- **Working tree** — seus arquivos como estão no disco agora.
+- **Staging area** (ou *index*) — a "prévia" do próximo commit. `git add` move mudanças do working tree para cá.
+- **Repositório** — o histórico de commits. `git commit` transforma o que está no staging em um commit permanente.
+
+O staging area existe para você **escolher o que entra em cada commit** — não precisa commitar tudo de uma vez. Veja o estado de cada área com `git status`.
+
+## O que é um bom commit
+
+Um commit é a menor unidade de mudança versionada. Dois princípios fazem toda a diferença:
+
+**Atômico** — um commit faz *uma* coisa. Corrigir um bug e renomear dez variáveis são dois commits, não um. Commits atômicos são fáceis de revisar, de reverter (você desfaz só o que precisa) e de entender no histórico.
+
+**Mensagem que explica o porquê** — o código mostra *o que* mudou; a mensagem deve dizer *por que*. "ajustes" não ajuda ninguém. "corrige cálculo de desconto que ignorava centavos" ajuda.
+
+## Conventional Commits
+
+Times padronizam mensagens com a convenção **Conventional Commits**, no formato:
+
+```text
+tipo(escopo opcional): descrição curta no imperativo
+
+corpo opcional explicando o porquê
+```
+
+Os tipos mais comuns:
+
+- `feat` — uma nova funcionalidade
+- `fix` — correção de bug
+- `docs` — só documentação
+- `refactor` — muda código sem mudar comportamento
+- `test` — adiciona ou ajusta testes
+- `chore` — tarefas de manutenção (dependências, config)
+
+Exemplos:
+
+```text
+feat(auth): adiciona login com Google
+fix: corrige desconto que ignorava centavos
+docs(readme): explica como rodar os testes
+```
+
+Por que vale a pena: o histórico fica legível de bater o olho, dá para gerar changelog automaticamente, e ferramentas de versionamento (semver) conseguem decidir sozinhas se a próxima versão é `patch` (um `fix`) ou `minor` (um `feat`). É a mesma convenção que este projeto usa.
+
+## Desfazer com segurança
+
+Aqui mora a dúvida número um de quem está aprendendo Git: *"eu pisei na bola, como volto?"*. A resposta depende de **onde** a mudança está. Três comandos resolvem quase tudo.
+
+### `git restore` — descartar o que ainda não foi commitado
+
+Você editou um arquivo, se arrependeu e quer voltar ao último commit:
+
+```bash
+git restore src/app.ts            # descarta mudanças no working tree
+git restore --staged src/app.ts   # tira do staging, mas mantém a edição
+```
+
+`restore` mexe só no working tree e no staging. Os commits não são tocados.
+
+### `git reset` — mover o ponteiro da branch
+
+`reset` move a branch para um commit anterior. O que acontece com as mudanças dos commits descartados depende do modo:
+
+```text
+                    as mudanças vão para onde?
+git reset --soft    para o staging area (prontas para recommitar)
+git reset --mixed   para o working tree (não staged)  ← padrão
+git reset --hard    descartadas de vez (cuidado!)
+```
+
+```bash
+git reset --soft HEAD~1    # desfaz o último commit, mantém tudo staged
+git reset --mixed HEAD~1   # (padrão) desfaz o commit, deixa as mudanças no working tree
+git reset --hard HEAD~1    # desfaz o commit E as mudanças — irreversível
+```
+
+Use `--soft` para refazer um commit mal feito; `--hard` só quando tem certeza de que quer jogar o trabalho fora.
+
+### `git revert` — desfazer um commit já compartilhado
+
+`reset` reescreve o histórico — péssimo se o commit já foi para o repositório remoto e outras pessoas já o têm. Para esses casos, `revert` cria um commit **novo** que desfaz as mudanças do antigo, sem apagar nada:
+
+```text
+antes:    A───B───C
+depois:   A───B───C───C'    (C' desfaz exatamente o que C fez)
+```
+
+```bash
+git revert HEAD    # cria um commit que desfaz o último
+```
+
+Regra prática: **commit ainda local → `reset`; commit já compartilhado → `revert`.**
+
+> **Resumo:** Um bom commit é atômico e tem mensagem que explica o porquê; Conventional Commits (`feat`/`fix`/`docs`…) padronizam o histórico e habilitam changelogs e versionamento automático. Para desfazer: `restore` descarta mudanças não commitadas, `reset` move a branch (`--soft` guarda no staging, `--mixed` no working tree, `--hard` joga fora) e serve para commits ainda locais, enquanto `revert` cria um commit inverso e é o jeito seguro de desfazer algo já compartilhado.
