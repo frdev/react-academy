@@ -1,0 +1,93 @@
+# useEffect e Dados
+
+Renderizar, em React, deveria ser "puro": dado o estado, o componente calcula o JSX e pronto. Mas apps de verdade precisam fazer coisas **fora** desse cálculo — buscar dados de uma API, iniciar um timer, ouvir um evento do navegador. Isso são **efeitos colaterais**, e o lugar deles é o hook **`useEffect`**. O caso mais comum, de longe, é carregar dados com `fetch` quando o componente aparece — exatamente o que o capstone de amanhã faz.
+
+## O que é um efeito colateral
+
+Um efeito colateral é qualquer coisa que acontece além de calcular e retornar o JSX: uma requisição de rede, um `setTimeout`, uma inscrição num evento. Esse tipo de código não pode rodar solto no corpo do componente (rodaria a cada render, na hora errada) — ele vai dentro do `useEffect`, que o React executa **depois** de pintar a tela.
+
+## useEffect e o array de dependências
+
+`useEffect` recebe uma função (o efeito) e um **array de dependências** que controla *quando* ela roda:
+
+```tsx
+import { useEffect } from "react"
+
+useEffect(() => {
+  console.log("rodou depois do render")
+}, [])
+```
+
+- **`[]`** (vazio) — roda **uma vez**, quando o componente monta. É o caso típico de "carregar dados ao abrir".
+- **`[x]`** — roda quando `x` muda (além da montagem).
+- **sem array** — roda após **todo** render (raramente o que se quer; cuidado com loops).
+
+## Buscar dados
+
+Para carregar dados, faça o `fetch` dentro do effect. Um detalhe importante: a função do `useEffect` **não pode** ser `async` diretamente — então você define uma função async **dentro** e a chama:
+
+```tsx
+import { useState, useEffect } from "react"
+
+function ListaTarefas() {
+  const [tarefas, setTarefas] = useState<string[]>([])
+
+  useEffect(() => {
+    async function carregar() {
+      const res = await fetch("https://jsonplaceholder.typicode.com/todos?_limit=3")
+      const dados = await res.json()
+      setTarefas(dados.map((d: { title: string }) => d.title))
+    }
+    carregar()
+  }, [])   // [] = busca uma vez, ao montar
+
+  return (
+    <ul>
+      {tarefas.map((t, i) => <li key={i}>{t}</li>)}
+    </ul>
+  )
+}
+```
+
+O fluxo: o componente monta → o efeito roda → o `fetch` traz os dados → o setter atualiza o estado → o componente re-renderiza mostrando a lista.
+
+## Loading e erro
+
+Uma requisição leva tempo e pode falhar. O padrão é guardar isso em estado e refletir na tela (com a renderização condicional do Dia 5):
+
+```tsx
+const [carregando, setCarregando] = useState(true)
+const [erro, setErro] = useState<string | null>(null)
+
+useEffect(() => {
+  async function carregar() {
+    try {
+      const res = await fetch("https://jsonplaceholder.typicode.com/todos?_limit=3")
+      const dados = await res.json()
+      setTarefas(dados.map((d: { title: string }) => d.title))
+    } catch {
+      setErro("Falha ao carregar.")
+    } finally {
+      setCarregando(false)
+    }
+  }
+  carregar()
+}, [])
+
+// no JSX: {carregando ? <p>Carregando...</p> : erro ? <p>{erro}</p> : <Lista />}
+```
+
+## Cleanup (introdução)
+
+Alguns efeitos precisam ser "desfeitos" quando o componente sai da tela — um timer a cancelar, um listener a remover. Para isso, o efeito pode **retornar uma função de limpeza**, que o React chama na hora certa:
+
+```tsx
+useEffect(() => {
+  const id = setInterval(() => console.log("tick"), 1000)
+  return () => clearInterval(id)   // limpa ao desmontar
+}, [])
+```
+
+Por enquanto, basta saber que essa função de `return` existe e serve para limpar — você se aprofunda nisso no React avançado.
+
+> **Resumo:** **Efeitos colaterais** (buscar dados, timers, listeners) não rodam no corpo do componente — vão no **`useEffect`**, que roda **depois** do render. O **array de dependências** controla quando: **`[]`** roda uma vez ao montar (ideal para carregar dados), `[x]` roda quando `x` muda, e sem array roda todo render (evite). Para buscar dados, defina uma **função async dentro** do effect e a chame (o callback do effect não pode ser async). Reflita o ciclo da requisição com estados de **`carregando`/`erro`** + renderização condicional. O efeito pode **retornar uma função de cleanup** para desfazer timers/listeners ao desmontar.

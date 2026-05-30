@@ -51,7 +51,7 @@ export const STACKS: Stack[] = [
     tagline: '7 dias de React — com TypeScript do primeiro componente',
     description: 'Componentes, JSX, props, estado, hooks (useState/useEffect) e eventos — tudo em TypeScript, tipando props e estado desde o início. A rampa para o React avançado.',
     totalDays: 7,
-    status: 'coming-soon',
+    status: 'available',
     level: 'fundamentos',
     color: 'blue',
     weekThemes: ['React com TypeScript na Prática'],

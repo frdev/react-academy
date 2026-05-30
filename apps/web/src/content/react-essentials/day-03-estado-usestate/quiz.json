@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre estado e props?",
+      "options": [
+        "Não há diferença",
+        "Props vêm de fora e são somente leitura; estado é interno ao componente e muda com o tempo",
+        "Estado vem do componente pai; props são internas",
+        "Props mudam e estado é fixo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Props são recebidas do pai e o componente não as altera. Estado é a memória interna e privada do componente, que muda ao longo do tempo (cliques, digitação) e dispara re-renders quando atualizado."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que `useState` retorna?",
+      "options": [
+        "Apenas o valor atual",
+        "Um par: o valor atual e uma função para atualizá-lo (o setter)",
+        "Uma promise com o valor",
+        "Apenas a função setter"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`useState` devolve um array com dois itens, normalmente desestruturados: `const [valor, setValor] = useState(inicial)`. O primeiro é o valor atual; o segundo é o setter usado para atualizá-lo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como tipar um estado numérico iniciado em zero?",
+      "options": [
+        "useState(number)",
+        "useState<number>(0)",
+        "useState(0): number",
+        "number useState(0)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O genérico vai entre `<>`: `useState<number>(0)`. Muitas vezes o TypeScript até infere o tipo a partir do valor inicial (`useState(0)` já infere number), mas anotar é útil quando o inicial não revela o tipo (ex.: `useState<string[]>([])`)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que atualizar o estado precisa do setter, e não de reatribuir a variável diretamente?",
+      "options": [
+        "Por convenção de estilo apenas",
+        "Porque só o setter avisa o React para re-renderizar; reatribuir a variável não atualiza a tela",
+        "Porque a variável é constante e não pode mudar",
+        "Porque o setter é mais rápido"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Chamar o setter (ex.: `setContagem(5)`) sinaliza ao React que o estado mudou, disparando um novo render. Reatribuir a variável diretamente não notifica o React, então a tela não reflete a mudança."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a forma correta de adicionar um item a um estado que é array?",
+      "options": [
+        "itens.push(novo)",
+        "setItens([...itens, novo])",
+        "itens = [...itens, novo]",
+        "setItens(itens.push(novo))"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Atualize de forma imutável: crie um novo array com spread e passe ao setter — `setItens([...itens, novo])`. `push` muta o array existente, e o React pode não detectar a mudança ao comparar referências."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Quantos `useState` um componente pode ter?",
+      "options": [
+        "Apenas um",
+        "Quantos precisar — um para cada pedaço independente de estado",
+        "No máximo três",
+        "Um por arquivo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Não há limite: declare um `useState` para cada pedaço independente de estado (ex.: um para `nome`, outro para `idade`, outro para `ativo`). Isso mantém cada estado focado e fácil de atualizar."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Reatribuir a variável de estado diretamente (ex.: `contagem = contagem + 1`) atualiza o que aparece na tela.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Apenas chamar o setter (`setContagem(...)`) dispara o re-render que atualiza a tela. Mexer na variável diretamente não avisa o React e a interface continua mostrando o valor antigo."
+    }
+  ]
+}

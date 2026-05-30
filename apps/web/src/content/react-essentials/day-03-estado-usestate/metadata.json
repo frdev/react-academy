@@ -1,0 +1,20 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Estado com useState",
+  "slug": "estado-usestate",
+  "topics": [
+    "estado vs props",
+    "useState tipado",
+    "o setter e o re-render",
+    "atualização imutável",
+    "múltiplos estados"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

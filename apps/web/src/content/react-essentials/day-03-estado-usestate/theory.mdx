@@ -1,0 +1,78 @@
+# Estado com useState
+
+Props vêm de fora e o componente não as muda. Mas uma interface viva precisa de dados que **mudam com o tempo**: um contador que sobe, um campo que o usuário preenche, um menu que abre e fecha. Essa memória interna do componente é o **estado**, e em React você a cria com o hook **`useState`**. Quando o estado muda, o React **re-renderiza** o componente sozinho — você nunca toca no DOM. É a peça que torna a UI declarativa de fato interativa.
+
+## Estado vs props
+
+A distinção é simples e importante:
+
+- **props** — chegam de fora (do componente pai), são somente leitura;
+- **estado** — pertence ao componente, é privado e **muda** ao longo do tempo.
+
+Um botão "curtir" recebe o texto por prop, mas guarda no estado quantas curtidas tem.
+
+## useState
+
+`useState` cria uma variável de estado. Ele devolve um par: o **valor atual** e uma **função para atualizá-lo** (o "setter"). Você desestrutura os dois, e tipa o valor com o genérico `<...>`:
+
+```tsx
+import { useState } from "react"
+
+function Contador() {
+  const [contagem, setContagem] = useState<number>(0)
+
+  return (
+    <button onClick={() => setContagem(contagem + 1)}>
+      Cliques: {contagem}
+    </button>
+  )
+}
+```
+
+`useState<number>(0)` cria o estado `contagem` começando em `0`. A cada clique, `setContagem` recebe o novo valor.
+
+## Mudar o estado re-renderiza
+
+Esta é a regra de ouro: **só o setter atualiza a tela**. Chamar `setContagem(novo)` faz o React re-executar o componente com o valor atualizado e repintar o que mudou. Reatribuir a variável direto **não funciona**:
+
+```tsx
+function Errado() {
+  let [contagem, setContagem] = useState(0)
+
+  return (
+    <button onClick={() => { contagem = contagem + 1 }}>
+      {contagem}  {/* nunca muda na tela! */}
+    </button>
+  )
+}
+```
+
+Mexer em `contagem` direto não avisa o React, então a tela não atualiza. Sempre use o setter.
+
+## Atualização imutável
+
+Quando o estado é um objeto ou array, **não o modifique no lugar** — crie um novo valor e passe ao setter. (É o mesmo princípio de imutabilidade do `map`/`filter`/spread do JavaScript Essencial.)
+
+```tsx
+const [itens, setItens] = useState<string[]>([])
+
+// ✅ cria um novo array
+setItens([...itens, "novo"])
+
+// ❌ não faça: muta o array existente e o React não percebe a mudança
+// itens.push("novo")
+```
+
+O React decide o que re-renderizar comparando o valor novo com o antigo; se você mutar o mesmo objeto, ele pode não notar a diferença.
+
+## Vários estados
+
+Um componente pode ter quantos `useState` precisar — um para cada pedaço independente de estado:
+
+```tsx
+const [nome, setNome] = useState("")
+const [idade, setIdade] = useState<number>(0)
+const [ativo, setAtivo] = useState<boolean>(false)
+```
+
+> **Resumo:** **Estado** é a memória interna e mutável de um componente — diferente das **props**, que vêm de fora e são somente leitura. Crie estado com **`useState`**, que devolve um par `[valor, setter]` e aceita o tipo via genérico (`useState<number>(0)`). A regra de ouro: **só o setter** (`setContagem(...)`) atualiza a tela, disparando um **re-render** — reatribuir a variável direto não faz nada. Para objeto/array, atualize de forma **imutável** (`[...itens, novo]`, não `itens.push`), senão o React pode não detectar a mudança. Use **quantos `useState` precisar**, um por pedaço de estado.

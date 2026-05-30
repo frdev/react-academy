@@ -1,0 +1,20 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "Eventos e Formulários",
+  "slug": "eventos-formularios",
+  "topics": [
+    "onClick e handlers de evento",
+    "tipos de evento do React",
+    "inputs controlados",
+    "onChange ligado ao estado",
+    "onSubmit e preventDefault"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-03"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

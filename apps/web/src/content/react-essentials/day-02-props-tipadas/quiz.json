@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que são props em React?",
+      "options": [
+        "Variáveis globais da aplicação",
+        "Os dados que um componente recebe de quem o usa, como parâmetros de função",
+        "O estado interno do componente",
+        "Estilos CSS aplicados ao componente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Props são os dados passados de um componente pai para um filho, semelhantes aos parâmetros de uma função. Quem usa o componente os escreve como atributos: <Saudacao nome=\"Ana\" />."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a forma idiomática de tipar as props em React com TypeScript?",
+      "options": [
+        "Não é possível tipar props",
+        "Declarar um `type Props = { ... }` e anotar o parâmetro: function Saudacao({ nome }: Props)",
+        "Usar `any` em todos os componentes",
+        "Tipar apenas dentro do JSX"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Você descreve o formato das props com um `type` (ou `interface`) e anota o parâmetro com destructuring: `function Saudacao({ nome, idade }: Props)`. Assim o TypeScript cobra os dados corretos de quem usa o componente."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como marcar uma prop como opcional no tipo?",
+      "options": [
+        "Colocando `?` após o nome: `saudacao?: string`",
+        "Escrevendo `optional saudacao`",
+        "Usando `saudacao: string | skip`",
+        "Não declarando a prop"
+      ],
+      "correctAnswer": 0,
+      "explanation": "O `?` torna a prop opcional no tipo (`saudacao?: string`). Para fornecer um valor quando ela não é passada, usa-se um default no destructuring: `{ saudacao = \"Olá\" }`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que é a prop `children`?",
+      "options": [
+        "Uma lista de componentes filhos registrados automaticamente",
+        "O conteúdo colocado entre as tags de abertura e fechamento do componente",
+        "Os estados do componente",
+        "Um hook do React"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`children` é uma prop especial que contém o que você escreve entre <Cartao> e </Cartao>. Permite criar componentes \"embrulho\" que renderizam qualquer conteúdo passado dentro deles."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual o tipo usado para a prop `children`?",
+      "options": [
+        "string",
+        "React.ReactNode",
+        "any[]",
+        "JSX apenas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`React.ReactNode` representa qualquer coisa renderizável pelo React: JSX, texto, números, arrays disso, etc. É o tipo padrão para `children`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que significa \"composição\" em React?",
+      "options": [
+        "Escrever todo o app em um único componente",
+        "Combinar componentes pequenos uns dentro dos outros, passando dados por props",
+        "Compor músicas para a interface",
+        "Misturar CSS e JavaScript no mesmo arquivo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Composição é montar a interface combinando componentes pequenos e focados — uns dentro dos outros, comunicando-se por props e children. É a forma idiomática de estruturar uma UI em React."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Um componente pode alterar (mutar) os valores das próprias props que recebeu.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Props são somente leitura: o componente as recebe e usa, mas não as modifica. Dados que mudam ao longo do tempo dentro do componente são responsabilidade do estado (useState), que veremos no próximo dia."
+    }
+  ]
+}

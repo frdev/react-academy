@@ -1,0 +1,20 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Listas e Renderização Condicional",
+  "slug": "listas-condicional",
+  "topics": [
+    "renderizar arrays com map",
+    "a prop key",
+    "renderização condicional com && e ternário",
+    "early return",
+    "tipar a lista de itens"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

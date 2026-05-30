@@ -1,0 +1,153 @@
+# Projeto Final — Tarefas em React
+
+Lembra do app de tarefas do último dia do JavaScript Essencial? Aquele em que você selecionava elementos com `querySelector`, criava `<li>` com `createElement`/`innerHTML` e ligava listeners à mão? Vamos construir **o mesmo app** — carregar, listar, adicionar, remover — agora em **React com TypeScript**. No fim, o contraste vai deixar claro o que o React faz por você: você descreve a UI a partir do estado, e a manipulação do DOM simplesmente desaparece.
+
+Este é o capstone — ele junta tudo: tipos, props, estado, eventos, listas e `useEffect`.
+
+## O que vamos construir
+
+Uma lista de tarefas que (1) carrega itens iniciais via `fetch`, (2) renderiza a lista, (3) adiciona uma tarefa digitada e (4) remove uma tarefa clicada. A diferença em relação à versão JS: aqui há **um array de estado** (`tarefas`), e a tela é sempre um reflexo dele. Mudou o array → o React redesenha.
+
+## O tipo e o estado
+
+Começamos modelando o dado com um `type` e criando o estado tipado:
+
+```tsx
+type Tarefa = { id: number; texto: string }
+
+const [tarefas, setTarefas] = useState<Tarefa[]>([])
+const [texto, setTexto] = useState("")
+```
+
+`tarefas` é a lista (a fonte da verdade da tela); `texto` é o valor do input controlado.
+
+## Carregar com useEffect + fetch
+
+Ao montar, buscamos tarefas iniciais. Como no Dia 6, o `fetch` vai numa função async dentro do efeito, com `[]` para rodar uma vez — e um `try/catch` com **fallback** para o app não quebrar offline:
+
+```tsx
+useEffect(() => {
+  async function carregar() {
+    try {
+      const res = await fetch("https://jsonplaceholder.typicode.com/todos?_limit=3")
+      const dados = await res.json()
+      setTarefas(dados.map((d: { id: number; title: string }) => ({ id: d.id, texto: d.title })))
+    } catch {
+      setTarefas([{ id: 1, texto: "Estudar React" }, { id: 2, texto: "Construir o capstone" }])
+    }
+  }
+  carregar()
+}, [])
+```
+
+## O componente de item
+
+Extraímos cada linha num componente próprio, `TarefaItem`, com **props tipadas** — incluindo uma função `onRemover` que o pai passa:
+
+```tsx
+function TarefaItem({ tarefa, onRemover }: { tarefa: Tarefa; onRemover: (id: number) => void }) {
+  return (
+    <li>
+      {tarefa.texto}
+      <button onClick={() => onRemover(tarefa.id)}>remover</button>
+    </li>
+  )
+}
+```
+
+## Adicionar e remover
+
+Adicionar é um formulário controlado: no `onSubmit`, criamos um novo array com spread (imutável) e limpamos o input. Remover é um `filter` — exatamente como no JS, mas aqui o resultado vai para o setter e a tela se atualiza sozinha:
+
+```tsx
+function adicionar(e: React.FormEvent) {
+  e.preventDefault()
+  if (!texto.trim()) return
+  setTarefas([...tarefas, { id: Date.now(), texto }])
+  setTexto("")
+}
+
+function remover(id: number) {
+  setTarefas(tarefas.filter((t) => t.id !== id))
+}
+```
+
+## O app completo
+
+Juntando tudo num arquivo `src/App.tsx`:
+
+```tsx
+import { useState, useEffect } from "react"
+
+type Tarefa = { id: number; texto: string }
+
+function TarefaItem({ tarefa, onRemover }: { tarefa: Tarefa; onRemover: (id: number) => void }) {
+  return (
+    <li>
+      {tarefa.texto}
+      <button onClick={() => onRemover(tarefa.id)}>remover</button>
+    </li>
+  )
+}
+
+export default function App() {
+  const [tarefas, setTarefas] = useState<Tarefa[]>([])
+  const [texto, setTexto] = useState("")
+
+  useEffect(() => {
+    async function carregar() {
+      try {
+        const res = await fetch("https://jsonplaceholder.typicode.com/todos?_limit=3")
+        const dados = await res.json()
+        setTarefas(dados.map((d: { id: number; title: string }) => ({ id: d.id, texto: d.title })))
+      } catch {
+        setTarefas([
+          { id: 1, texto: "Estudar React" },
+          { id: 2, texto: "Construir o capstone" },
+        ])
+      }
+    }
+    carregar()
+  }, [])
+
+  function adicionar(e: React.FormEvent) {
+    e.preventDefault()
+    if (!texto.trim()) return
+    setTarefas([...tarefas, { id: Date.now(), texto }])
+    setTexto("")
+  }
+
+  function remover(id: number) {
+    setTarefas(tarefas.filter((t) => t.id !== id))
+  }
+
+  return (
+    <div>
+      <h1>Minhas Tarefas</h1>
+      <form onSubmit={adicionar}>
+        <input
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder="Nova tarefa..."
+        />
+        <button type="submit">Adicionar</button>
+      </form>
+      <ul>
+        {tarefas.map((t) => (
+          <TarefaItem key={t.id} tarefa={t} onRemover={remover} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+```
+
+## Como rodar
+
+Num projeto Vite React+TS (Dia 1), cole isto em `src/App.tsx` e rode `npm run dev`. Funciona mesmo offline, graças ao fallback do `fetch`.
+
+## Declarativo vs manual
+
+Compare com a versão do JavaScript Essencial. Lá você escrevia `querySelector`, `createElement`, `innerHTML` e montava a `<li>` como string, ligava `addEventListener`, usava delegação de eventos e chamava uma função `render()` à mão a cada mudança. Aqui, **nada disso**: você declara que a tela é `tarefas.map(...)`, e adicionar/remover é só atualizar o array de estado. O React compara o resultado e mexe no DOM por você. Esse é o salto — de "instruir o navegador passo a passo" para "descrever o resultado".
+
+> **Resumo:** O capstone reúne a semana: um `type Tarefa` modela o dado, `useState<Tarefa[]>` guarda a lista (fonte da verdade) e `useState` guarda o input controlado. **`useEffect` com `[]`** carrega via `fetch` (com fallback). A lista vira JSX com **`.map`** e `key={t.id}`, cada item num **`<TarefaItem>` de props tipadas** que recebe `onRemover`. **Adicionar** é um form controlado com atualização imutável (`[...tarefas, nova]`); **remover** é `filter`. O contraste com a versão JS é o aprendizado central: em vez de manipular o DOM à mão (`querySelector`/`createElement`/`innerHTML`/`addEventListener`), você **descreve a UI a partir do estado** e o React cuida do resto. Daqui, o próximo passo é o **React avançado** — render cycle, reconciliation, hooks avançados e performance.

@@ -1,0 +1,64 @@
+# Componentes e JSX
+
+No JavaScript Essencial, para mudar a tela você selecionava elementos e mexia no DOM à mão (`querySelector`, `createElement`, `innerHTML`). React vira esse jogo do avesso: em vez de dar o passo a passo de *como* alterar a página, você **descreve como a tela deve ser** — e o React cuida de atualizar o DOM por você. Esse é o jeito **declarativo**, e ele começa com duas ideias: **componentes** e **JSX**. Como este curso é React com TypeScript desde o início, todo exemplo está em `.tsx`.
+
+Os exemplos são componentes prontos para um projeto React+TS — no fim do dia você cria um e roda.
+
+## O que é React
+
+React é uma biblioteca para construir interfaces a partir de **componentes**: peças de UI reutilizáveis que você combina como blocos de montar. A diferença central para o JS puro é ser **declarativo** — você escreve "a tela mostra este texto e este botão", e quando os dados mudam o React recalcula o que mudou e atualiza o DOM. Você nunca mais escreve `document.querySelector` para montar a interface.
+
+## Seu primeiro componente
+
+Um componente é simplesmente uma **função que retorna JSX** — e cujo nome começa com letra maiúscula (PascalCase):
+
+```tsx
+function Ola() {
+  return <h1>Olá, React!</h1>
+}
+```
+
+Esse `Ola` agora pode ser usado como se fosse uma tag: escrever `<Ola />` em outro componente coloca o `<h1>` na tela. A maiúscula é obrigatória — é assim que o React distingue um componente seu (`<Ola />`) de uma tag HTML comum (`<h1>`).
+
+## JSX é JavaScript, não HTML
+
+Aquele `<h1>` dentro do `return` é **JSX**: uma sintaxe que *parece* HTML mas é convertida em chamadas JavaScript. Por parecer HTML mas ser JS, ele tem algumas regras próprias:
+
+- usa **`className`** em vez de `class` (porque `class` é palavra reservada do JS);
+- insere valores JavaScript com **chaves `{ }`**;
+- todo componente deve retornar **um único elemento raiz** — para agrupar vários sem uma `div` extra, use um Fragment `<> </>`;
+- toda tag precisa ser fechada, inclusive as vazias (`<img />`, `<br />`).
+
+```tsx
+function Cartao() {
+  const nome = "Ana"
+  return (
+    <>
+      <h2 className="titulo">{nome}</h2>
+      <p>{nome.length} letras no nome</p>
+    </>
+  )
+}
+```
+
+Dentro das chaves cabe qualquer expressão JavaScript: `{nome}`, `{nome.length}`, `{2 + 2}`, `{ativo ? "sim" : "não"}`. É a ponte entre os seus dados e a tela.
+
+## Como criar e rodar
+
+Como React precisa de um passo de build (o JSX/TSX é transformado em JS), você não abre um `.tsx` direto no navegador — usa uma ferramenta. A mais comum hoje é o **Vite**:
+
+```bash
+npm create vite@latest meu-app -- --template react-ts
+cd meu-app
+npm install
+npm run dev
+```
+
+Isso cria um projeto React + TypeScript. Os arquivos que importam no começo:
+
+- **`src/App.tsx`** — o componente raiz; é aqui que você escreve os exemplos deste curso;
+- **`src/main.tsx`** — o ponto de entrada, que renderiza `<App />` dentro do HTML da página.
+
+Se preferir não instalar nada agora, dá para colar os exemplos num sandbox online (procure por "React + TS" no StackBlitz ou CodeSandbox) e ver rodando na hora.
+
+> **Resumo:** React constrói interfaces de forma **declarativa** — você descreve a tela e o React atualiza o DOM, em vez de você mexer nele à mão. A unidade é o **componente**: uma **função em PascalCase que retorna JSX**, usada como uma tag (`<Ola />`). **JSX** parece HTML mas é JavaScript: use **`className`** (não `class`), insira valores com **`{ }`**, retorne **um único elemento raiz** (ou um Fragment `<> </>`) e feche todas as tags. Como o código é `.tsx`, rode num projeto real com **`npm create vite@latest -- --template react-ts`** (`src/App.tsx` é onde você escreve; `src/main.tsx` renderiza o `App`) ou num sandbox online.

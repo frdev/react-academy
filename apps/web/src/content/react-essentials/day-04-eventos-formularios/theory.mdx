@@ -1,0 +1,83 @@
+# Eventos e Formulários
+
+Uma interface só ganha vida quando responde ao usuário: um clique, uma tecla, o envio de um formulário. No Dia 6 do JavaScript Essencial você fez isso com `addEventListener`; em React, você liga a função do evento direto no JSX (`onClick`, `onChange`, `onSubmit`) e deixa o **estado** ser a fonte da verdade do que está na tela. Hoje você conecta interação a estado — e monta seu primeiro formulário tipado.
+
+## Lidando com eventos
+
+No JSX, você passa uma **função** para o atributo do evento. Detalhe que pega todo iniciante: passe a função, **não a chame**:
+
+```tsx
+function Botao() {
+  function aoClicar() {
+    console.log("clicou")
+  }
+
+  return <button onClick={aoClicar}>Clique</button>
+}
+```
+
+`onClick={aoClicar}` registra a função para rodar no clique. Se você escrevesse `onClick={aoClicar()}`, a função rodaria **na hora da renderização** (não no clique) — um erro comum. Para passar argumentos, envolva numa arrow: `onClick={() => remover(id)}`.
+
+## Tipando o evento
+
+Quando o handler precisa do objeto do evento, o React tem tipos próprios. Os dois mais comuns:
+
+- **`React.ChangeEvent<HTMLInputElement>`** — mudança num input;
+- **`React.FormEvent`** — envio de formulário.
+
+```tsx
+function aoDigitar(e: React.ChangeEvent<HTMLInputElement>) {
+  console.log(e.target.value)   // o texto atual do input
+}
+```
+
+## Inputs controlados
+
+Em React, o padrão é o **input controlado**: o estado guarda o valor, e o input apenas o exibe e o atualiza. Você liga `value` ao estado e `onChange` ao setter — assim o estado é sempre a fonte da verdade:
+
+```tsx
+import { useState } from "react"
+
+function CampoNome() {
+  const [nome, setNome] = useState("")
+
+  return (
+    <div>
+      <input
+        value={nome}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNome(e.target.value)}
+      />
+      <p>Olá, {nome}</p>
+    </div>
+  )
+}
+```
+
+A cada tecla, `onChange` dispara, o setter atualiza o estado, o componente re-renderiza e o `<p>` mostra o nome na hora. O input nunca guarda valor "por conta própria" — ele reflete o estado.
+
+## Um formulário
+
+Num formulário, o evento de envio é `onSubmit`. Quase sempre você chama `e.preventDefault()` para impedir o comportamento padrão do navegador (recarregar a página):
+
+```tsx
+import { useState } from "react"
+
+function Formulario() {
+  const [texto, setTexto] = useState("")
+
+  function aoEnviar(e: React.FormEvent) {
+    e.preventDefault()          // evita o reload da página
+    console.log("enviado:", texto)
+    setTexto("")                // limpa o campo
+  }
+
+  return (
+    <form onSubmit={aoEnviar}>
+      <input value={texto} onChange={(e) => setTexto(e.target.value)} />
+      <button type="submit">Enviar</button>
+    </form>
+  )
+}
+```
+
+> **Resumo:** Em React você liga eventos no próprio JSX com `onClick`, `onChange`, `onSubmit`, passando a **função** (`onClick={aoClicar}`) — nunca a chamada (`onClick={aoClicar()}` roda na renderização, não no clique); para argumentos, use uma arrow (`onClick={() => remover(id)}`). Tipe o evento com os tipos do React, como **`React.ChangeEvent<HTMLInputElement>`** e **`React.FormEvent`**. O padrão de formulário é o **input controlado**: `value` ligado ao estado e `onChange` ao setter, deixando o estado como fonte da verdade. Em `<form>`, trate o `onSubmit` e chame **`e.preventDefault()`** para o navegador não recarregar a página.

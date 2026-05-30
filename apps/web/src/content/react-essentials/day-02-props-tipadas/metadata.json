@@ -1,0 +1,20 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Props e Composição",
+  "slug": "props-tipadas",
+  "topics": [
+    "passar dados via props",
+    "tipar props com type/interface",
+    "destructuring e valores default",
+    "children e ReactNode",
+    "compor componentes"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

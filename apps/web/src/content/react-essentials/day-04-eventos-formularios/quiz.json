@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a forma correta de registrar um handler de clique?",
+      "options": [
+        "onClick={aoClicar()}",
+        "onClick={aoClicar}",
+        "onClick=aoClicar",
+        "onClick(\"aoClicar\")"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Você passa a referência da função: `onClick={aoClicar}`. Com parênteses (`onClick={aoClicar()}`) a função roda na hora da renderização e o retorno é passado ao onClick — quase nunca o que se quer."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como passar um argumento para o handler de um clique (ex.: o id a remover)?",
+      "options": [
+        "onClick={remover(id)}",
+        "onClick={() => remover(id)}",
+        "onClick={remover, id}",
+        "onClick=\"remover(id)\""
+      ],
+      "correctAnswer": 1,
+      "explanation": "Envolva numa arrow function: `onClick={() => remover(id)}`. Assim você passa uma função que, quando o clique acontecer, chama `remover(id)` — sem executá-la durante a renderização."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual tipo o React fornece para o evento de mudança de um input de texto?",
+      "options": [
+        "React.MouseEvent",
+        "React.ChangeEvent<HTMLInputElement>",
+        "Event<input>",
+        "React.InputEvent<string>"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`React.ChangeEvent<HTMLInputElement>` tipa o evento de `onChange` de um input. Com ele, `e.target.value` é corretamente tipado como string, e o editor te ajuda com autocomplete."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que caracteriza um input controlado em React?",
+      "options": [
+        "O input guarda seu próprio valor internamente",
+        "O `value` é ligado ao estado e o `onChange` atualiza esse estado — o estado é a fonte da verdade",
+        "O input não pode ser editado",
+        "É um input sem o atributo value"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Num input controlado, `value={estado}` e `onChange={e => setEstado(e.target.value)}`. O estado dita o que o input mostra; cada tecla atualiza o estado, que re-renderiza o input. O React, não o DOM, é a fonte da verdade."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Onde está o texto digitado dentro de um handler de `onChange`?",
+      "options": [
+        "e.value",
+        "e.target.value",
+        "e.input",
+        "e.text"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`e.target` é o elemento que disparou o evento (o input), e `e.target.value` é o seu valor atual. É o que você passa ao setter: `setNome(e.target.value)`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que chamar `e.preventDefault()` no `onSubmit` de um formulário?",
+      "options": [
+        "Para limpar o formulário automaticamente",
+        "Para impedir o comportamento padrão do navegador de recarregar a página ao enviar",
+        "Para validar os campos",
+        "Para enviar os dados ao servidor"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Por padrão, enviar um `<form>` recarrega a página (comportamento herdado da web tradicional). `e.preventDefault()` cancela isso, deixando você tratar o envio em JavaScript, atualizando o estado."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Escrever `onClick={enviar()}` registra a função `enviar` para rodar quando o botão for clicado.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. `onClick={enviar()}` executa `enviar` imediatamente durante a renderização e passa o retorno ao onClick. Para rodar no clique, passe a referência: `onClick={enviar}` (ou `onClick={() => enviar()}` se precisar de argumentos)."
+    }
+  ]
+}

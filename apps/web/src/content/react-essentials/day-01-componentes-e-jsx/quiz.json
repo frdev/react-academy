@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que significa dizer que o React é \"declarativo\"?",
+      "options": [
+        "Você precisa declarar todas as variáveis antes de usá-las",
+        "Você descreve como a tela deve ser para um dado estado, e o React atualiza o DOM por você",
+        "Todo código React precisa de ponto e vírgula",
+        "Você manipula o DOM manualmente com querySelector"
+      ],
+      "correctAnswer": 1,
+      "explanation": "No modo declarativo você descreve o resultado (a UI para um certo estado) e o React calcula e aplica as mudanças no DOM. É o oposto do imperativo do JS puro, em que você dava o passo a passo com querySelector/createElement."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que é um componente React, na sua forma mais básica?",
+      "options": [
+        "Um arquivo CSS",
+        "Uma função (com nome em PascalCase) que retorna JSX",
+        "Uma tag HTML personalizada registrada no navegador",
+        "Um objeto de configuração"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um componente é uma função cujo nome começa com maiúscula (PascalCase) e que retorna JSX. Depois ela é usada como uma tag: <Ola />. A maiúscula é o que diferencia um componente seu de uma tag HTML comum."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que no JSX se escreve `className` em vez de `class`?",
+      "options": [
+        "Por estilo, mas `class` também funciona igual",
+        "Porque `class` é uma palavra reservada do JavaScript",
+        "Porque `className` é mais rápido",
+        "Porque o CSS exige isso"
+      ],
+      "correctAnswer": 1,
+      "explanation": "JSX vira JavaScript, e `class` já é uma palavra reservada da linguagem (usada para classes). Para evitar conflito, o atributo de classe CSS no JSX se chama `className`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como você insere o valor de uma variável JavaScript dentro do JSX?",
+      "options": [
+        "Com ${variavel}, como em template strings",
+        "Com chaves: {variavel}",
+        "Com aspas duplas: \"variavel\"",
+        "Com colchetes: [variavel]"
+      ],
+      "correctAnswer": 1,
+      "explanation": "No JSX, chaves `{ }` abrem uma janela para qualquer expressão JavaScript: {nome}, {nome.length}, {2 + 2}. É a ponte entre seus dados e o que aparece na tela. (`${}` é de template strings, não de JSX.)"
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Um componente precisa retornar vários elementos lado a lado, mas sem adicionar uma <div> extra. O que usar?",
+      "options": [
+        "Retornar um array solto de tags",
+        "Um Fragment: <> ... </>",
+        "Não é possível; sempre precisa de uma div",
+        "Separar com vírgulas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O JSX exige um único elemento raiz. O Fragment `<> ... </>` agrupa vários elementos sem criar um nó extra no DOM, evitando divs desnecessárias no layout."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual comando cria um novo projeto React com TypeScript usando Vite?",
+      "options": [
+        "npm install react",
+        "npm create vite@latest meu-app -- --template react-ts",
+        "npx create-react-app meu-app",
+        "node meu-app.tsx"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`npm create vite@latest meu-app -- --template react-ts` gera um projeto React + TypeScript já configurado. Depois é `cd meu-app`, `npm install` e `npm run dev`. O `src/App.tsx` é onde você escreve os componentes."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "JSX é HTML de verdade que o navegador entende diretamente, sem nenhuma transformação.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. JSX apenas se parece com HTML; na verdade é açúcar sintático que uma ferramenta de build (como o Vite) transforma em chamadas JavaScript. Por isso o navegador não abre um .tsx direto — é preciso o passo de build."
+    }
+  ]
+}

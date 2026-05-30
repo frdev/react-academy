@@ -1,0 +1,72 @@
+# Props e Composição
+
+Um componente que sempre mostra a mesma coisa tem pouca serventia. As **props** mudam isso: são os dados que um componente recebe de quem o usa — como os parâmetros de uma função. É assim que um mesmo `Saudacao` cumprimenta a Ana numa hora e o João na outra. E porque este curso é React com TypeScript, você vai **tipar as props desde o primeiro componente** — assim o editor te avisa se esquecer um dado ou passar o tipo errado.
+
+## Passando dados com props
+
+Quem usa o componente passa props como se fossem atributos de uma tag:
+
+```tsx
+function App() {
+  return <Saudacao nome="Ana" />
+}
+```
+
+Dentro do componente, as props chegam como um objeto. O valor de `nome` será `"Ana"`.
+
+## Tipando props
+
+Aqui mora o coração do React com TypeScript: você descreve o formato das props com um `type` (ou `interface`) e anota o parâmetro. O destructuring extrai cada prop direto:
+
+```tsx
+type Props = {
+  nome: string
+  idade: number
+}
+
+function Saudacao({ nome, idade }: Props) {
+  return <p>{nome}, {idade} anos</p>
+}
+```
+
+Agora `<Saudacao nome="Ana" />` (sem `idade`) vira um erro no editor, e `<Saudacao nome={42} />` também — o TypeScript protege o contrato do componente. Esse `{ nome, idade }: Props` é o padrão que você vai repetir em todo componente.
+
+## Props opcionais e valores default
+
+Uma prop que pode faltar leva `?` no tipo. Para dar um valor quando ela não vem, use default no destructuring:
+
+```tsx
+type Props = {
+  nome: string
+  saudacao?: string   // opcional
+}
+
+function Ola({ nome, saudacao = "Olá" }: Props) {
+  return <p>{saudacao}, {nome}!</p>
+}
+```
+
+`<Ola nome="Ana" />` mostra "Olá, Ana!"; `<Ola nome="Ana" saudacao="Oi" />` mostra "Oi, Ana!".
+
+## children e composição
+
+Há uma prop especial, **`children`**: é o conteúdo que você coloca *entre* as tags de abertura e fechamento de um componente. Seu tipo é `React.ReactNode` (qualquer coisa renderizável: JSX, texto, números). É o que permite criar componentes "embrulho":
+
+```tsx
+function Cartao({ children }: { children: React.ReactNode }) {
+  return <div className="cartao">{children}</div>
+}
+
+function App() {
+  return (
+    <Cartao>
+      <h2>Título dentro do cartão</h2>
+      <p>Qualquer conteúdo vira children.</p>
+    </Cartao>
+  )
+}
+```
+
+Montar telas combinando componentes pequenos assim — uns dentro dos outros, passando dados por props — é a **composição**, a ideia central do React. Um componente `App` orquestra vários `<Cartao>`, `<Saudacao>` e afins, cada um com uma responsabilidade clara.
+
+> **Resumo:** **Props** são os dados que um componente recebe de quem o usa, escritos como atributos (`<Saudacao nome="Ana" />`) e recebidos como um objeto. Em React com TS, você **tipa as props** com um `type`/`interface` e anota o parâmetro com destructuring (`function Saudacao({ nome }: Props)`) — o editor então cobra os dados certos. Props podem ser **opcionais** (`saudacao?: string`) com **valor default** no destructuring (`{ saudacao = "Olá" }`). A prop especial **`children`** (tipo `React.ReactNode`) é o conteúdo entre as tags, base dos componentes "embrulho". Combinar componentes pequenos uns dentro dos outros é a **composição** — o jeito React de montar interfaces. Props são somente leitura: um componente nunca altera as próprias props.

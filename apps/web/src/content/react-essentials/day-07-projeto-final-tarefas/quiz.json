@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Como o estado da lista de tarefas é declarado, com TypeScript?",
+      "options": [
+        "const tarefas = []",
+        "const [tarefas, setTarefas] = useState<Tarefa[]>([])",
+        "let tarefas: Tarefa[]",
+        "const tarefas = useState()"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`useState<Tarefa[]>([])` cria o estado da lista, tipado como array de `Tarefa` e iniciando vazio. Esse array é a fonte da verdade: a tela é sempre um reflexo dele."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que o useEffect que carrega as tarefas usa array de dependências `[]`?",
+      "options": [
+        "Para rodar a cada tecla digitada",
+        "Para rodar uma única vez, quando o componente monta",
+        "Para nunca rodar",
+        "Para rodar sempre que `tarefas` mudar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `[]`, a busca acontece uma vez, na montagem do componente — o comportamento desejado para carregar dados iniciais ao abrir a tela. Se dependesse de `tarefas`, criaria um loop (carregar muda tarefas, que dispara carregar de novo)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como uma nova tarefa é adicionada ao estado, ao enviar o formulário?",
+      "options": [
+        "tarefas.push(nova)",
+        "setTarefas([...tarefas, nova]) — cria um novo array de forma imutável",
+        "tarefas = [...tarefas, nova]",
+        "document.querySelector('ul').append(nova)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Atualização imutável via setter: `setTarefas([...tarefas, nova])` cria um novo array com o item adicionado e dispara o re-render. Nada de `push` (muta) nem de manipular o DOM diretamente."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como uma tarefa é removida?",
+      "options": [
+        "Removendo o <li> do DOM com remove()",
+        "setTarefas(tarefas.filter(t => t.id !== id)) — recria a lista sem o item",
+        "tarefas.splice(id, 1)",
+        "delete tarefas[id]"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`filter` devolve um novo array sem a tarefa do id removido, passado ao setter. A tela se atualiza sozinha — você não toca no DOM. É o mesmo `filter` do JS, mas dirigindo o estado em vez do DOM."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como o componente `TarefaItem` consegue remover a si mesmo ao clicar em \"remover\"?",
+      "options": [
+        "Ele acessa o estado do pai diretamente",
+        "Ele recebe uma função `onRemover` por prop (tipada) e a chama com o id da tarefa",
+        "Ele usa querySelector para se apagar",
+        "Não é possível"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O pai passa `onRemover` como prop tipada (`(id: number) => void`), e o `TarefaItem` a chama no clique: `onClick={() => onRemover(tarefa.id)}`. O filho avisa o pai, que atualiza o estado — fluxo de dados típico do React."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que cada `<TarefaItem>` no `.map` recebe `key={t.id}`?",
+      "options": [
+        "Para estilizar o item",
+        "Para dar a cada item identidade única e estável, ajudando o React a atualizar a lista corretamente",
+        "Para ordenar alfabeticamente",
+        "Para passar o id como texto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A `key` única e estável (o `id` da tarefa) permite ao React rastrear cada item entre renders — essencial quando itens são adicionados e removidos, como neste app."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Neste app em React, você usa `querySelector` e mexe no DOM à mão para adicionar e remover tarefas.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Esse era o jeito da versão em JavaScript puro. Em React, você só atualiza o array de estado (`tarefas`) e descreve a UI como `tarefas.map(...)`; o React compara e atualiza o DOM por você. É a diferença entre imperativo e declarativo."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Componentes e JSX",
+  "slug": "componentes-e-jsx",
+  "topics": [
+    "o que é React (UI declarativa)",
+    "componente: função que retorna JSX",
+    "JSX é JavaScript (className, {expressões}, raiz única)",
+    "arquivos .tsx",
+    "como criar e rodar um projeto React+TS com Vite"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

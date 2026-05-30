@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é um \"efeito colateral\" no contexto do React?",
+      "options": [
+        "Um bug causado por estado errado",
+        "Algo que acontece além de calcular e retornar o JSX — como buscar dados, timers ou listeners",
+        "Um efeito visual de animação",
+        "A re-renderização do componente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Renderizar deveria apenas calcular o JSX a partir do estado. Buscar dados de rede, iniciar timers ou ouvir eventos são efeitos colaterais — interações com o mundo fora do render — e ficam no useEffect."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que significa passar um array de dependências vazio `[]` ao useEffect?",
+      "options": [
+        "O efeito nunca roda",
+        "O efeito roda uma vez, quando o componente monta",
+        "O efeito roda a cada render",
+        "O efeito roda quando qualquer estado muda"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `[]`, o efeito roda apenas uma vez, na montagem do componente. É o padrão para carregar dados ao abrir a tela. Com `[x]`, rodaria também quando `x` mudasse; sem array, rodaria após todo render."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que se define uma função async DENTRO do useEffect, em vez de tornar o callback do useEffect async?",
+      "options": [
+        "Por estilo apenas",
+        "Porque o callback do useEffect não pode ser async (ele deve retornar nada ou uma função de cleanup, não uma promise)",
+        "Porque async não funciona em React",
+        "Porque é mais rápido"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A função do useEffect deve retornar `undefined` ou uma função de cleanup — não uma promise. Como toda função `async` retorna uma promise, define-se uma função async interna (ex.: `carregar`) e a chama dentro do efeito."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Depois do fetch trazer os dados, como eles aparecem na tela?",
+      "options": [
+        "Manipulando o DOM com querySelector",
+        "Chamando o setter do estado (ex.: setTarefas(...)), o que re-renderiza o componente",
+        "Os dados aparecem automaticamente sem estado",
+        "Recarregando a página"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Você passa os dados ao setter (`setTarefas(...)`). Isso atualiza o estado e dispara um re-render, no qual o JSX agora reflete os dados carregados. O React cuida do DOM; você só atualiza o estado."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como o componente reflete que a requisição ainda está em andamento ou falhou?",
+      "options": [
+        "Não há como saber",
+        "Guardando estados de `carregando` e `erro` e usando renderização condicional para mostrar cada caso",
+        "Bloqueando a tela inteira",
+        "Usando um segundo useEffect"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O padrão é manter estados como `carregando` (boolean) e `erro` (string|null), atualizá-los no try/catch/finally, e renderizar condicionalmente: carregando → \"Carregando...\", erro → mensagem, sucesso → os dados."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para que serve a função retornada de dentro do useEffect (ex.: `return () => clearInterval(id)`)?",
+      "options": [
+        "É o valor que o componente renderiza",
+        "É a função de cleanup, que o React chama para desfazer o efeito (cancelar timers, remover listeners)",
+        "É o que dispara o próximo efeito",
+        "Não tem função, é ignorada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando o efeito cria algo que precisa ser desfeito (um intervalo, uma inscrição), ele retorna uma função de cleanup. O React a executa ao desmontar o componente (ou antes de re-rodar o efeito), evitando vazamentos."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "O callback do useEffect roda durante a renderização, antes de a tela ser pintada.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. O React executa o efeito DEPOIS de renderizar e pintar a tela. Por isso o useEffect é o lugar certo para efeitos colaterais: eles não bloqueiam nem interferem no cálculo do JSX."
+    }
+  ]
+}

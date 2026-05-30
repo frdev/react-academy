@@ -1,0 +1,20 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "useEffect e Dados",
+  "slug": "useeffect-dados",
+  "topics": [
+    "efeitos colaterais",
+    "useEffect e o array de dependências",
+    "buscar dados com fetch dentro do effect",
+    "estados de loading e erro",
+    "cleanup (introdução)"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

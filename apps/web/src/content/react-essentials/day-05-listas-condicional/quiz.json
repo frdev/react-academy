@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Como renderizar uma lista de itens (um array) como elementos JSX?",
+      "options": [
+        "Com um loop for dentro do return",
+        "Usando `.map` para transformar cada item em JSX, dentro de chaves",
+        "Com a tag <list>",
+        "Repetindo a tag manualmente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Use `.map` retornando JSX: `{itens.map(i => <li key={i.id}>{i.nome}</li>)}`. As chaves abrem JavaScript no JSX, e o map devolve um array de elementos que o React renderiza."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Para que serve a prop `key` ao renderizar uma lista?",
+      "options": [
+        "Para estilizar cada item",
+        "Para dar a cada item uma identidade única e estável, ajudando o React a saber o que mudou entre renders",
+        "Para ordenar a lista",
+        "É apenas decorativa"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A `key` identifica cada item entre renderizações, permitindo ao React atualizar, adicionar ou remover apenas o necessário. Deve ser única e estável por item — normalmente o `id` do dado."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `{logado && <p>Bem-vindo!</p>}` faz?",
+      "options": [
+        "Sempre renderiza o parágrafo",
+        "Renderiza o parágrafo apenas quando `logado` é verdadeiro",
+        "Renderiza dois parágrafos",
+        "Gera um erro de sintaxe"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O operador `&&` renderiza o elemento à direita só quando a condição à esquerda é verdadeira (caso contrário, nada aparece). É o padrão para mostrar algo condicionalmente."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a forma de escolher entre dois elementos conforme uma condição, inline no JSX?",
+      "options": [
+        "Um if/else dentro das chaves",
+        "O operador ternário: {cond ? <A /> : <B />}",
+        "Um switch no JSX",
+        "Dois && seguidos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O ternário `{cond ? <A /> : <B />}` é uma expressão (devolve um valor), então funciona dentro das chaves do JSX. `if/else` é uma instrução e não pode ser usado inline ali — para isso, usa-se early return antes do JSX."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual o melhor valor para usar como `key` numa lista que pode ser reordenada ou ter itens removidos?",
+      "options": [
+        "O índice do array (0, 1, 2...)",
+        "Um id único e estável de cada item",
+        "Math.random() a cada render",
+        "O texto do item"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um id estável e único por item é o ideal. O índice do array é problemático quando a lista muda de ordem/tamanho (a key de um item passa a apontar para outro), e `Math.random()` muda a cada render, quebrando a identidade."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Quando a tela inteira depende de uma condição (ex.: dados ainda não chegaram), qual técnica deixa o código mais limpo?",
+      "options": [
+        "Aninhar vários ternários",
+        "Early return: `if (!dados) return <p>Carregando...</p>` antes do JSX principal",
+        "Usar três operadores && seguidos",
+        "Renderizar tudo e esconder com CSS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O early return trata o caso especial cedo (`if (!dados) return <p>Carregando...</p>`) e deixa o resto do componente focado no caso normal, sem aninhar condicionais no JSX."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "É seguro usar sempre o índice do array como `key`, em qualquer situação.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Em listas estáticas pode funcionar, mas quando a lista é reordenada, filtrada ou tem itens inseridos/removidos, o índice como key confunde o React e causa bugs (estado de input no item errado, por exemplo). Prefira um id estável."
+    }
+  ]
+}

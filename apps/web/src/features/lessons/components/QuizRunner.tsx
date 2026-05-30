@@ -201,6 +201,15 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-06': () => import('@/content/javascript-essentials/day-06-dom-e-eventos/quiz.json'),
     'day-07': () => import('@/content/javascript-essentials/day-07-projeto-final-app/quiz.json'),
   },
+  'react-essentials': {
+    'day-01': () => import('@/content/react-essentials/day-01-componentes-e-jsx/quiz.json'),
+    'day-02': () => import('@/content/react-essentials/day-02-props-tipadas/quiz.json'),
+    'day-03': () => import('@/content/react-essentials/day-03-estado-usestate/quiz.json'),
+    'day-04': () => import('@/content/react-essentials/day-04-eventos-formularios/quiz.json'),
+    'day-05': () => import('@/content/react-essentials/day-05-listas-condicional/quiz.json'),
+    'day-06': () => import('@/content/react-essentials/day-06-useeffect-dados/quiz.json'),
+    'day-07': () => import('@/content/react-essentials/day-07-projeto-final-tarefas/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

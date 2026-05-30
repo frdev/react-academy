@@ -1,0 +1,22 @@
+{
+  "id": "day-07",
+  "day": 7,
+  "week": 1,
+  "title": "Projeto Final — Tarefas em React",
+  "slug": "projeto-final-tarefas",
+  "topics": [
+    "modelar o estado com um tipo",
+    "carregar dados com useEffect + fetch",
+    "renderizar a lista com map",
+    "componente de item com props tipadas",
+    "formulário controlado para adicionar",
+    "remover com filter imutável",
+    "declarativo (React) vs DOM manual (JS)"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}
