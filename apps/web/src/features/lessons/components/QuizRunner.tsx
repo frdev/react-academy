@@ -163,6 +163,11 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-02': () => import('@/content/regex/day-02-regex-na-pratica/quiz.json'),
     'day-03': () => import('@/content/regex/day-03-boas-praticas-cheatsheet/quiz.json'),
   },
+  'package-managers': {
+    'day-01': () => import('@/content/package-managers/day-01-o-que-e/quiz.json'),
+    'day-02': () => import('@/content/package-managers/day-02-npm-na-pratica/quiz.json'),
+    'day-03': () => import('@/content/package-managers/day-03-npm-yarn-pnpm/quiz.json'),
+  },
 }
 
 interface QuizQuestion {
