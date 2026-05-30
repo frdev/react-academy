@@ -1,7 +1,7 @@
 {
   "id": "day-05",
   "day": 5,
-  "week": 2,
+  "week": 1,
   "title": "RAG & embeddings",
   "slug": "rag-embeddings",
   "topics": [
