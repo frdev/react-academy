@@ -1,0 +1,88 @@
+# Remotes, Pull Requests e Conflitos
+
+Até aqui tudo foi local. Mas o Git brilha mesmo quando várias pessoas trabalham no mesmo projeto. Hoje você conecta o seu repositório a um remoto (como o GitHub), aprende o fluxo de Pull Request que os times usam para revisar código, e encara o inevitável: conflitos.
+
+## Remotes: o repositório lá fora
+
+Um **remote** é uma cópia do repositório hospedada em outro lugar (GitHub, GitLab…). Por convenção, o remote principal se chama **`origin`**.
+
+```text
+seu computador  ⇄  origin (GitHub)
+   git push  →   envia os seus commits
+   git fetch ←   baixa commits dos outros
+```
+
+Os comandos do dia a dia:
+
+```bash
+git clone <url>     # baixa um repositório remoto pela primeira vez
+git fetch           # baixa commits novos do remoto SEM mesclar
+git pull            # fetch + merge: baixa E integra na sua branch atual
+git push            # envia os seus commits locais para o remoto
+```
+
+A diferença entre `fetch` e `pull` confunde no início: `fetch` só **baixa** (você vê o que mudou antes de integrar); `pull` **baixa e já mescla** na sua branch. Ou seja, `pull` é `fetch` + `merge` em um passo só.
+
+Quando você cria uma branch local e dá `git push -u origin feature`, ela passa a **rastrear** a branch remota (vira uma *tracking branch*) — depois disso, `git push` e `git pull` sozinhos já sabem com quem falar.
+
+## Pull Requests
+
+Você *poderia* dar push direto na `main`, mas times não fazem isso. Em vez disso, usam **Pull Requests** (PRs) — no GitHub, é o mecanismo de propor mudanças e revisá-las antes de integrar.
+
+O fluxo:
+
+```text
+1. cria branch     →  git switch -c feat/login
+2. trabalha        →  commits (conventional!)
+3. envia           →  git push -u origin feat/login
+4. abre o PR       →  no GitHub: "feat/login → main"
+5. code review     →  o time comenta, sugere, aprova
+6. merge           →  o PR é integrado na main
+```
+
+O PR existe para criar um ponto de **revisão**: outra pessoa lê o seu código, aponta problemas e aprova antes de virar parte da `main`. É onde a qualidade é discutida.
+
+## Conflitos: por que acontecem
+
+Um **conflito** acontece quando duas mudanças tocam **a mesma região do mesmo arquivo** de formas diferentes, e o Git não sabe qual manter. Ele não adivinha — ele para e pede para você decidir.
+
+```text
+         A───B───C        ← main: alterou a linha 10
+              \
+               D───E       ← feature: também alterou a linha 10
+```
+
+Ao mesclar a `feature` na `main`, o Git marca o trecho conflitante assim, **dentro do arquivo**:
+
+```text
+<<<<<<< HEAD
+preco = total * 0.9        (versão da main)
+=======
+preco = total - desconto   (versão da feature)
+>>>>>>> feature
+```
+
+Para resolver, você **edita o arquivo à mão**: escolhe uma das versões, combina as duas, ou escreve algo novo — e **apaga os marcadores** `<<<<<<<`, `=======` e `>>>>>>>`. Depois:
+
+```bash
+git add arquivo-resolvido.ts   # marca como resolvido
+git commit                     # conclui o merge
+```
+
+Conflito não é erro nem sinal de que você fez algo errado — é só o Git sendo honesto sobre uma decisão que precisa de um humano.
+
+## O fluxo completo do dia a dia
+
+Juntando os três dias, eis o ciclo de trabalho de quase todo time:
+
+```bash
+git switch main && git pull         # 1. parta da main atualizada
+git switch -c feat/checkout         # 2. crie a sua branch
+# ... edite, git add ...
+git commit -m "feat: novo checkout" # 3. commits atômicos e convencionais
+git push -u origin feat/checkout    # 4. envie a branch
+# 5. abra o PR no GitHub, resolva conflitos se aparecerem, peça review
+# 6. depois de aprovado, faça o merge do PR
+```
+
+> **Resumo:** Um remote (`origin`) é a cópia hospedada do repositório: `clone` baixa pela primeira vez, `fetch` baixa sem mesclar, `pull` baixa e mescla, `push` envia os seus commits. Times integram via Pull Requests — branch → push → PR → review → merge — para revisar antes de juntar na `main`. Conflitos surgem quando duas mudanças tocam a mesma região; o Git marca os trechos com `<<<<<<<`/`=======`/`>>>>>>>` e você resolve editando o arquivo, removendo os marcadores e dando `git add` + `git commit`.
