@@ -29,7 +29,7 @@ export const STACKS: Stack[] = [
     tagline: '7 dias de JavaScript do zero ao assíncrono',
     description: 'Tipos, funções, arrays, objetos, async/await, fetch e DOM — a rampa para o JS avançado.',
     totalDays: 7,
-    status: 'coming-soon',
+    status: 'available',
     level: 'fundamentos',
     color: 'amber',
     weekThemes: ['A Linguagem na Prática'],

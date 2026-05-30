@@ -1,0 +1,134 @@
+# Operadores, Condicionais e Loops
+
+Um programa que só guarda valores não faz nada — ele precisa **decidir** e **repetir**. Decidir: "se o saldo é positivo, libere a compra". Repetir: "para cada item do carrinho, some o preço". Hoje você aprende as ferramentas do fluxo de controle: operadores para calcular e comparar, condicionais para ramificar e loops para repetir. É aqui que o código começa a *fazer coisas*.
+
+Cada exemplo é JavaScript puro: cole no console (F12 → Console) ou rode com Node. A saída vem no comentário `// →`.
+
+## Operadores aritméticos e de atribuição
+
+Os de cálculo são os esperados, mais o **resto da divisão** (`%`), muito útil:
+
+```js
+10 + 3   // → 13
+10 - 3   // → 7
+10 * 3   // → 30
+10 / 3   // → 3.333...
+10 % 3   // → 1   (resto da divisão — ótimo para "é par?": n % 2 === 0)
+```
+
+E os de atribuição encurtam "mexer na própria variável":
+
+```js
+let total = 10
+total += 5   // total = total + 5 → 15
+total *= 2   // → 30
+total++      // incrementa em 1 → 31
+```
+
+## Comparação estrita
+
+Comparar gera um booleano. Como vimos no Dia 1, prefira **`===`** e **`!==`** (sem coerção):
+
+```js
+5 === 5     // → true
+5 === "5"   // → false  (tipos diferentes)
+5 !== 2     // → true
+7 > 3       // → true
+3 <= 3      // → true
+```
+
+## Truthy e falsy
+
+Fora de uma comparação, qualquer valor é tratado como "verdadeiro" ou "falso" quando entra num `if`. Os **falsy** (tratados como falso) são poucos — decore a lista:
+
+```js
+// Falsy: false, 0, "" (string vazia), null, undefined, NaN
+// Todo o resto é truthy.
+
+if ("")    { /* NÃO entra: string vazia é falsy */ }
+if ("0")   { /* ENTRA: string com conteúdo é truthy, mesmo sendo "0" */ }
+if (0)     { /* NÃO entra */ }
+if ([])    { /* ENTRA: array vazio é truthy! */ }
+```
+
+Os dois últimos pegam muita gente: `"0"` (string) é truthy, e um **array vazio é truthy**.
+
+## Operadores lógicos e curto-circuito
+
+`&&` (e), `||` (ou) e `!` (não) combinam condições — e têm um truque: o **curto-circuito** devolve um dos operandos, não só `true`/`false`:
+
+```js
+true && false   // → false
+true || false   // → true
+!true           // → false
+
+// Curto-circuito útil: valor padrão
+const nome = ""
+console.log(nome || "anônimo")   // → "anônimo"  (|| pega o 1º truthy)
+```
+
+Há também o **`??`** (nullish coalescing), parente do `||`, mas que só "cai" para o padrão quando o valor é `null` ou `undefined` — não em `0` ou `""`:
+
+```js
+const qtd = 0
+console.log(qtd || 5)   // → 5   (0 é falsy, então || troca — pode não ser o que você quer)
+console.log(qtd ?? 5)   // → 0   (?? só troca se for null/undefined)
+```
+
+## Condicionais: if, ternário e switch
+
+O `if`/`else if`/`else` ramifica o fluxo:
+
+```js
+const nota = 75
+if (nota >= 90) {
+  console.log("A")
+} else if (nota >= 60) {
+  console.log("B")   // → "B"
+} else {
+  console.log("Reprovado")
+}
+```
+
+Para um "se/senão" curto que **devolve um valor**, use o **ternário** `condição ? caso_true : caso_false`:
+
+```js
+const idade = 20
+const status = idade >= 18 ? "adulto" : "menor"
+console.log(status)   // → "adulto"
+```
+
+E o `switch` compara um valor contra vários casos. **Cuidado:** sem `break`, a execução "vaza" (fall-through) para o próximo caso:
+
+```js
+const dia = "sab"
+switch (dia) {
+  case "sab":
+  case "dom":
+    console.log("Fim de semana")   // → "Fim de semana"
+    break
+  default:
+    console.log("Dia útil")
+}
+```
+
+## Loops: for, while e for...of
+
+O `for` clássico controla um contador; o `while` repete enquanto a condição for verdadeira; e o **`for...of`** percorre os valores de um array — o mais legível para listas:
+
+```js
+// for clássico
+for (let i = 0; i < 3; i++) {
+  console.log(i)   // → 0, 1, 2
+}
+
+// for...of: direto nos valores
+const frutas = ["maçã", "uva", "pera"]
+for (const fruta of frutas) {
+  console.log(fruta)   // → "maçã", "uva", "pera"
+}
+```
+
+`break` interrompe o loop; `continue` pula para a próxima volta. (Cuidado: `for...in` existe, mas itera **chaves/índices**, não valores — prefira `for...of` para arrays.)
+
+> **Resumo:** Calcule com os aritméticos (incluindo **`%`**, o resto) e encurte com `+=`/`++`. Compare com **`===`/`!==`**. Em contexto booleano, conheça os **falsy** (`false, 0, "", null, undefined, NaN`) — lembrando que `"0"` e `[]` são **truthy**. Combine condições com `&&`/`||`/`!`, use o **curto-circuito** (`valor || padrão`) e o **`??`** quando só `null`/`undefined` devem cair no padrão. Ramifique com `if`/`else`, com o **ternário** (quando precisa de um valor) ou com `switch` (lembrando do **`break`** para evitar fall-through). Repita com `for`, `while` e, para arrays, o legível **`for...of`**.

@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `const` e `let`?",
+      "options": [
+        "`const` é mais rápido em runtime",
+        "`const` não pode ser reatribuída; `let` pode",
+        "`let` só funciona dentro de funções",
+        "Não há diferença, são sinônimos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`const` declara uma variável que não pode receber um novo valor (reatribuir dá TypeError). `let` permite reatribuição. A recomendação é usar `const` por padrão e só trocar para `let` quando o valor realmente muda."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que `typeof null` retorna?",
+      "options": [
+        "\"null\"",
+        "\"undefined\"",
+        "\"object\"",
+        "\"boolean\""
+      ],
+      "correctAnswer": 2,
+      "explanation": "`typeof null` retorna `\"object\"` — um bug histórico do JavaScript mantido por compatibilidade. Por isso, para checar se um valor é `null`, compare diretamente com `x === null` em vez de usar `typeof`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual o resultado de `\"5\" + 1`?",
+      "options": [
+        "6",
+        "\"51\"",
+        "51",
+        "Erro de tipo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com o operador `+`, se um dos lados é string, o outro é convertido para string e os dois são concatenados. Então `\"5\" + 1` vira `\"51\"`. Já `\"5\" - 1` daria `4`, porque `-` força conversão numérica."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que se recomenda usar `===` em vez de `==`?",
+      "options": [
+        "`===` é mais curto de digitar",
+        "`==` converte tipos antes de comparar (coerção), o que esconde bugs; `===` compara tipo e valor sem converter",
+        "`===` só funciona com números",
+        "`==` foi removido do JavaScript moderno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `==` aplica coerção antes de comparar, gerando resultados confusos como `\"5\" == 5` (true) ou `0 == \"\"` (true). O `===` compara tipo e valor sem converter, sendo previsível. Use sempre `===` e `!==`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual destes NÃO é um tipo primitivo do JavaScript?",
+      "options": [
+        "string",
+        "number",
+        "boolean",
+        "array"
+      ],
+      "correctAnswer": 3,
+      "explanation": "`string`, `number` e `boolean` são primitivos (junto de `null`, `undefined`, `bigint` e `symbol`). Um `array` é um objeto — `typeof [] ` retorna `\"object\"`. Arrays e objetos são tipos de referência, não primitivos."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Dado `const nome = \"Ana\"`, qual o valor de `` `Oi, ${nome}!` ``?",
+      "options": [
+        "\"Oi, ${nome}!\"",
+        "\"Oi, Ana!\"",
+        "\"Oi, nome!\"",
+        "Erro de sintaxe"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Numa template string (entre crases), `${expressão}` é substituído pelo valor da expressão. Como `nome` vale `\"Ana\"`, o resultado é `\"Oi, Ana!\"`. Dentro de `${}` cabe qualquer expressão, como `${idade + 1}`."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "`const` impede reatribuir a variável, mas um objeto declarado com `const` ainda pode ter suas propriedades alteradas.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. `const` trava a ligação entre o nome e o valor (você não pode apontar a variável para outro valor), mas não congela o conteúdo de um objeto: `const u = { nome: \"Ana\" }; u.nome = \"Bia\"` é válido. Para congelar o objeto em si, usaria-se `Object.freeze`."
+    }
+  ]
+}

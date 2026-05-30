@@ -1,0 +1,20 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "DOM e Eventos",
+  "slug": "dom-e-eventos",
+  "topics": [
+    "o que é o DOM",
+    "selecionar elementos com querySelector",
+    "manipular: textContent, classList, createElement",
+    "addEventListener e o objeto event",
+    "delegação de eventos"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

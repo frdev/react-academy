@@ -1,0 +1,22 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Assíncrono",
+  "slug": "assincrono",
+  "topics": [
+    "síncrono vs assíncrono",
+    "event loop (intro conceitual)",
+    "callbacks",
+    "promises com then/catch",
+    "async/await",
+    "try/catch para erros",
+    "fetch e JSON"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

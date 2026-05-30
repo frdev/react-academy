@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença prática entre uma declaração de função e uma expressão de função?",
+      "options": [
+        "Nenhuma, são idênticas",
+        "A declaração é içada (hoisted) e pode ser chamada antes de sua linha; a expressão não",
+        "A expressão é mais rápida",
+        "A declaração não pode ter parâmetros"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Declarações (`function f(){}`) são içadas: o JS as conhece antes da execução chegar à linha, então podem ser chamadas acima. Expressões (`const f = function(){}`) só existem a partir da linha que as atribui — chamá-las antes dá ReferenceError."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que `const dobro = n => n * 2` faz quando chamada com `dobro(5)`?",
+      "options": [
+        "Retorna undefined",
+        "Retorna 10 (retorno implícito)",
+        "Dá erro de sintaxe",
+        "Retorna 5"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma arrow function sem chaves tem retorno implícito: a expressão após `=>` é o valor retornado. `n => n * 2` com `5` retorna `10`. Se tivesse chaves (`n => { n * 2 }`), retornaria `undefined`, pois faltaria o `return` explícito."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Em `function somarTudo(...numeros) {}`, o que o `...numeros` faz?",
+      "options": [
+        "Espalha o array em argumentos separados",
+        "Agrupa todos os argumentos passados num array chamado `numeros`",
+        "Cria três parâmetros obrigatórios",
+        "É um comentário"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Na lista de parâmetros, `...` é o rest: ele coleta todos os argumentos recebidos num único array. `somarTudo(1, 2, 3)` faz `numeros` valer `[1, 2, 3]`, permitindo funções que aceitam um número variável de argumentos."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que retorna `saudar()` se a função é `function saudar(nome = \"amigo\") { return nome }`?",
+      "options": [
+        "undefined",
+        "\"amigo\"",
+        "Erro: argumento faltando",
+        "null"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`nome = \"amigo\"` é um parâmetro com valor default: quando você chama sem passar argumento, `nome` assume `\"amigo\"`. Por isso `saudar()` retorna `\"amigo\"` e `saudar(\"Ana\")` retornaria `\"Ana\"`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "No exemplo do contador, por que a função retornada por `criarContador()` consegue continuar incrementando `contagem`?",
+      "options": [
+        "Porque `contagem` é uma variável global",
+        "Por causa da closure: a função lembra as variáveis do escopo onde foi criada",
+        "Porque o JavaScript reexecuta `criarContador` a cada chamada",
+        "Porque `contagem` está no escopo de bloco"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Isso é uma closure: a função interna mantém acesso às variáveis do escopo onde foi definida (`contagem`), mesmo depois de `criarContador()` ter retornado. Cada contador criado guarda sua própria `contagem` — a base do estado em hooks como `useState`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Uma variável declarada com `const` dentro de um bloco `if { }` pode ser acessada fora desse bloco?",
+      "options": [
+        "Sim, `const` tem escopo global",
+        "Não, `let` e `const` têm escopo de bloco — só existem dentro do `{ }`",
+        "Sim, desde que o `if` seja verdadeiro",
+        "Apenas dentro de outras funções"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`let` e `const` respeitam o escopo de bloco: uma variável declarada dentro de `{ }` (de um `if`, `for` etc.) não existe fora dele. Código interno enxerga variáveis externas, mas o externo não enxerga as internas."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Uma arrow function com corpo entre chaves `{ }` precisa de `return` explícito para devolver um valor.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. O retorno implícito só vale quando não há chaves (`n => n * 2`). Com chaves, o corpo é um bloco normal: `n => { n * 2 }` não retorna nada (undefined); seria preciso `n => { return n * 2 }`."
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+# Valores, Tipos e Variáveis
+
+Todo programa em JavaScript faz a mesma coisa o tempo todo: **guarda valores** em variáveis e os **transforma**. Antes de escrever lógica, loops ou funções, você precisa saber que tipos de valor existem, como guardá-los e — principalmente — onde o JavaScript prega peças. A maior dessas peças é a **coerção**: o JS converte tipos por conta própria, e isso gera bugs silenciosos. Hoje você aprende a base e já sai sabendo se defender.
+
+Cada exemplo é JavaScript puro: cole no console do navegador (F12 → Console) ou rode com Node. A saída esperada vem no comentário `// →`.
+
+## let e const (e por que esquecer o var)
+
+Você declara variáveis com `const` ou `let`:
+
+- **`const`** — o valor **não pode ser reatribuído**. É o padrão: use sempre que puder.
+- **`let`** — pode ser reatribuído. Use só quando a variável realmente muda.
+
+```js
+const nome = "Ana"
+let idade = 30
+
+idade = 31        // ok, let permite
+nome = "Bia"      // ❌ TypeError: Assignment to constant variable
+```
+
+Existe um terceiro, antigo: o **`var`**. Evite. Ele tem regras de escopo confusas (vale na função inteira, não no bloco) e some das bases de código modernas. Comece com `const`; troque para `let` só se precisar reatribuir.
+
+## Os tipos primitivos
+
+Um valor em JavaScript tem um **tipo**. Os primitivos (os tijolos básicos) são:
+
+```js
+const texto = "Olá"      // string  — texto
+const numero = 42        // number  — inteiros e decimais, tudo "number"
+const ligado = true      // boolean — true ou false
+const vazio = null       // null    — "intencionalmente sem valor"
+let indefinido           // undefined — declarado, mas sem valor ainda
+```
+
+Repare: JS tem **um só** tipo numérico (`number`) para inteiro e decimal. E `null` (você zerou de propósito) é diferente de `undefined` (nunca recebeu valor). Existem ainda `bigint` e `symbol`, raros no dia a dia.
+
+## typeof: descobrindo o tipo
+
+O operador `typeof` revela o tipo de um valor — ótimo para depurar:
+
+```js
+typeof "Olá"      // → "string"
+typeof 42         // → "number"
+typeof true       // → "boolean"
+typeof undefined  // → "undefined"
+typeof null       // → "object"  ← a pegadinha histórica do JS
+```
+
+Aquele `typeof null === "object"` é um **bug antigo** da linguagem, mantido por compatibilidade. Decore: para checar `null`, compare direto (`x === null`), não use `typeof`.
+
+## Coerção: o lado traiçoeiro do JS
+
+Quando você mistura tipos, o JavaScript **converte** um deles sem avisar. Com o `+`, se um lado é string, o outro vira string (concatenação); com os outros operadores, ele tenta número:
+
+```js
+"5" + 1    // → "51"   (1 virou "1", concatenou)
+"5" - 1    // → 4      (- não concatena, "5" virou número)
+"5" * 2    // → 10
+```
+
+Isso fica pior nas comparações. O `==` **coage antes de comparar**; o `===` compara tipo **e** valor, sem converter:
+
+```js
+"5" == 5    // → true   (== converteu "5" para 5)
+"5" === 5   // → false  (=== vê string ≠ number)
+0 == ""     // → true   (coerção maluca)
+0 === ""    // → false
+```
+
+**Regra de ouro: use sempre `===` e `!==`.** O `==` esconde bugs; o `===` te protege deles.
+
+## Template strings
+
+Para montar texto com variáveis, use crases (`` ` ``) e `${}` — em vez de somar strings com `+`:
+
+```js
+const nome = "Ana"
+const idade = 30
+
+const msg = `Olá, ${nome}! Você tem ${idade} anos.`
+console.log(msg)   // → "Olá, Ana! Você tem 30 anos."
+```
+
+Dentro de `${}` cabe qualquer expressão (`${idade + 1}`), e a string pode ocupar **várias linhas** sem truque nenhum. É o jeito moderno e legível de montar texto.
+
+> **Resumo:** Declare valores com **`const`** (padrão) e **`let`** (quando muda); esqueça o `var`. Os **primitivos** são `string`, `number` (um só para inteiro e decimal), `boolean`, `null` e `undefined`. Use **`typeof`** para inspecionar tipos — lembrando que `typeof null` retorna `"object"` (bug histórico; cheque `null` com `=== null`). Cuidado com a **coerção**: `"5" + 1` vira `"51"` e o `==` converte tipos antes de comparar (`"5" == 5` é `true`) — por isso **use sempre `===`**. Para montar texto, prefira **template strings** com crases e `${}`.

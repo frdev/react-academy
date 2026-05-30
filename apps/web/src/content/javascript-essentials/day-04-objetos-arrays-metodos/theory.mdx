@@ -1,0 +1,137 @@
+# Objetos, Arrays e Métodos de Array
+
+Quase todo dado real é uma **coleção**: um usuário é um objeto com nome e e-mail; uma lista de produtos é um array de objetos. Saber estruturar esses dados e — sobretudo — **transformá-los** é o que mais se faz em JavaScript no dia a dia. Hoje é o dia mais carregado do curso: objetos, arrays e os métodos de array que você vai usar para sempre (`map`, `filter`, `reduce`). Vá com calma; cada peça aqui reaparece o tempo todo, inclusive no React.
+
+Cada exemplo é JavaScript puro: cole no console (F12 → Console) ou rode com Node. A saída vem no comentário `// →`.
+
+## Objetos: criar e acessar
+
+Um **objeto** agrupa dados nomeados em pares `chave: valor`:
+
+```js
+const usuario = {
+  nome: "Ana",
+  idade: 30,
+  ativo: true,
+}
+
+usuario.nome        // → "Ana"      (acesso por ponto)
+usuario["idade"]    // → 30         (acesso por colchete)
+usuario.email = "ana@ex.com"        // adiciona uma propriedade nova
+```
+
+O acesso por **ponto** (`usuario.nome`) é o normal. O por **colchete** (`usuario["nome"]`) serve quando a chave está numa variável:
+
+```js
+const campo = "idade"
+usuario[campo]   // → 30   (precisa de colchete; usuario.campo buscaria a chave "campo")
+```
+
+## Arrays: listas ordenadas
+
+Um **array** é uma lista ordenada, indexada a partir do **zero**:
+
+```js
+const frutas = ["maçã", "uva", "pera"]
+
+frutas[0]        // → "maçã"
+frutas.length    // → 3
+frutas.push("kiwi")   // adiciona no fim → ["maçã","uva","pera","kiwi"]
+```
+
+Arrays costumam guardar objetos — o formato mais comum de dados vindos de uma API:
+
+```js
+const produtos = [
+  { nome: "Caneca", preco: 30 },
+  { nome: "Camiseta", preco: 80 },
+]
+produtos[1].nome   // → "Camiseta"
+```
+
+## Destructuring e spread
+
+**Destructuring** extrai valores para variáveis numa tacada:
+
+```js
+const { nome, idade } = usuario
+console.log(nome)    // → "Ana"
+
+const [primeira, segunda] = frutas
+console.log(primeira)   // → "maçã"
+```
+
+O **spread** (`...`) espalha os itens de um objeto ou array — perfeito para **copiar** ou **mesclar** sem mexer no original:
+
+```js
+const usuario2 = { ...usuario, idade: 31 }   // copia tudo e sobrescreve idade
+const maisFrutas = [...frutas, "manga"]       // novo array com um item a mais
+```
+
+## Transformar com map e filter
+
+Aqui mora o coração do JavaScript moderno. **`map`** cria um **novo array** aplicando uma função a cada item:
+
+```js
+const numeros = [1, 2, 3]
+const dobrados = numeros.map(n => n * 2)
+console.log(dobrados)   // → [2, 4, 6]
+console.log(numeros)    // → [1, 2, 3]  (o original não muda!)
+```
+
+**`filter`** cria um novo array só com os itens que passam num teste (retornam `true`):
+
+```js
+const idades = [15, 22, 17, 40]
+const adultos = idades.filter(n => n >= 18)
+console.log(adultos)   // → [22, 40]
+```
+
+## Acumular com reduce
+
+**`reduce`** condensa um array num **único valor**, acumulando item a item. Recebe uma função `(acumulador, item) => novoAcumulador` e um **valor inicial**:
+
+```js
+const valores = [10, 20, 30]
+const total = valores.reduce((acc, n) => acc + n, 0)
+console.log(total)   // → 60
+```
+
+Aqui `acc` começa em `0` (o valor inicial) e vai somando cada `n`: `0+10`, depois `10+20`, depois `30+30`. `reduce` é o canivete suíço — soma, conta, agrupa.
+
+## Buscar e o resto da família
+
+Os outros métodos seguem a mesma ideia (uma função por item):
+
+```js
+const nums = [5, 12, 8, 130]
+
+nums.find(n => n > 10)    // → 12     (o primeiro que casa; undefined se nenhum)
+nums.some(n => n > 100)   // → true   (algum passa?)
+nums.every(n => n > 0)    // → true   (todos passam?)
+;[3, 1, 2].sort()         // → [1, 2, 3]  (cuidado: ordena como TEXTO e MUTA o array)
+```
+
+`find` devolve o primeiro item que satisfaz o teste; `some`/`every` devolvem booleanos. Cuidado com `sort`: por padrão ordena como string (`[10, 2].sort()` dá `[10, 2]`!) e **altera o array original** — para números, use `sort((a, b) => a - b)`.
+
+## Imutabilidade e encadeamento
+
+Repare no padrão: `map`, `filter`, `reduce`, `find` **não alteram** o array original — devolvem um novo (ou um valor). Isso é **imutabilidade**, e é o que o React espera. Como devolvem arrays, dá para **encadear**:
+
+```js
+const produtos = [
+  { nome: "Caneca", preco: 30 },
+  { nome: "Camiseta", preco: 80 },
+  { nome: "Adesivo", preco: 10 },
+]
+
+const baratosEmCaixaAlta = produtos
+  .filter(p => p.preco < 50)        // só os baratos
+  .map(p => p.nome.toUpperCase())   // só os nomes, em maiúsculas
+
+console.log(baratosEmCaixaAlta)   // → ["CANECA", "ADESIVO"]
+```
+
+Primeiro `filter` reduz a lista, depois `map` transforma o que sobrou. Esse encadeamento legível é o jeito idiomático de trabalhar com dados em JS.
+
+> **Resumo:** **Objetos** agrupam pares chave/valor — acesse por ponto (`obj.nome`) ou por colchete (`obj[chave]`, quando a chave é dinâmica). **Arrays** são listas ordenadas indexadas do zero. Extraia valores com **destructuring** (`const { nome } = obj`) e copie/mescle sem mutar com **spread** (`{ ...obj }`, `[...arr]`). Os métodos essenciais: **`map`** transforma cada item (novo array), **`filter`** seleciona por um teste, **`reduce`** acumula num valor único, e **`find`/`some`/`every`** buscam/verificam (cuidado com `sort`, que ordena como texto e muta). Todos — menos `sort` — preservam o original (**imutabilidade**), o que permite **encadear** `filter(...).map(...)` de forma legível.

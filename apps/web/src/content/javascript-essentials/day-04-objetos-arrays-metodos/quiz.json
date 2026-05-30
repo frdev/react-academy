@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Quando você precisa acessar uma propriedade cujo nome está numa variável (ex.: `const campo = \"idade\"`), qual sintaxe usar?",
+      "options": [
+        "usuario.campo",
+        "usuario[campo]",
+        "usuario->campo",
+        "usuario(campo)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com colchetes, `usuario[campo]` usa o valor da variável `campo` (\"idade\") como chave, retornando a idade. `usuario.campo` buscaria literalmente uma propriedade chamada \"campo\". O ponto é para chaves fixas; o colchete, para chaves dinâmicas."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que faz `const { nome, idade } = usuario`?",
+      "options": [
+        "Cria um novo objeto com nome e idade",
+        "Extrai as propriedades `nome` e `idade` do objeto para variáveis de mesmo nome",
+        "Apaga nome e idade do objeto",
+        "Compara nome e idade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Isso é destructuring de objeto: ele cria as variáveis `nome` e `idade` com os valores correspondentes de `usuario`. É um atalho para `const nome = usuario.nome; const idade = usuario.idade`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `const copia = [...frutas, \"manga\"]` produz?",
+      "options": [
+        "Modifica `frutas` adicionando \"manga\"",
+        "Um novo array com todos os itens de `frutas` mais \"manga\", sem alterar o original",
+        "Um erro de sintaxe",
+        "Apenas [\"manga\"]"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O spread `...frutas` espalha os itens de `frutas` num novo array, ao qual se adiciona \"manga\". O array original permanece intacto — é a forma imutável de \"adicionar\" criando uma cópia."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual o resultado de `[1, 2, 3].map(n => n * 2)` e o que acontece com o array original?",
+      "options": [
+        "[2, 4, 6], e o original também vira [2, 4, 6]",
+        "[2, 4, 6], e o original continua [1, 2, 3]",
+        "6, e o original continua [1, 2, 3]",
+        "[1, 2, 3], sem alteração"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`map` retorna um novo array aplicando a função a cada item: `[2, 4, 6]`. Ele não muta o array original, que continua `[1, 2, 3]`. Essa imutabilidade é o comportamento esperado pelo React."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual método você usa para obter apenas os itens de um array que passam num teste?",
+      "options": [
+        "map",
+        "filter",
+        "reduce",
+        "push"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`filter` retorna um novo array contendo só os itens para os quais a função de teste retorna `true`. `map` transforma todos os itens (sem descartar nenhum), e `reduce` condensa tudo num único valor."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que retorna `[10, 20, 30].reduce((acc, n) => acc + n, 0)`?",
+      "options": [
+        "[10, 20, 30]",
+        "60",
+        "[60]",
+        "0"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`reduce` acumula os itens num único valor. Começando com o valor inicial `0`, soma cada item: 0+10=10, 10+20=30, 30+30=60. O resultado é `60`. O segundo argumento (`0`) é o valor inicial do acumulador."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Os métodos `map` e `filter` modificam (mutam) o array original.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. `map` e `filter` retornam um novo array e deixam o original intacto — são imutáveis. (Já `sort` e `push`, por outro lado, alteram o array original — por isso requerem cuidado.)"
+    }
+  ]
+}

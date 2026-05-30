@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual destes valores é **falsy** em JavaScript?",
+      "options": [
+        "\"0\" (string com zero)",
+        "[] (array vazio)",
+        "0 (número zero)",
+        "\"false\" (string)"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Os valores falsy são: `false`, `0`, `\"\"` (string vazia), `null`, `undefined` e `NaN`. O número `0` é falsy. Já `\"0\"`, `[]` e `\"false\"` são todos truthy — qualquer string não-vazia e qualquer objeto/array contam como verdadeiros."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `if (\"0\") { ... }` entra no bloco?",
+      "options": [
+        "Porque \"0\" é igual a 0",
+        "Porque toda string não-vazia é truthy, mesmo \"0\"",
+        "Porque o JavaScript converte \"0\" para true sempre",
+        "Não entra — \"0\" é falsy"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Strings só são falsy quando vazias (`\"\"`). `\"0\"` tem um caractere, então é truthy e o bloco executa. Isso costuma surpreender — não confunda a string `\"0\"` com o número `0` (que é falsy)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `nome || \"anônimo\"` retorna quando `nome` é uma string vazia `\"\"`?",
+      "options": [
+        "\"\" (a string vazia)",
+        "\"anônimo\"",
+        "true",
+        "undefined"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `||` por curto-circuito devolve o primeiro operando truthy. Como `\"\"` é falsy, ele pula para `\"anônimo\"`. É o padrão clássico de valor default — mas cuidado: `0` e `\"\"` também disparam o fallback, o que nem sempre é desejado (aí entra o `??`)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `qtd || 5` e `qtd ?? 5` quando `qtd` vale `0`?",
+      "options": [
+        "Ambos retornam 5",
+        "Ambos retornam 0",
+        "`||` retorna 5 (0 é falsy); `??` retorna 0 (só troca em null/undefined)",
+        "`??` retorna 5 e `||` retorna 0"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`||` troca para o padrão em qualquer valor falsy, e `0` é falsy → retorna `5`. Já `??` (nullish) só troca quando o valor é `null` ou `undefined`; como `0` não é nenhum dos dois, retorna `0`. Use `??` quando `0` ou `\"\"` são valores válidos."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual estrutura é a mais adequada para atribuir um valor com base numa condição simples, em uma linha?",
+      "options": [
+        "switch",
+        "o operador ternário `cond ? a : b`",
+        "um loop while",
+        "for...of"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O ternário `condição ? valorSeVerdadeiro : valorSeFalso` é uma expressão que devolve um valor, ideal para algo como `const status = idade >= 18 ? \"adulto\" : \"menor\"`. `if` não devolve valor, e `switch`/loops são para outros cenários."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para percorrer os **valores** de um array `frutas`, qual loop é o mais direto?",
+      "options": [
+        "for...in (for (const i in frutas))",
+        "for...of (for (const f of frutas))",
+        "while sem condição",
+        "switch (frutas)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`for...of` itera diretamente os valores: `for (const f of frutas)` dá cada fruta. `for...in` itera as chaves/índices (0, 1, 2…), não os valores — por isso, para arrays, `for...of` é o preferido."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Em um `switch`, esquecer o `break` faz a execução continuar (cair) para o próximo `case`.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Esse comportamento se chama fall-through: sem `break`, o JavaScript continua executando os casos seguintes até encontrar um `break` ou o fim do switch. Às vezes é intencional (agrupar casos), mas o esquecimento acidental é uma fonte clássica de bugs."
+    }
+  ]
+}

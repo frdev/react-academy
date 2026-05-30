@@ -1,0 +1,206 @@
+# Projeto Final — App Interativo
+
+Hora de juntar a semana inteira num app de verdade: uma **lista de tarefas** que carrega itens de uma API, mostra na tela, deixa adicionar novos e remover os que quiser. Em uma página só você vai usar **objetos e arrays** (Dia 4), **funções** (Dia 3), **async/await + fetch** (Dia 5) e **DOM + eventos** (Dia 6). Vamos montar por partes e, no fim, você terá **um arquivo `.html` completo e copiável** que funciona sozinho no navegador.
+
+## O que vamos construir
+
+Uma lista de tarefas com quatro comportamentos:
+
+1. **Carregar** algumas tarefas iniciais de uma API (com `fetch`);
+2. **Renderizar** a lista na tela;
+3. **Adicionar** uma tarefa digitada num input;
+4. **Remover** uma tarefa clicando num botão.
+
+O estado vive num array (`tarefas`); toda mudança atualiza o array e re-renderiza. Essa ideia — *estado → renderizar a partir do estado* — é exatamente o modelo mental do React.
+
+## A estrutura HTML
+
+Um input, um botão e uma lista vazia que o JavaScript vai preencher:
+
+```html
+<div class="entrada">
+  <input id="nova" placeholder="Nova tarefa...">
+  <button id="adicionar">Adicionar</button>
+</div>
+<ul id="lista"></ul>
+```
+
+## O estado e a função de render
+
+Guardamos as tarefas num array e escrevemos **uma função `render`** que desenha esse array no DOM com `map` (Dia 4) — sempre que o array muda, chamamos `render` de novo:
+
+```js
+let tarefas = []
+const lista = document.querySelector("#lista")
+
+function render() {
+  lista.innerHTML = tarefas
+    .map(t => `<li>${t.texto} <button class="remover" data-id="${t.id}">remover</button></li>`)
+    .join("")
+}
+```
+
+`map` transforma cada tarefa numa string `<li>`, `join("")` cola tudo, e `innerHTML` joga na página. O `data-id` guarda o id no próprio botão — vamos usá-lo para remover.
+
+## Carregar tarefas com fetch
+
+Buscamos tarefas iniciais de uma API pública. Como a rede pode falhar, envolvemos em `try/catch` e caímos numa **lista local** se der erro (Dia 5) — o app nunca quebra:
+
+```js
+async function carregar() {
+  try {
+    const res = await fetch("https://jsonplaceholder.typicode.com/todos?_limit=3")
+    const dados = await res.json()
+    tarefas = dados.map(d => ({ id: d.id, texto: d.title }))
+  } catch (erro) {
+    tarefas = [
+      { id: 1, texto: "Estudar JavaScript" },
+      { id: 2, texto: "Construir o capstone" },
+    ]
+  }
+  render()
+}
+```
+
+## Adicionar tarefas
+
+No clique do botão, lemos o `input.value`, damos `push` no array e re-renderizamos:
+
+```js
+const input = document.querySelector("#nova")
+const botao = document.querySelector("#adicionar")
+
+botao.addEventListener("click", () => {
+  const texto = input.value.trim()
+  if (!texto) return            // ignora vazio
+  tarefas.push({ id: Date.now(), texto })
+  input.value = ""              // limpa o campo
+  render()
+})
+```
+
+## Remover com delegação
+
+Os `<li>` são criados dinamicamente, então usamos **delegação de eventos** (Dia 6): um único listener no `<ul>` trata o clique de qualquer botão "remover". O `filter` (Dia 4) tira a tarefa do array sem mutá-lo:
+
+```js
+lista.addEventListener("click", (event) => {
+  if (event.target.classList.contains("remover")) {
+    const id = Number(event.target.dataset.id)
+    tarefas = tarefas.filter(t => t.id !== id)
+    render()
+  }
+})
+```
+
+## O arquivo completo
+
+Aqui está o app inteiro. **Copie tudo, salve como `tarefas.html` e abra no navegador** — ele carrega as tarefas, deixa adicionar e remover, e funciona mesmo offline (graças ao fallback do `fetch`):
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minhas Tarefas</title>
+  <style>
+    body { font-family: sans-serif; max-width: 420px; margin: 40px auto; padding: 0 16px; color: #1e293b; }
+    h1 { font-size: 1.5rem; }
+    .entrada { display: flex; gap: 8px; margin-bottom: 16px; }
+    .entrada input { flex: 1; padding: 8px; }
+    .entrada button { padding: 8px 16px; cursor: pointer; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+    .remover { border: none; background: #ef4444; color: white; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Minhas Tarefas</h1>
+
+  <div class="entrada">
+    <input id="nova" placeholder="Nova tarefa...">
+    <button id="adicionar">Adicionar</button>
+  </div>
+  <ul id="lista"></ul>
+
+  <script>
+    // ----- Estado -----
+    let tarefas = []
+
+    const lista = document.querySelector("#lista")
+    const input = document.querySelector("#nova")
+    const botao = document.querySelector("#adicionar")
+
+    // ----- Renderizar a partir do estado (map → DOM) -----
+    function render() {
+      lista.innerHTML = tarefas
+        .map(t => `<li>${t.texto} <button class="remover" data-id="${t.id}">remover</button></li>`)
+        .join("")
+    }
+
+    // ----- Carregar via fetch, com fallback offline (try/catch) -----
+    async function carregar() {
+      try {
+        const res = await fetch("https://jsonplaceholder.typicode.com/todos?_limit=3")
+        const dados = await res.json()
+        tarefas = dados.map(d => ({ id: d.id, texto: d.title }))
+      } catch (erro) {
+        tarefas = [
+          { id: 1, texto: "Estudar JavaScript" },
+          { id: 2, texto: "Construir o capstone" },
+        ]
+      }
+      render()
+    }
+
+    // ----- Adicionar -----
+    botao.addEventListener("click", () => {
+      const texto = input.value.trim()
+      if (!texto) return
+      tarefas.push({ id: Date.now(), texto })
+      input.value = ""
+      render()
+    })
+
+    // ----- Remover (delegação de eventos + filter) -----
+    lista.addEventListener("click", (event) => {
+      if (event.target.classList.contains("remover")) {
+        const id = Number(event.target.dataset.id)
+        tarefas = tarefas.filter(t => t.id !== id)
+        render()
+      }
+    })
+
+    // ----- Começa aqui -----
+    carregar()
+  </script>
+</body>
+</html>
+```
+
+## Dividindo em módulos
+
+Tudo está num arquivo só — ótimo para aprender. Num projeto real, você **separaria em arquivos** com `import`/`export`, cada um com uma responsabilidade:
+
+```js
+// dados.js  — cuida de carregar/guardar
+export async function carregarTarefas() { /* fetch... */ }
+
+// render.js — cuida de desenhar
+export function render(tarefas) { /* map → DOM... */ }
+
+// main.js   — junta tudo
+import { carregarTarefas } from "./dados.js"
+import { render } from "./render.js"
+```
+
+Aí o HTML carregaria com `<script type="module" src="main.js"></script>`. `export` expõe algo de um arquivo; `import` traz para outro. É assim que projetos crescem sem virar um arquivo gigante — e é o modelo que React, Vite e todo o ecossistema usam.
+
+## O que você usou
+
+Olhe o que esse app de uma tela reúne, da semana inteira: **objetos e arrays** guardam as tarefas; **`map`** renderiza e **`filter`** remove (Dia 4); uma **função** `render` centraliza o desenho (Dia 3); **`async/await` + `fetch` + `try/catch`** trazem os dados com segurança (Dia 5); e **`querySelector`, `addEventListener` e delegação de eventos** ligam a interface (Dia 6). Sete dias num arquivo só.
+
+Daqui, o próximo passo natural é o **JavaScript avançado** — coerção em profundidade, closures, prototype, o event loop por dentro — e, depois, o **React**, que pega essa ideia de "estado → render" e a transforma num framework inteiro. Mas a base que sustenta tudo é exatamente esta.
+
+> **Resumo:** Um app real é a síntese da semana. Guarde o estado num **array** e escreva uma **função `render`** que o desenha com **`map`** — toda mudança atualiza o array e re-renderiza (o modelo mental do React). Traga dados com **`fetch` + `async/await`** dentro de **`try/catch`**, com um **fallback** para nunca quebrar. **Adicione** lendo o `input` e dando `push`; **remova** com **delegação de eventos** no pai + **`filter`**. Tudo cabe num **único `.html`** sem build — e, quando crescer, você separa em **módulos** com `import`/`export`. Essa é a fundação sobre a qual o JavaScript avançado e o React são construídos.

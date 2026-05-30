@@ -1,0 +1,21 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Operadores, Condicionais e Loops",
+  "slug": "operadores-condicionais-loops",
+  "topics": [
+    "operadores aritméticos e de atribuição",
+    "comparação e a família ===",
+    "valores truthy e falsy",
+    "operadores lógicos && || ! e curto-circuito",
+    "if/else, ternário e switch",
+    "loops for, while e for...of"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

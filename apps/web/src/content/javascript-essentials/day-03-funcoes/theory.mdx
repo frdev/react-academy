@@ -1,0 +1,119 @@
+# Funções
+
+Funções são como você **dá nome a um pedaço de lógica** e o reutiliza. Em vez de repetir o mesmo cálculo em dez lugares, você escreve uma vez e chama quando precisa. No JavaScript moderno — e especialmente no React — funções estão em todo canto: você passa funções como argumento, retorna funções de funções e escreve a maior parte do código dentro delas. Hoje você domina as formas de escrevê-las e entende o conceito que mais confunde iniciantes: **closures**.
+
+Cada exemplo é JavaScript puro: cole no console (F12 → Console) ou rode com Node. A saída vem no comentário `// →`.
+
+## Declaração vs expressão
+
+Há duas formas de criar uma função. A **declaração** começa com `function` e tem nome:
+
+```js
+function somar(a, b) {
+  return a + b
+}
+somar(2, 3)   // → 5
+```
+
+A **expressão** guarda uma função (geralmente anônima) numa variável:
+
+```js
+const somar = function (a, b) {
+  return a + b
+}
+```
+
+Diferença prática: a **declaração** é içada (*hoisted*) — pode ser chamada antes de aparecer no código. A **expressão** não: só existe depois da linha que a define.
+
+```js
+viva()   // → "oi!"  (declaração funciona antes)
+function viva() { console.log("oi!") }
+
+tchau()  // ❌ ReferenceError (expressão ainda não existe)
+const tchau = function () { console.log("tchau!") }
+```
+
+## Arrow functions
+
+A forma mais enxuta — e a mais comum hoje — é a **arrow function** (`=>`):
+
+```js
+const dobro = (n) => {
+  return n * 2
+}
+```
+
+Quando o corpo é só um `return`, você pode omitir as chaves e o `return` (**retorno implícito**):
+
+```js
+const dobro = n => n * 2
+dobro(5)   // → 10
+
+const somar = (a, b) => a + b
+somar(2, 3)   // → 5
+```
+
+Atenção: com chaves `{ }`, o `return` volta a ser obrigatório. `n => { n * 2 }` **não retorna nada** (devolve `undefined`) — faltou o `return`.
+
+## Parâmetros: default e rest
+
+Um parâmetro pode ter **valor padrão**, usado quando você não passa o argumento:
+
+```js
+function saudar(nome = "amigo") {
+  return `Olá, ${nome}!`
+}
+saudar()        // → "Olá, amigo!"
+saudar("Ana")   // → "Olá, Ana!"
+```
+
+E o **rest** (`...`) agrupa "todos os argumentos restantes" num array — útil para funções que aceitam quantos argumentos vierem:
+
+```js
+function somarTudo(...numeros) {
+  return numeros.reduce((acc, n) => acc + n, 0)
+}
+somarTudo(1, 2, 3, 4)   // → 10
+```
+
+## Escopo: onde a variável vive
+
+**Escopo** é a região onde uma variável existe. Há três níveis:
+
+```js
+const global = "todos veem"        // escopo global
+
+function exemplo() {
+  const daFuncao = "só dentro de exemplo()"   // escopo de função
+
+  if (true) {
+    const doBloco = "só dentro deste if"        // escopo de bloco
+  }
+  // console.log(doBloco) ❌ não existe aqui
+}
+```
+
+`let` e `const` respeitam o **escopo de bloco** (`{ }`): uma variável declarada dentro de um `if` ou `for` não vaza para fora. Código de dentro enxerga o de fora, mas não o contrário.
+
+## Closures: a função que lembra
+
+Uma **closure** acontece quando uma função "lembra" das variáveis do lugar onde foi criada, mesmo depois que esse lugar terminou de executar. Parece abstrato — o exemplo clássico do contador esclarece:
+
+```js
+function criarContador() {
+  let contagem = 0
+  return () => {
+    contagem++
+    return contagem
+  }
+}
+
+const contar = criarContador()
+contar()   // → 1
+contar()   // → 2
+contar()   // → 3
+```
+
+A função interna continua acessando `contagem` toda vez que é chamada, embora `criarContador()` já tenha retornado. Essa "memória" é a closure — a base de muitos padrões em JS e dos hooks no React (`useState` guarda estado assim).
+
+> **Resumo:** Crie funções por **declaração** (`function nome() {}`, içada) ou **expressão** (`const f = function...`, não içada). A **arrow function** (`n => n * 2`) é a forma enxuta, com **retorno implícito** quando não há chaves — mas com `{ }` o `return` é obrigatório. Parâmetros aceitam **valor default** (`nome = "amigo"`) e **rest** (`...numeros` agrupa o que sobra num array). **Escopo** é onde a variável vive — `let`/`const` respeitam o **bloco** `{ }`, e o de dentro enxerga o de fora. Uma **closure** é uma função que lembra as variáveis de onde foi criada (o contador que mantém `contagem`) — conceito que sustenta o estado dos hooks no React.

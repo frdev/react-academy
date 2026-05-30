@@ -1,0 +1,21 @@
+{
+  "id": "day-07",
+  "day": 7,
+  "week": 1,
+  "title": "Projeto Final — App Interativo",
+  "slug": "projeto-final-app",
+  "topics": [
+    "estruturar um app no DOM",
+    "carregar dados com fetch (com fallback)",
+    "renderizar uma lista com map",
+    "adicionar itens via input + evento",
+    "remover via delegação de eventos",
+    "dividir em módulos com import/export"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,129 @@
+# DOM e Eventos
+
+Até agora o JavaScript rodou no console. Hoje ele encontra a **página**. O **DOM** (Document Object Model) é a representação do seu HTML como uma árvore de objetos que o JavaScript pode ler e modificar — é assim que botões respondem a cliques, listas crescem e textos mudam sem recarregar a página. Quando você entende DOM + eventos, sai de "scripts que calculam" para "páginas que reagem". É também a fundação conceitual do React.
+
+Os exemplos agora são **arquivos HTML+JS completos**: copie cada um para um arquivo `.html` e abra no navegador para ver funcionando.
+
+## O que é o DOM
+
+Quando o navegador carrega seu HTML, ele monta uma **árvore de nós**: cada tag vira um objeto, com pais e filhos. O JavaScript acessa essa árvore pelo objeto global `document` e pode mudar qualquer parte dela — e a página reflete a mudança na hora.
+
+## Selecionar elementos
+
+O ponto de partida é **encontrar** o elemento. `document.querySelector(seletor)` devolve o **primeiro** que casa com um seletor CSS; `querySelectorAll` devolve **todos** (uma lista):
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head><meta charset="utf-8"></head>
+<body>
+  <h1 id="titulo">Olá</h1>
+  <p class="item">Um</p>
+  <p class="item">Dois</p>
+
+  <script>
+    const titulo = document.querySelector("#titulo")   // por id
+    const primeiro = document.querySelector(".item")     // o 1º .item
+    const todos = document.querySelectorAll(".item")      // todos os .item
+
+    console.log(titulo.textContent)   // → "Olá"
+    console.log(todos.length)         // → 2
+  </script>
+</body>
+</html>
+```
+
+O seletor é o mesmo do CSS: `#id`, `.classe`, `tag`. Por isso `querySelector("#titulo")` pega o elemento de `id="titulo"`.
+
+## Manipular elementos
+
+Com o elemento em mãos, você muda texto, classes e estrutura:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style> .destaque { color: crimson; font-weight: bold; } </style>
+</head>
+<body>
+  <h1 id="titulo">Texto original</h1>
+  <ul id="lista"></ul>
+
+  <script>
+    const titulo = document.querySelector("#titulo")
+    titulo.textContent = "Texto trocado pelo JS"   // muda o conteúdo
+    titulo.classList.add("destaque")                // adiciona uma classe CSS
+
+    // criar e inserir um novo elemento
+    const lista = document.querySelector("#lista")
+    const li = document.createElement("li")
+    li.textContent = "Item criado pelo JavaScript"
+    lista.append(li)
+  </script>
+</body>
+</html>
+```
+
+`textContent` lê/escreve o texto; `classList` tem `.add()`, `.remove()` e `.toggle()`; `createElement` + `append` constroem novos nós na árvore.
+
+## Reagir a eventos
+
+Uma página vira interativa quando responde a **eventos** (clique, digitação, envio). Você registra um ouvinte com `addEventListener("evento", função)`:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head><meta charset="utf-8"></head>
+<body>
+  <button id="btn">Clique em mim</button>
+  <p id="saida">Ainda não clicou</p>
+
+  <script>
+    const btn = document.querySelector("#btn")
+    const saida = document.querySelector("#saida")
+    let cliques = 0
+
+    btn.addEventListener("click", (event) => {
+      cliques++
+      saida.textContent = `Você clicou ${cliques} vez(es)`
+      console.log("clicou no:", event.target)   // o elemento que recebeu o clique
+    })
+  </script>
+</body>
+</html>
+```
+
+A função recebe um objeto **`event`** com detalhes — o mais usado é **`event.target`**, o elemento que disparou o evento.
+
+## Delegação de eventos
+
+E quando os elementos são **criados depois** (como itens de uma lista que cresce)? Pôr um listener em cada um é frágil. A **delegação** resolve com elegância: um único listener no **pai**, que descobre o filho clicado via `event.target`:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head><meta charset="utf-8"></head>
+<body>
+  <ul id="lista">
+    <li>Tarefa A <button class="remover">x</button></li>
+    <li>Tarefa B <button class="remover">x</button></li>
+  </ul>
+
+  <script>
+    const lista = document.querySelector("#lista")
+
+    // UM listener no <ul> cobre todos os botões — inclusive os futuros
+    lista.addEventListener("click", (event) => {
+      if (event.target.classList.contains("remover")) {
+        event.target.closest("li").remove()   // remove o <li> do botão clicado
+      }
+    })
+  </script>
+</body>
+</html>
+```
+
+Um listener no `<ul>` trata o clique de qualquer `<li>` — mesmo os adicionados depois que o código rodou. É eficiente (um listener, não dezenas) e funciona com conteúdo dinâmico. Guarde esse padrão: é exatamente o que o capstone de amanhã usa para remover tarefas.
+
+> **Resumo:** O **DOM** é o seu HTML como uma árvore de objetos que o JavaScript lê e altera pelo `document`. **Selecione** com `querySelector` (o primeiro que casa) e `querySelectorAll` (todos), usando seletores CSS. **Manipule** com `textContent` (texto), `classList` (`.add`/`.remove`/`.toggle`) e `createElement` + `append` (novos nós). Torne a página interativa com **`addEventListener("click", fn)`**, lendo `event.target` para saber quem disparou. Para listas dinâmicas, use **delegação de eventos**: um único listener no elemento pai trata os cliques de todos os filhos, inclusive os criados depois — eficiente e à prova de conteúdo dinâmico.

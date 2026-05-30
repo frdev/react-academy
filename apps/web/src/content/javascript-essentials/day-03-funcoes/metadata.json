@@ -1,0 +1,20 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Funções",
+  "slug": "funcoes",
+  "topics": [
+    "declaração vs expressão de função",
+    "arrow functions e retorno implícito",
+    "parâmetros: default e rest",
+    "escopo global, de função e de bloco",
+    "introdução a closures"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

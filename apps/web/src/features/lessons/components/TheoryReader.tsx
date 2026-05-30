@@ -193,6 +193,15 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-06': () => import('@/content/css-essentials/day-06-responsividade/theory.mdx'),
     'day-07': () => import('@/content/css-essentials/day-07-projeto-final-landing/theory.mdx'),
   },
+  'javascript-essentials': {
+    'day-01': () => import('@/content/javascript-essentials/day-01-valores-tipos-variaveis/theory.mdx'),
+    'day-02': () => import('@/content/javascript-essentials/day-02-operadores-condicionais-loops/theory.mdx'),
+    'day-03': () => import('@/content/javascript-essentials/day-03-funcoes/theory.mdx'),
+    'day-04': () => import('@/content/javascript-essentials/day-04-objetos-arrays-metodos/theory.mdx'),
+    'day-05': () => import('@/content/javascript-essentials/day-05-assincrono/theory.mdx'),
+    'day-06': () => import('@/content/javascript-essentials/day-06-dom-e-eventos/theory.mdx'),
+    'day-07': () => import('@/content/javascript-essentials/day-07-projeto-final-app/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content

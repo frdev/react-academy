@@ -1,0 +1,105 @@
+# Assíncrono
+
+Buscar dados de um servidor leva tempo — décimos de segundo, às vezes mais. Se o JavaScript **parasse** e esperasse cada resposta, a página inteira congelaria: nenhum clique, nenhum scroll. A solução é o código **assíncrono**: você dispara a tarefa demorada, segue a vida, e trata o resultado quando ele chega. Hoje você aprende a domar isso com **promises** e **`async`/`await`**, e a buscar dados de verdade com **`fetch`** — a base de qualquer app que conversa com uma API.
+
+Os exemplos rodam no console (F12 → Console) ou no Node. A saída vem no comentário `// →`.
+
+## Síncrono vs assíncrono
+
+JavaScript roda numa **única thread**: uma coisa de cada vez. Código **síncrono** executa linha após linha, cada uma esperando a anterior:
+
+```js
+console.log("A")
+console.log("B")
+// → A
+// → B
+```
+
+Código **assíncrono** dispara algo que termina *depois*, sem travar o resto. Tarefas demoradas (rede, timers, arquivos) são assíncronas justamente para não congelar a página.
+
+## Uma intro ao event loop
+
+Como o JS é single-thread mas não trava, ele usa uma **fila**: tarefas assíncronas saem do caminho e seus callbacks só rodam **depois** que o código síncrono atual termina. O `setTimeout` mostra isso:
+
+```js
+console.log("1")
+setTimeout(() => console.log("2"), 0)   // mesmo com 0ms, vai pra fila
+console.log("3")
+// → 1
+// → 3
+// → 2   ← o callback do setTimeout roda por último
+```
+
+Esse mecanismo (o **event loop**) é o que mantém a página responsiva. Por enquanto, a intuição basta: **o que é assíncrono roda depois do código síncrono que está em andamento.**
+
+## Callbacks (e por que cansam)
+
+A forma antiga de "faça isto quando terminar" era passar uma função (**callback**):
+
+```js
+setTimeout(() => {
+  console.log("passou 1 segundo")
+}, 1000)
+```
+
+Funciona, mas quando uma tarefa depende da outra, os callbacks aninham e viram o famoso "callback hell" — difícil de ler e de tratar erros. As promises resolveram isso.
+
+## Promises
+
+Uma **promise** representa um valor que **vai existir no futuro**. Ela tem três estados: *pendente*, *resolvida* (deu certo) ou *rejeitada* (deu erro). Você reage com `.then` (sucesso) e `.catch` (erro):
+
+```js
+minhaPromise
+  .then(resultado => console.log("deu certo:", resultado))
+  .catch(erro => console.log("falhou:", erro))
+```
+
+## async/await
+
+Encadear `.then` ainda cansa. O **`async`/`await`** deixa o código assíncrono com **cara de síncrono** — muito mais legível. Regra: `await` só funciona dentro de uma função marcada com `async`:
+
+```js
+async function exemplo() {
+  const resultado = await minhaPromise   // espera resolver, sem travar a página
+  console.log(resultado)
+}
+```
+
+`await` "pausa" aquela função até a promise resolver e devolve o valor — mas o resto do programa continua rodando. É açúcar sobre promises, não um mecanismo diferente.
+
+## Tratando erros com try/catch
+
+Com `await`, erros viram exceções — então você os captura com **`try`/`catch`**:
+
+```js
+async function buscar() {
+  try {
+    const resultado = await minhaPromise
+    console.log(resultado)
+  } catch (erro) {
+    console.log("algo deu errado:", erro)
+  }
+}
+```
+
+## fetch: buscando dados de verdade
+
+O **`fetch`** faz uma requisição HTTP e devolve uma promise. O padrão é: `await` a resposta, depois `await res.json()` para extrair o JSON:
+
+```js
+async function carregarTarefa() {
+  try {
+    const res = await fetch("https://jsonplaceholder.typicode.com/todos/1")
+    const tarefa = await res.json()
+    console.log(tarefa.title)   // → "delectus aut autem"
+  } catch (erro) {
+    console.log("falha na rede:", erro)
+  }
+}
+
+carregarTarefa()
+```
+
+Repare nos **dois** `await`: o primeiro espera a resposta chegar, o segundo espera o corpo ser convertido de texto JSON para objeto JavaScript. Esse é o padrão que você vai repetir em todo app que consome uma API — e é exatamente o que o capstone de amanhã usa.
+
+> **Resumo:** JavaScript é **single-thread**, então tarefas demoradas (rede, timers) são **assíncronas** para não congelar a página: o que é assíncrono roda **depois** do código síncrono atual (o **event loop**). Os **callbacks** resolviam isso, mas aninhavam demais. Uma **promise** é um valor futuro com estados (pendente/resolvida/rejeitada), tratada por `.then`/`.catch`. O **`async`/`await`** dá ao código assíncrono uma leitura síncrona (`await` só dentro de função `async`), com erros capturados por **`try`/`catch`**. Para buscar dados, **`fetch`** retorna uma promise — o padrão é `const res = await fetch(url)` seguido de `const dados = await res.json()`.

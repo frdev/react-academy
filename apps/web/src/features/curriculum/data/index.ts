@@ -11,6 +11,7 @@ import { GIT_LESSONS } from './git-lessons'
 import { FRONTEND_ARCHITECTURE_LESSONS } from './frontend-architecture-lessons'
 import { TYPESCRIPT_ESSENTIALS_LESSONS } from './typescript-essentials-lessons'
 import { CSS_ESSENTIALS_LESSONS } from './css-essentials-lessons'
+import { JAVASCRIPT_ESSENTIALS_LESSONS } from './javascript-essentials-lessons'
 import type { LessonMetadata } from '@/features/curriculum/types'
 
 export function getLessonsForStack(stackId: string): LessonMetadata[] {
@@ -26,5 +27,6 @@ export function getLessonsForStack(stackId: string): LessonMetadata[] {
   if (stackId === 'frontend-architecture') return FRONTEND_ARCHITECTURE_LESSONS
   if (stackId === 'typescript-essentials') return TYPESCRIPT_ESSENTIALS_LESSONS
   if (stackId === 'css-essentials') return CSS_ESSENTIALS_LESSONS
+  if (stackId === 'javascript-essentials') return JAVASCRIPT_ESSENTIALS_LESSONS
   return LESSONS
 }

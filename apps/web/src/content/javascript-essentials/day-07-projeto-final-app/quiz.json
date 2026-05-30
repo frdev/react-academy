@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "No app, o que carrega as tarefas iniciais a partir de uma API?",
+      "options": [
+        "querySelector",
+        "fetch (dentro de uma função async)",
+        "map",
+        "addEventListener"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`fetch` faz a requisição HTTP e retorna uma promise; dentro de uma função `async`, usamos `await fetch(...)` e depois `await res.json()` para obter os dados. Os outros métodos cuidam de renderizar (map), selecionar (querySelector) e reagir a eventos."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que o `fetch` do app é envolvido em `try/catch` com uma lista local no `catch`?",
+      "options": [
+        "Para deixar o código mais longo",
+        "Para o app não quebrar se a rede falhar — ele cai num fallback offline",
+        "Porque fetch exige try/catch para compilar",
+        "Para acelerar a requisição"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se a requisição falha (offline, API fora do ar), o `catch` captura o erro e usa uma lista de tarefas local. Assim o app continua funcional em qualquer cenário — uma prática importante ao lidar com dados de rede."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual método de array é usado na função `render` para transformar cada tarefa em um `<li>`?",
+      "options": [
+        "filter",
+        "reduce",
+        "map",
+        "forEach"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`render` faz `tarefas.map(t => ...)` para gerar uma string `<li>` por tarefa, junta com `join(\"\")` e coloca no `innerHTML`. `map` é a ferramenta padrão para transformar uma lista de dados numa lista de elementos — exatamente o que o React faz ao renderizar listas."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que a remoção usa delegação de eventos (um listener no `<ul>`) em vez de um listener por botão?",
+      "options": [
+        "Porque botões não aceitam listeners",
+        "Porque os `<li>` são criados dinamicamente, e um listener no pai cobre todos, inclusive os futuros",
+        "Porque é mais lento, mas mais bonito",
+        "Porque o `<ul>` é o único que aceita clique"
+      ],
+      "correctAnswer": 1,
+      "explanation": "As tarefas são adicionadas dinamicamente, então registrar um listener em cada botão seria frágil. Um único listener no `<ul>` trata o clique de qualquer botão (atual ou futuro) via `event.target` — a delegação de eventos do Dia 6."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual método remove a tarefa clicada do array `tarefas`?",
+      "options": [
+        "tarefas.push(...)",
+        "tarefas.map(...)",
+        "tarefas.filter(t => t.id !== id)",
+        "tarefas.sort()"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`filter` cria um novo array com todas as tarefas exceto a do id clicado (`t.id !== id`), removendo-a de forma imutável. Em seguida, `render()` redesenha a lista atualizada."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para que servem `import` e `export` ao dividir o app em arquivos?",
+      "options": [
+        "Para deixar o código mais lento de propósito",
+        "`export` expõe algo de um arquivo e `import` o traz para outro, organizando o código em módulos",
+        "Para baixar bibliotecas da internet",
+        "Para converter JS em CSS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`export` torna uma função/valor disponível para fora do arquivo, e `import` traz isso para outro arquivo. É como projetos crescem sem virar um único arquivo gigante — o sistema de módulos usado por React, Vite e todo o ecossistema moderno."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "O app de tarefas inteiro (HTML, CSS e JavaScript) cabe num único arquivo `.html` que roda no navegador sem build nem dependências.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Com o CSS numa tag `<style>` e o JS numa tag `<script>`, o app é autocontido: basta salvar como `.html` e abrir no navegador. Foi assim que estudamos cada conceito — dividir em módulos só passa a valer a pena quando o projeto cresce."
+    }
+  ]
+}

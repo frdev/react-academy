@@ -1,0 +1,22 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "Objetos, Arrays e Métodos de Array",
+  "slug": "objetos-arrays-metodos",
+  "topics": [
+    "objetos: criar e acessar (dot vs bracket)",
+    "arrays e indexação",
+    "destructuring e spread",
+    "map e filter",
+    "reduce",
+    "find e os primos some/every/sort",
+    "imutabilidade e encadeamento"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-03"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

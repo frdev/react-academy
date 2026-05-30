@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é o DOM?",
+      "options": [
+        "Uma biblioteca externa de JavaScript",
+        "A representação do HTML da página como uma árvore de objetos que o JavaScript pode ler e modificar",
+        "Um formato de banco de dados",
+        "Um pré-processador de CSS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "DOM (Document Object Model) é a árvore de objetos que o navegador monta a partir do HTML. Cada tag vira um nó, e o JavaScript acessa e altera essa árvore pelo objeto `document` — mudanças aparecem na página imediatamente."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `querySelector` e `querySelectorAll`?",
+      "options": [
+        "`querySelector` retorna o primeiro elemento que casa; `querySelectorAll` retorna todos",
+        "São idênticos",
+        "`querySelector` só funciona com id e `querySelectorAll` só com classe",
+        "`querySelectorAll` é mais antigo e foi removido"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`querySelector(seletor)` devolve o primeiro elemento que casa com o seletor CSS (ou `null`). `querySelectorAll` devolve uma lista (NodeList) com todos os que casam. Ambos aceitam seletores CSS como `#id`, `.classe` ou `tag`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como você muda o texto exibido por um elemento já selecionado em `el`?",
+      "options": [
+        "el.text = \"novo\"",
+        "el.textContent = \"novo\"",
+        "el.value = \"novo\"",
+        "el.write(\"novo\")"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`el.textContent = \"novo\"` lê e escreve o conteúdo de texto do elemento. (`value` é para campos de formulário como `<input>`, não para o texto de uma tag comum.)"
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como registrar uma ação para quando um botão for clicado?",
+      "options": [
+        "botao.onClick = ...",
+        "botao.addEventListener(\"click\", () => { ... })",
+        "botao.listen(\"click\")",
+        "click(botao)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`addEventListener(\"click\", função)` registra um ouvinte: a função roda toda vez que o evento ocorre. É a forma padrão e permite vários ouvintes no mesmo elemento, ao contrário de atribuir `onclick` direto."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Dentro de um event listener, o que `event.target` representa?",
+      "options": [
+        "A função que será chamada",
+        "O elemento que disparou o evento",
+        "O tipo do evento como string",
+        "A página inteira"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`event.target` é o elemento onde o evento aconteceu — por exemplo, o botão específico que recebeu o clique. É essencial na delegação de eventos para descobrir qual filho foi clicado."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a vantagem da delegação de eventos (um listener no elemento pai)?",
+      "options": [
+        "Deixa o CSS mais bonito",
+        "Um único listener trata os cliques de todos os filhos, inclusive os criados dinamicamente depois",
+        "Remove a necessidade de HTML",
+        "Faz o evento disparar mais rápido"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com a delegação, você põe um listener no pai e usa `event.target` para identificar o filho clicado. Isso cobre até elementos adicionados depois que o código rodou (listas dinâmicas) e evita registrar dezenas de listeners individuais."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "`querySelector(\".item\")` retorna todos os elementos com a classe `item`.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. `querySelector` retorna apenas o primeiro elemento que casa com o seletor. Para obter todos os elementos com a classe `item`, usa-se `querySelectorAll(\".item\")`, que devolve uma lista."
+    }
+  ]
+}
