@@ -1,0 +1,160 @@
+# Flexbox — Layout em Uma Dimensão
+
+Centralizar uma caixa, distribuir botões numa barra, alinhar um menu — durante anos isso exigiu truques esquisitos (`float`, `margin: auto`, hacks). **Flexbox** resolveu tudo isso: você diz a um contêiner "organize seus filhos numa linha (ou coluna) e os distribua assim", e o navegador faz as contas. É a ferramenta de layout que você mais vai usar. Pense nele como **uma dimensão por vez**: ou uma linha, ou uma coluna.
+
+Cada exemplo é um arquivo HTML completo: copie, salve como `.html` e abra no navegador.
+
+## Ligando o flex: contêiner e itens
+
+Você aplica `display: flex` no **contêiner** (o pai). Os **filhos diretos** viram *itens flex* e passam a se organizar ao longo de um eixo. Por padrão, eles ficam lado a lado numa linha.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .barra {
+      display: flex;          /* liga o flexbox */
+      gap: 12px;              /* espaço entre os itens */
+      background: #f1f5f9;
+      padding: 12px;
+    }
+    .item {
+      background: #2563eb;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="barra">
+    <div class="item">Um</div>
+    <div class="item">Dois</div>
+    <div class="item">Três</div>
+  </div>
+</body>
+</html>
+```
+
+## Os dois eixos
+
+Flexbox tem um **eixo principal** e um **eixo cruzado** (perpendicular). `flex-direction` decide qual é qual:
+
+- **`row`** (padrão) — eixo principal na **horizontal** (itens lado a lado);
+- **`column`** — eixo principal na **vertical** (itens empilhados).
+
+Isso é a chave de tudo: `justify-content` alinha no **eixo principal**, e `align-items` no **eixo cruzado**. Quem é "principal" depende da `flex-direction`.
+
+## justify-content: distribuir no eixo principal
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .linha {
+      display: flex;
+      justify-content: space-between;  /* extremos colados, espaço igual no meio */
+      background: #f1f5f9;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .item { background: #10b981; color: white; padding: 10px 16px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="linha">
+    <div class="item">A</div>
+    <div class="item">B</div>
+    <div class="item">C</div>
+  </div>
+</body>
+</html>
+```
+
+Valores úteis de `justify-content`: `flex-start` (início), `center` (centro), `flex-end` (fim), `space-between` (extremos colados, vão igual no meio), `space-around` e `space-evenly` (espaços ao redor).
+
+## align-items + o centro perfeito
+
+`align-items` posiciona no eixo cruzado. A combinação mais famosa do CSS — **centralizar nos dois eixos** — é só isto:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .palco {
+      display: flex;
+      justify-content: center;  /* centro no eixo principal */
+      align-items: center;      /* centro no eixo cruzado */
+      height: 200px;
+      background: #1e293b;
+    }
+    .moeda {
+      width: 80px; height: 80px;
+      background: #facc15;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div class="palco">
+    <div class="moeda"></div>
+  </div>
+</body>
+</html>
+```
+
+`justify-content: center` + `align-items: center` centraliza qualquer coisa, horizontal e verticalmente. Guarde esse par.
+
+## gap, flex-wrap e o flex dos itens
+
+`gap` cria espaço **entre** os itens sem precisar de margin. `flex-wrap: wrap` permite que os itens **quebrem para a próxima linha** quando não cabem — essencial para layouts que se adaptam.
+
+Já a propriedade **`flex`** (aplicada nos *itens*) controla como eles dividem o espaço sobrando. `flex: 1` em todos faz cada um ocupar uma fatia igual; é o atalho de `flex-grow: 1; flex-shrink: 1; flex-basis: 0`.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .grade {
+      display: flex;
+      flex-wrap: wrap;    /* quebra de linha quando não cabe */
+      gap: 12px;
+      padding: 12px;
+      background: #f1f5f9;
+    }
+    .card {
+      flex: 1 1 200px;    /* cresce e encolhe, com base de 200px */
+      background: #6366f1;
+      color: white;
+      padding: 24px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .destaque { flex: 2 1 200px; }  /* este ocupa o dobro do espaço extra */
+  </style>
+</head>
+<body>
+  <div class="grade">
+    <div class="card destaque">Cresço o dobro</div>
+    <div class="card">Card</div>
+    <div class="card">Card</div>
+  </div>
+</body>
+</html>
+```
+
+Os três números de `flex` são **grow** (quanto cresce ao sobrar espaço), **shrink** (quanto encolhe ao faltar) e **basis** (o tamanho-base antes de crescer/encolher). `flex: 1 1 200px` significa: comece com 200px, mas cresça ou encolha conforme o espaço — combinado com `flex-wrap`, é a base de uma galeria de cards responsiva.
+
+> **Resumo:** **Flexbox** organiza filhos em **uma dimensão**. Ligue com `display: flex` no contêiner; os filhos viram itens. A `flex-direction` define o **eixo principal** — `row` (horizontal, padrão) ou `column` (vertical). No eixo principal você distribui com **`justify-content`** (`center`, `space-between`, `flex-end`…); no eixo cruzado, alinha com **`align-items`** — e o par `justify-content: center` + `align-items: center` é a centralização perfeita nos dois eixos. Use **`gap`** para espaçar sem margin e **`flex-wrap: wrap`** para quebrar em várias linhas. Nos itens, **`flex: grow shrink basis`** controla como dividem o espaço: `flex: 1 1 200px` parte de 200px e cresce/encolhe conforme sobra — a receita de uma galeria de cards que se adapta.

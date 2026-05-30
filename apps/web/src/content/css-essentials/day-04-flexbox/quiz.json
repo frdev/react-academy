@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Onde você aplica `display: flex` para criar um layout flexbox?",
+      "options": [
+        "Em cada item filho",
+        "No elemento contêiner (o pai dos itens)",
+        "No `<body>`, obrigatoriamente",
+        "Em uma folha de estilo separada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`display: flex` vai no contêiner. A partir daí, os filhos diretos viram itens flex e passam a se alinhar ao longo do eixo definido. Os itens em si não precisam de declaração para participar."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Com `flex-direction: row`, qual propriedade alinha os itens na horizontal (eixo principal)?",
+      "options": [
+        "align-items",
+        "justify-content",
+        "text-align",
+        "vertical-align"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`justify-content` atua no eixo principal. Como `row` deixa o eixo principal na horizontal, é ele quem distribui os itens da esquerda para a direita. `align-items` cuidaria do eixo cruzado (vertical, nesse caso)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a forma mais direta de centralizar um elemento na horizontal E na vertical com flexbox?",
+      "options": [
+        "`text-align: center` no contêiner",
+        "`margin: auto` em todos os lados do item",
+        "`justify-content: center` + `align-items: center` no contêiner",
+        "`position: absolute` com top e left a 50%"
+      ],
+      "correctAnswer": 2,
+      "explanation": "No contêiner flex, `justify-content: center` centraliza no eixo principal e `align-items: center` no eixo cruzado. Juntos, centralizam o conteúdo nos dois eixos — o padrão mais usado para isso."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que `flex-wrap: wrap` faz?",
+      "options": [
+        "Centraliza todos os itens",
+        "Permite que os itens quebrem para a próxima linha quando não couberem",
+        "Aumenta o espaço entre os itens",
+        "Empilha os itens em coluna"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Por padrão (`nowrap`), os itens são espremidos numa única linha. Com `wrap`, quando o espaço acaba, os itens fluem para uma nova linha — base de galerias e grids responsivos feitos com flexbox."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Em `flex: 1 1 200px`, o que representa o valor `200px`?",
+      "options": [
+        "A margem entre os itens",
+        "O flex-basis: o tamanho-base do item antes de crescer ou encolher",
+        "A altura máxima do item",
+        "O número de colunas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os três valores de `flex` são grow, shrink e basis. O `200px` é o flex-basis: o tamanho de partida. A partir dele, grow (1) faz crescer com o espaço extra e shrink (1) faz encolher quando falta espaço."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "A propriedade `gap` substitui o uso de `margin` para criar espaço entre os itens flex.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. `gap` define o espaço entre itens diretamente no contêiner, sem os efeitos colaterais de margin (como espaço sobrando nas pontas ou colapso de margens). É a forma moderna e recomendada de espaçar itens flex."
+    }
+  ]
+}

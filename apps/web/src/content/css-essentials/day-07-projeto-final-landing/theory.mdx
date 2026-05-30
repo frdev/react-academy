@@ -1,0 +1,222 @@
+# Projeto Final — Landing Responsiva
+
+Chegou a hora de juntar tudo. Nestes seis dias você viu seletores e cascata, box model, valores e tipografia, Flexbox, Grid e responsividade. Hoje cada uma dessas peças entra numa **landing page de verdade**: um cabeçalho com menu, uma seção de destaque (hero), uma grade de recursos e um rodapé — que funciona do celular ao desktop. Vamos montá-la por partes e, no fim, você terá **um único arquivo HTML copiável de ponta a ponta**.
+
+## O esqueleto e o reset
+
+Toda página começa igual: a meta viewport (Dia 6), um reset com `box-sizing` (Dia 2) e uma base de tipografia (Dia 3). Um `.container` fluido com `max-width` centraliza o conteúdo e o impede de esticar demais.
+
+```css
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #1e293b;
+  line-height: 1.6;          /* respiro de leitura (Dia 3) */
+  background: #f8fafc;
+}
+.container {
+  width: 90%;
+  max-width: 1100px;         /* não estica além disso (Dia 6) */
+  margin: 0 auto;            /* centraliza */
+}
+```
+
+## Header: navegação com Flexbox
+
+A barra do topo é o caso de manual do Flexbox (Dia 4): logo de um lado, menu do outro, com `justify-content: space-between` empurrando-os para os extremos e `align-items: center` alinhando na vertical.
+
+```css
+.topo {
+  display: flex;
+  justify-content: space-between;  /* logo à esquerda, menu à direita */
+  align-items: center;
+}
+nav ul { display: flex; gap: 24px; list-style: none; }
+```
+
+## Hero: centralizando com Flexbox
+
+O hero usa `flex-direction: column` + `align-items: center` para empilhar título, texto e botão centralizados. O `max-width` em `ch` no título e no parágrafo mantém as linhas numa largura confortável de leitura (Dia 3).
+
+```css
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;       /* tudo centralizado */
+  text-align: center;
+  gap: 20px;
+  padding: 80px 0;
+}
+.hero h1 { font-size: 2.5rem; max-width: 18ch; }
+.btn {
+  display: inline-block;     /* aceita padding e dimensões (Dia 2) */
+  background: #6366f1;
+  color: white;
+  padding: 14px 28px;
+  border-radius: 999px;
+}
+```
+
+## Recursos: grade responsiva com Grid
+
+A seção de cards é o padrão de galeria do Dia 5: `repeat(auto-fit, minmax(240px, 1fr))` cria quantas colunas couberem — três no desktop, duas no tablet, uma no celular — **sem nenhuma media query**.
+
+```css
+.recursos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+```
+
+## Responsividade: empilhando no celular
+
+O `auto-fit` já cuida dos cards. Falta um ajuste fino para telas pequenas: empilhar o header em coluna e diminuir o hero. Uma media query mobile-first resolve (Dia 6).
+
+```css
+@media (max-width: 600px) {
+  .topo { flex-direction: column; }   /* logo em cima, menu embaixo */
+  .hero { padding: 48px 0; }
+  .hero h1 { font-size: 1.875rem; }
+}
+```
+
+## O arquivo completo
+
+Aqui está a landing inteira. **Copie tudo, salve como `landing.html` e abra no navegador** — depois redimensione a janela e veja o layout se reorganizar:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fluxo — organize seu dia</title>
+  <style>
+    /* ===== Reset e base (Dias 2 e 3) ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: #1e293b;
+      line-height: 1.6;
+      background: #f8fafc;
+    }
+    .container { width: 90%; max-width: 1100px; margin: 0 auto; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ===== Header com Flexbox (Dia 4) ===== */
+    header { background: white; border-bottom: 1px solid #e2e8f0; padding: 16px 0; }
+    .topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo { font-size: 1.25rem; font-weight: 700; color: #6366f1; }
+    nav ul { display: flex; gap: 24px; list-style: none; }
+    nav a:hover { color: #6366f1; }
+
+    /* ===== Hero centralizado (Dia 4) ===== */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+      padding: 80px 0;
+    }
+    .hero h1 { font-size: 2.5rem; max-width: 18ch; }
+    .hero p { font-size: 1.125rem; color: #475569; max-width: 50ch; }
+    .btn {
+      display: inline-block;
+      background: #6366f1;
+      color: white;
+      padding: 14px 28px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .btn:hover { background: #4f46e5; }
+
+    /* ===== Grid de recursos responsivo (Dia 5) ===== */
+    .recursos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      padding: 40px 0 80px;
+    }
+    .card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 32px;
+    }
+    .card .icone { font-size: 2rem; }
+    .card h3 { margin: 12px 0 8px; }
+    .card p { color: #64748b; }
+
+    /* ===== Footer ===== */
+    footer { background: #1e293b; color: #cbd5e1; text-align: center; padding: 32px 0; }
+
+    /* ===== Responsividade (Dia 6) ===== */
+    @media (max-width: 600px) {
+      .topo { flex-direction: column; }
+      nav ul { gap: 16px; }
+      .hero { padding: 48px 0; }
+      .hero h1 { font-size: 1.875rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container topo">
+      <div class="logo">⚡ Fluxo</div>
+      <nav>
+        <ul>
+          <li><a href="#recursos">Recursos</a></li>
+          <li><a href="#precos">Preços</a></li>
+          <li><a href="#contato">Contato</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Organize seu dia sem esforço</h1>
+      <p>O Fluxo reúne tarefas, notas e lembretes num só lugar — simples o bastante para usar todo dia.</p>
+      <a href="#" class="btn">Começar grátis</a>
+    </section>
+
+    <section class="recursos" id="recursos">
+      <div class="card">
+        <div class="icone">✅</div>
+        <h3>Tarefas claras</h3>
+        <p>Liste o que importa e risque conforme avança. Sem distração.</p>
+      </div>
+      <div class="card">
+        <div class="icone">🗓️</div>
+        <h3>Agenda integrada</h3>
+        <p>Veja prazos e compromissos lado a lado, na mesma tela.</p>
+      </div>
+      <div class="card">
+        <div class="icone">🔔</div>
+        <h3>Lembretes</h3>
+        <p>Receba um toque na hora certa e não esqueça mais nada.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">© 2025 Fluxo. Feito com CSS essencial.</div>
+  </footer>
+</body>
+</html>
+```
+
+## O que você acabou de usar
+
+Repare como cada dia aparece: o **reset e a tipografia** (Dias 2 e 3) dão a base; a **cascata e os seletores** (Dia 1) organizam as regras por classe; o **box model** (Dia 2) controla padding e bordas dos cards; o **Flexbox** (Dia 4) resolve o header e centraliza o hero; o **Grid** (Dia 5) monta a galeria responsiva; e a **media query** (Dia 6) ajusta o celular. Sete dias inteiros condensados num arquivo só.
+
+A partir daqui, o caminho natural é o **CSS Moderno & Avançado** — onde essas mesmas ideias ganham `container queries`, camadas da cascata, cores modernas e animações. Mas a base que sustenta tudo é exatamente esta.
+
+> **Resumo:** Uma landing real é a soma dos seis dias. Comece sempre com o **reset** (`* { box-sizing: border-box; margin: 0 }`), a **meta viewport** e um `.container` fluido (`width: 90%; max-width; margin: auto`). Use **Flexbox** para o header (`justify-content: space-between` + `align-items: center`) e para centralizar o hero (`flex-direction: column` + `align-items: center`). Use **Grid** com `repeat(auto-fit, minmax(240px, 1fr))` para a galeria de cards que se adapta sozinha, e uma **media query** `max-width` apenas para os ajustes finos do celular (empilhar o menu, encolher o hero). Tudo isso cabe num **único arquivo HTML+CSS** — sem build, sem dependências, copiável e funcional. Essa é a base sobre a qual todo CSS avançado é construído.

@@ -184,6 +184,15 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-02': () => import('@/content/typescript-essentials/day-02-interfaces-e-narrowing/theory.mdx'),
     'day-03': () => import('@/content/typescript-essentials/day-03-generics-e-utility-types/theory.mdx'),
   },
+  'css-essentials': {
+    'day-01': () => import('@/content/css-essentials/day-01-seletores-cascata-especificidade/theory.mdx'),
+    'day-02': () => import('@/content/css-essentials/day-02-box-model-display-position/theory.mdx'),
+    'day-03': () => import('@/content/css-essentials/day-03-valores-unidades-cores-tipografia/theory.mdx'),
+    'day-04': () => import('@/content/css-essentials/day-04-flexbox/theory.mdx'),
+    'day-05': () => import('@/content/css-essentials/day-05-grid/theory.mdx'),
+    'day-06': () => import('@/content/css-essentials/day-06-responsividade/theory.mdx'),
+    'day-07': () => import('@/content/css-essentials/day-07-projeto-final-landing/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content

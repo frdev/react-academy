@@ -1,0 +1,21 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "Responsividade",
+  "slug": "responsividade",
+  "topics": [
+    "a meta tag viewport e por que ela é obrigatória",
+    "unidades relativas e max-width para layouts fluidos",
+    "media queries com min-width e max-width",
+    "a abordagem mobile-first",
+    "breakpoints e como escolhê-los",
+    "imagens fluidas com max-width: 100%"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

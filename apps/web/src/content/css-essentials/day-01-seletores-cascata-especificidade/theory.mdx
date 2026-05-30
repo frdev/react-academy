@@ -1,0 +1,151 @@
+# Como o CSS Aplica Estilo
+
+Quando você escreve `color: red` em dois lugares e a cor que aparece não é a que você esperava, não é mágica nem bug do navegador — é o CSS seguindo regras precisas para decidir quem ganha. Essas regras têm nome: **seletores** (a quem o estilo se aplica), **cascata** (em que ordem as regras valem) e **especificidade** (quem tem mais peso quando duas regras brigam pelo mesmo elemento). Entender isso é a diferença entre adivinhar e *saber* por que um estilo pegou ou não.
+
+Cada exemplo abaixo é um arquivo HTML completo: copie para um `.html`, abra no navegador e veja o resultado.
+
+## Seletores: escolhendo o alvo
+
+Um seletor é o "endereço" do elemento que você quer estilizar. Os quatro básicos:
+
+- **tipo** (a tag): `p`, `h1`, `button` — todos os elementos daquela tag
+- **classe**: `.destaque` — todos os elementos com `class="destaque"`
+- **id**: `#cabecalho` — o único elemento com `id="cabecalho"`
+- **descendente**: `nav a` — só os `<a>` que estão dentro de um `<nav>`
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    p { color: #334155; }              /* tipo: todo parágrafo */
+    .destaque { background: #fde68a; }  /* classe */
+    #aviso { font-weight: bold; }       /* id */
+    nav a { color: #2563eb; }           /* descendente: só links dentro de nav */
+  </style>
+</head>
+<body>
+  <nav><a href="#">Link no menu</a></nav>
+  <p>Parágrafo comum.</p>
+  <p class="destaque">Parágrafo destacado.</p>
+  <p id="aviso">Parágrafo importante.</p>
+  <a href="#">Link fora do menu (não fica azul)</a>
+</body>
+</html>
+```
+
+Você também pode **agrupar** seletores com vírgula para aplicar o mesmo estilo a vários de uma vez:
+
+```css
+h1, h2, h3 {
+  font-family: sans-serif;
+  color: #0f172a;
+}
+```
+
+## Cascata: a ordem importa
+
+CSS quer dizer *Cascading* Style Sheets — folhas de estilo em **cascata**. Quando duas regras de **mesma força** miram o mesmo elemento, **a última escrita vence**:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    p { color: blue; }
+    p { color: green; }  /* esta vence: veio depois */
+  </style>
+</head>
+<body>
+  <p>Este texto fica verde.</p>
+</body>
+</html>
+```
+
+A cascata também considera a **origem** do estilo. Simplificando a ordem do mais fraco ao mais forte: o padrão do navegador → o seu CSS → o atributo `style=""` inline no elemento. Por isso um estilo inline costuma sobrepor o do arquivo `.css`.
+
+## Especificidade: quem tem mais peso
+
+Antes de cair no critério "o último vence", o navegador compara a **especificidade** dos seletores. Pense num placar de três casas — `(ids, classes, tipos)`:
+
+- cada **id** conta na primeira casa;
+- cada **classe** (ou `[atributo]`, ou `:pseudo-classe`) conta na segunda;
+- cada **tipo** (tag) conta na terceira.
+
+Compara-se da esquerda para a direita. Um id (`1,0,0`) ganha de qualquer quantidade de classes; uma classe (`0,1,0`) ganha de qualquer quantidade de tags.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    p           { color: gray; }   /* 0,0,1 */
+    .texto      { color: blue; }   /* 0,1,0  — ganha de p */
+    #principal  { color: red; }    /* 1,0,0  — ganha de .texto */
+  </style>
+</head>
+<body>
+  <p id="principal" class="texto">Este texto fica VERMELHO.</p>
+</body>
+</html>
+```
+
+Mesmo que `.texto` venha depois de `#principal` no arquivo, o id vence porque tem especificidade maior. A ordem só desempata quando a especificidade é **igual**. Lição prática: prefira **classes**. Estilizar tudo por id cria regras difíceis de sobrescrever depois.
+
+## Herança: estilos que descem sozinhos
+
+Algumas propriedades passam automaticamente do elemento pai para os filhos — é a **herança**. Propriedades de texto (`color`, `font-family`, `font-size`, `line-height`) são herdadas; já as de caixa e layout (`border`, `padding`, `margin`, `background`) **não** são.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: sans-serif;  /* herdado por tudo abaixo */
+      color: #1e293b;           /* herdado */
+      border: 2px solid red;    /* NÃO herdado: fica só no body */
+    }
+  </style>
+</head>
+<body>
+  <p>Herdei a fonte e a cor do body, mas <strong>não</strong> a borda.</p>
+</body>
+</html>
+```
+
+## inherit e initial: controlando a herança
+
+Às vezes você quer forçar a herança onde ela não acontece, ou desfazê-la. Dois valores-chave servem para qualquer propriedade:
+
+- **`inherit`** — assume o valor do elemento pai (mesmo em propriedades que normalmente não herdam);
+- **`initial`** — volta ao valor padrão da especificação, ignorando o que o pai tem.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    .cartao { color: #2563eb; }
+    .cartao button { color: inherit; }  /* botão herda o azul do cartão */
+    .reset { color: initial; }          /* volta ao padrão (preto) */
+  </style>
+</head>
+<body>
+  <div class="cartao">
+    Texto azul
+    <button>Botão que herdou o azul</button>
+  </div>
+  <p class="reset">Texto no padrão inicial.</p>
+</body>
+</html>
+```
+
+Botões e inputs por padrão **não** herdam a cor e a fonte do redor (eles têm estilo próprio do navegador) — `inherit` é a forma direta de alinhá-los ao resto da página.
+
+> **Resumo:** O navegador decide qual estilo aplicar em três etapas. Primeiro o **seletor** define o alvo — `p` (tipo), `.classe`, `#id`, `nav a` (descendente), ou vários agrupados por vírgula. Depois, quando duas regras competem, vence a de maior **especificidade** — pense no placar `(ids, classes, tipos)`: um id ganha de qualquer número de classes, uma classe ganha de qualquer número de tags. Só com especificidade **igual** entra a **cascata**: a última regra escrita vence, e estilos inline sobrepõem o arquivo. Por fim, a **herança** faz propriedades de texto (`color`, `font-family`) descerem para os filhos sozinhas, enquanto borda e margem não descem; use **`inherit`** para forçar a herança e **`initial`** para voltar ao padrão. Regra de ouro: estilize com **classes** — ids são fortes demais e viram dor de cabeça para sobrescrever.

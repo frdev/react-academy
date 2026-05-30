@@ -1,0 +1,21 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Valores, Cores e Tipografia",
+  "slug": "valores-unidades-cores-tipografia",
+  "topics": [
+    "unidades absolutas e relativas: px, %, em e rem",
+    "quando usar rem em vez de px para acessibilidade",
+    "cores: hexadecimal, rgb/rgba e hsl",
+    "color e background na prática",
+    "font-family com fontes de fallback",
+    "font-size, font-weight, line-height e text-align"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

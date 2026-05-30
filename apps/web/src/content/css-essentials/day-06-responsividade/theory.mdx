@@ -1,0 +1,152 @@
+# Responsividade
+
+A mesma página precisa funcionar num celular de 360px e num monitor de 1440px. Um site **responsivo** se adapta: o texto reflui, as colunas se reorganizam, as imagens encolhem. A boa notícia é que metade do trabalho já vem de graça se você usou unidades relativas, `%` e Grid/Flexbox. A outra metade são três ideias: a **meta viewport**, os **layouts fluidos** e as **media queries**. Hoje você junta tudo.
+
+Cada exemplo é um arquivo HTML completo: copie, salve como `.html` e teste redimensionando a janela.
+
+## A meta viewport (sem ela, nada funciona)
+
+Antes de qualquer CSS, o HTML precisa desta linha no `<head>`. Sem ela, o celular finge ser uma tela larga e encolhe a página inteira — suas media queries nem disparam:
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1">
+```
+
+`width=device-width` diz "use a largura real do dispositivo"; `initial-scale=1` começa sem zoom. **Toda** página responsiva precisa dessa tag.
+
+## Layout fluido: a base que já se adapta
+
+Antes de adicionar media queries, deixe o layout *fluir*. Largura em `%` ou `fr`, um `max-width` para não esticar demais em telas grandes, e `margin: auto` para centralizar:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: sans-serif; background: #e2e8f0; }
+    .container {
+      width: 90%;          /* fluido: acompanha a tela */
+      max-width: 800px;    /* mas para de crescer em telas grandes */
+      margin: 40px auto;   /* centraliza */
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Conteúdo centralizado e fluido</h1>
+    <p>Ocupa 90% em telas pequenas, mas nunca passa de 800px. Redimensione para ver.</p>
+  </div>
+</body>
+</html>
+```
+
+## Media queries: mudando o estilo por largura
+
+A `@media` aplica um bloco de CSS **só quando uma condição é verdadeira** — quase sempre a largura da tela. As duas formas:
+
+- **`min-width`** — "desta largura **para cima**" (telas maiores);
+- **`max-width`** — "desta largura **para baixo**" (telas menores).
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #fca5a5;       /* padrão: telas pequenas */
+      text-align: center;
+      padding: 60px 20px;
+    }
+    body::before { content: "📱 Tela pequena"; font-size: 1.5rem; }
+
+    @media (min-width: 768px) {
+      body { background: #86efac; }              /* tablets para cima */
+      body::before { content: "💻 Tela média ou grande"; }
+    }
+  </style>
+</head>
+<body></body>
+</html>
+```
+
+Redimensione a janela cruzando os 768px: o fundo e o texto mudam. Esse é o coração da responsividade.
+
+## Mobile-first: comece pequeno
+
+A boa prática é **mobile-first**: escreva o CSS base pensando no celular (o caso mais simples, uma coluna só) e use `@media (min-width: …)` para *adicionar* complexidade conforme a tela cresce. Fica mais limpo do que o caminho inverso.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .grade {
+      display: grid;
+      grid-template-columns: 1fr;   /* base mobile: uma coluna */
+      gap: 16px;
+      padding: 16px;
+    }
+    .card { background: #6366f1; color: white; padding: 32px; border-radius: 8px; text-align: center; }
+
+    @media (min-width: 600px) {
+      .grade { grid-template-columns: repeat(2, 1fr); }  /* 2 colunas */
+    }
+    @media (min-width: 900px) {
+      .grade { grid-template-columns: repeat(3, 1fr); }  /* 3 colunas */
+    }
+  </style>
+</head>
+<body>
+  <div class="grade">
+    <div class="card">1</div>
+    <div class="card">2</div>
+    <div class="card">3</div>
+    <div class="card">4</div>
+    <div class="card">5</div>
+    <div class="card">6</div>
+  </div>
+</body>
+</html>
+```
+
+Uma coluna no celular, duas em tablets, três no desktop — só adicionando regras conforme a tela cresce. Os pontos onde o layout muda (600px, 900px) são os **breakpoints**. Escolha-os pelo **conteúdo** (onde ele "quebra" feio), não por aparelhos específicos.
+
+## Imagens fluidas
+
+Uma imagem grande estoura o layout no celular. A regra de ouro evita isso: nunca deixe a imagem passar da largura do contêiner, e mantenha a proporção com `height: auto`.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    img {
+      max-width: 100%;   /* nunca mais larga que o contêiner */
+      height: auto;      /* mantém a proporção ao encolher */
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <img src="https://placehold.co/1200x400" alt="Banner de exemplo">
+</body>
+</html>
+```
+
+`img { max-width: 100%; height: auto }` é uma das primeiras regras que todo projeto deveria ter.
+
+> **Resumo:** Responsividade começa com a **meta viewport** (`width=device-width, initial-scale=1`) — sem ela, nada se adapta no celular. Deixe o **layout fluir** com larguras em `%`/`fr`, um `max-width` para não esticar demais e `margin: auto` para centralizar. Ajuste o que faltar com **media queries**: `min-width` mira telas **maiores**, `max-width` mira **menores**. Prefira **mobile-first** — CSS base para celular (uma coluna) e `@media (min-width: …)` adicionando colunas conforme a tela cresce; os pontos de mudança são os **breakpoints**, escolhidos pelo conteúdo, não pelo aparelho. E nunca esqueça **`img { max-width: 100%; height: auto }`** para imagens que encolhem sem estourar o layout.

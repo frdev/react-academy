@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "No header da landing, qual declaração coloca a logo num extremo e o menu no outro?",
+      "options": [
+        "`text-align: justify`",
+        "`display: flex; justify-content: space-between`",
+        "`display: grid; gap: auto`",
+        "`float: left` na logo e `float: right` no menu"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `display: flex` no contêiner, `justify-content: space-between` cola os itens nas pontas opostas do eixo principal e distribui o espaço entre eles — exatamente o layout logo-à-esquerda / menu-à-direita."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que faz a grade de cards (`repeat(auto-fit, minmax(240px, 1fr))`) se adaptar sem nenhuma media query?",
+      "options": [
+        "O `auto-fit` encaixa quantas colunas de no mínimo 240px couberem na largura atual",
+        "Uma media query escondida dentro do repeat()",
+        "O JavaScript da página recalcula as colunas",
+        "O `gap` muda de tamanho conforme a tela"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`auto-fit` com `minmax(240px, 1fr)` deixa o próprio Grid decidir o número de colunas: cabe três? mostra três; só cabe uma? mostra uma — sempre com pelo menos 240px e esticando para preencher. Nenhuma media query é necessária para esse comportamento."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como o hero centraliza título, texto e botão na vertical e na horizontal?",
+      "options": [
+        "`text-align: center` resolve sozinho os três eixos",
+        "`display: flex; flex-direction: column; align-items: center`",
+        "`position: absolute` em cada elemento",
+        "`margin: auto` em cada filho"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `flex-direction: column`, o eixo principal vira vertical e os itens empilham; `align-items: center` os centraliza no eixo cruzado (horizontal). O `text-align: center` complementa centralizando o texto dentro de cada bloco."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual o papel de `.container { width: 90%; max-width: 1100px; margin: 0 auto }`?",
+      "options": [
+        "Deixar o conteúdo sempre com 1100px fixos",
+        "Conteúdo fluido (90%) que para de crescer em 1100px e fica centralizado",
+        "Esconder o conteúdo em telas grandes",
+        "Aplicar uma borda ao redor da página"
+      ],
+      "correctAnswer": 1,
+      "explanation": "É o padrão de container responsivo: 90% dá margens em telas estreitas, `max-width` impede linhas largas demais em monitores grandes, e `margin: 0 auto` centraliza o bloco horizontalmente."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "A media query `@media (max-width: 600px) { .topo { flex-direction: column } }` produz o quê?",
+      "options": [
+        "Esconde o header em telas pequenas",
+        "Em telas de até 600px, empilha a logo e o menu em coluna em vez de lado a lado",
+        "Aumenta o header em telas grandes",
+        "Remove o flexbox do header"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em telas de 600px ou menos, trocar `flex-direction` para `column` empilha os itens do header verticalmente, evitando que logo e menu fiquem espremidos lado a lado no celular."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "A landing inteira (estrutura e estilos) cabe num único arquivo .html, sem build nem dependências externas.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Com o CSS dentro de uma tag `<style>` no `<head>` e o HTML no `<body>`, a página é totalmente autocontida: basta salvar como .html e abrir no navegador. Foi exatamente assim que estudamos cada conceito ao longo do módulo."
+    }
+  ]
+}

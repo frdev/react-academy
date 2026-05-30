@@ -1,0 +1,134 @@
+# Valores, Cores e Tipografia
+
+Layout é estrutura; tipografia e cor são o que as pessoas realmente *veem*. Hoje você aprende a medir tamanhos com a unidade certa (e por que `rem` respeita quem aumenta a fonte do navegador), a escrever cores de três formas e a controlar texto — fonte, peso, tamanho e respiro entre linhas. São as propriedades que você mais vai digitar no dia a dia.
+
+Cada exemplo é um arquivo HTML completo: copie, salve como `.html` e abra no navegador.
+
+## Unidades: absolutas e relativas
+
+- **`px`** — unidade **absoluta**: 16px é sempre 16px. Boa para bordas finas e detalhes precisos.
+- **`%`** — **relativa ao pai**: `width: 50%` é metade da largura do contêiner.
+- **`em`** — relativa ao **`font-size` do próprio elemento**: `padding: 1em` acompanha o tamanho da fonte local (e pode acumular se aninhar).
+- **`rem`** — relativa ao **`font-size` da raiz** (`<html>`, 16px por padrão): `1rem = 16px`, `1.5rem = 24px`. Previsível e consistente em toda a página.
+
+A vantagem do `rem`: se a pessoa aumenta a fonte padrão do navegador (acessibilidade), tudo que está em `rem` cresce junto — o que está em `px` fica travado.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    .caixa {
+      width: 50%;          /* metade do pai */
+      padding: 1.5rem;     /* 24px, relativo à raiz */
+      border: 2px solid #334155;  /* px: detalhe fino e fixo */
+      font-size: 1rem;     /* 16px */
+    }
+  </style>
+</head>
+<body>
+  <div class="caixa">Largura em %, espaçamento em rem, borda em px.</div>
+</body>
+</html>
+```
+
+Regra prática: **`rem` para fontes e espaçamentos**, **`%` para larguras fluidas**, **`px` para detalhes** que devem ser fixos.
+
+## Cores: hex, rgb e hsl
+
+Três formas de escrever a mesma cor:
+
+- **Hexadecimal**: `#2563eb` — dois dígitos para vermelho, verde e azul. A mais comum.
+- **RGB / RGBA**: `rgb(37 99 235)` por canal (0–255); a versão com alfa controla a **transparência**: `rgb(37 99 235 / 0.5)` = 50% opaco.
+- **HSL**: `hsl(220 83% 53%)` — **matiz** (0–360°), **saturação** e **luminosidade**. É a mais intuitiva para ajustar uma cor: mude só a luminosidade para clarear ou escurecer.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: sans-serif; }
+    .amostra { padding: 16px; margin-bottom: 8px; color: white; }
+    .hex { background: #2563eb; }
+    .rgb { background: rgb(37 99 235 / 0.6); color: #1e293b; } /* translúcido */
+    .hsl { background: hsl(220 83% 40%); }                     /* mesma matiz, mais escura */
+  </style>
+</head>
+<body>
+  <div class="amostra hex">Hexadecimal #2563eb</div>
+  <div class="amostra rgb">RGB com 60% de opacidade</div>
+  <div class="amostra hsl">HSL escurecida (luminosidade 40%)</div>
+</body>
+</html>
+```
+
+`color` pinta o **texto**; `background` pinta o **fundo** da caixa.
+
+## Tipografia: a família de fontes
+
+`font-family` aceita uma **lista de fallback**: o navegador tenta a primeira; se não tiver, vai para a próxima. Sempre termine com uma família genérica (`sans-serif`, `serif`, `monospace`).
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    code {
+      font-family: "Fira Code", Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <p>Texto na primeira fonte disponível da lista.</p>
+  <p>Trecho de <code>código monoespaçado</code>.</p>
+</body>
+</html>
+```
+
+## Tamanho, peso, entrelinha e alinhamento
+
+- **`font-size`** — tamanho do texto (use `rem`);
+- **`font-weight`** — espessura: `400` (normal), `700` (negrito), ou palavras `normal`/`bold`;
+- **`line-height`** — altura da linha; um número puro como `1.5` é o ideal (1,5× o tamanho da fonte) e melhora a legibilidade;
+- **`text-align`** — alinhamento: `left`, `center`, `right`, `justify`.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    html { font-size: 16px; }          /* base para os rem */
+    .titulo {
+      font-size: 2rem;       /* 32px */
+      font-weight: 700;
+      text-align: center;
+    }
+    .corpo {
+      font-size: 1.125rem;   /* 18px */
+      font-weight: 400;
+      line-height: 1.6;      /* respiro entre linhas */
+      max-width: 60ch;       /* ~60 caracteres por linha: largura confortável de leitura */
+    }
+  </style>
+</head>
+<body>
+  <h1 class="titulo">Título centralizado</h1>
+  <p class="corpo">
+    Um parágrafo com entrelinha generosa fica muito mais fácil de ler. O valor
+    1.6 de line-height dá ar entre as linhas, e limitar a largura a 60ch evita
+    linhas longas demais, em que o olho se perde ao voltar para a esquerda.
+  </p>
+</body>
+</html>
+```
+
+A unidade **`ch`** vale a largura do caractere "0" da fonte — `max-width: 60ch` é um truque clássico para manter linhas de texto numa largura confortável de leitura.
+
+> **Resumo:** Escolha a unidade pelo papel: **`px`** é absoluto (bom para bordas e detalhes), **`%`** é relativo ao pai (larguras fluidas), **`em`** ao font-size local e **`rem`** ao font-size da raiz (16px por padrão) — prefira **`rem`** em fontes e espaçamentos porque ele respeita quem aumenta a fonte do navegador. Escreva cores em **hex** (`#2563eb`), **rgb** (com alfa para transparência: `rgb(... / 0.5)`) ou **hsl** (matiz/saturação/luminosidade, a mais fácil de clarear e escurecer); `color` pinta o texto e `background` o fundo. Em tipografia, dê a `font-family` uma **lista de fallback** terminando numa família genérica, controle a espessura com `font-weight`, dê respiro com **`line-height: 1.5`–`1.6`** (número puro) e limite a largura de leitura com algo como `max-width: 60ch`.

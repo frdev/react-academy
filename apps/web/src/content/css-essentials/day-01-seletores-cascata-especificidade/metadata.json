@@ -1,0 +1,21 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Como o CSS Aplica Estilo",
+  "slug": "seletores-cascata-especificidade",
+  "topics": [
+    "seletores: tipo, classe, id, descendente e agrupamento",
+    "cascata: ordem das regras e origem dos estilos",
+    "especificidade: como o navegador decide quem ganha",
+    "id vs classe vs tag no cálculo de especificidade",
+    "herança: propriedades que descem para os filhos",
+    "inherit e initial para controlar a herança"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que a meta tag `<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">` é essencial?",
+      "options": [
+        "Ela carrega as fontes da página",
+        "Sem ela, o celular finge ser uma tela larga e encolhe a página inteira, e as media queries não funcionam como esperado",
+        "Ela é necessária só para imagens",
+        "Ela melhora o SEO e nada mais"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem a meta viewport, navegadores móveis assumem uma largura virtual grande (~980px) e reduzem o zoom da página. `width=device-width` faz o layout usar a largura real do aparelho, o que é a base para as media queries dispararem corretamente."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `@media (min-width: 768px)` e `@media (max-width: 768px)`?",
+      "options": [
+        "São equivalentes",
+        "`min-width` aplica de 768px para cima (telas maiores); `max-width` aplica de 768px para baixo (telas menores)",
+        "`min-width` é para altura e `max-width` para largura",
+        "`max-width` só funciona em impressão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`min-width: 768px` ativa o estilo quando a tela tem 768px ou mais (telas maiores). `max-width: 768px` ativa quando tem 768px ou menos (telas menores). A escolha entre eles define a direção do seu raciocínio responsivo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que caracteriza a abordagem mobile-first?",
+      "options": [
+        "Escrever o CSS pensando primeiro no desktop e reduzir para mobile com max-width",
+        "Escrever o CSS base para telas pequenas e adicionar complexidade com `@media (min-width: …)` conforme a tela cresce",
+        "Usar apenas pixels fixos",
+        "Servir um site totalmente diferente para celulares"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Mobile-first parte do caso mais simples — o celular, geralmente uma coluna — e usa media queries com `min-width` para ir somando colunas e ajustes nas telas maiores. Costuma gerar um CSS mais limpo que o caminho inverso."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual combinação mantém uma imagem dentro do contêiner sem distorcê-la em telas pequenas?",
+      "options": [
+        "`width: 1200px; height: 400px`",
+        "`max-width: 100%; height: auto`",
+        "`min-width: 100%`",
+        "`object-fit: none`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`max-width: 100%` impede a imagem de ficar mais larga que o contêiner, e `height: auto` recalcula a altura proporcionalmente ao novo tamanho, preservando a proporção sem distorção."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Combinar `width: 90%` com `max-width: 800px; margin: auto` num contêiner produz qual comportamento?",
+      "options": [
+        "Largura fixa de 800px sempre",
+        "Ocupa 90% da tela em telas pequenas, mas para de crescer ao chegar em 800px, ficando centralizado",
+        "Ocupa sempre 90% da tela, sem limite",
+        "Fica sempre colado à esquerda"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em telas estreitas, 90% deixa margens confortáveis. Quando 90% ultrapassaria 800px (telas largas), o `max-width` segura em 800px, e `margin: auto` centraliza o bloco. É o padrão de container fluido."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "Breakpoints devem ser escolhidos com base nas larguras exatas de aparelhos populares, nunca pelo conteúdo.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. A recomendação atual é escolher breakpoints pelo conteúdo — o ponto em que o layout começa a ficar feio ou apertado —, já que a variedade de aparelhos é enorme e mudaria constantemente. Perseguir larguras de modelos específicos é frágil."
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+# Grid — Layout em Duas Dimensões
+
+Flexbox organiza numa dimensão por vez — uma linha *ou* uma coluna. Quando você precisa de **linhas e colunas ao mesmo tempo** (uma grade de cards, o esqueleto de uma página com cabeçalho, conteúdo e rodapé), a ferramenta é o **Grid**. Você desenha a grade no contêiner — "quero 3 colunas iguais com tanto de espaço" — e os filhos se encaixam nela. É espantosamente direto para o que entrega.
+
+Cada exemplo é um arquivo HTML completo: copie, salve como `.html` e abra no navegador.
+
+## Definindo colunas e a unidade fr
+
+`display: grid` liga a grade. `grid-template-columns` define quantas colunas existem e a largura de cada uma. A unidade estrela é o **`fr`** (*fraction*), que significa "uma fatia do espaço disponível":
+
+- `1fr 1fr 1fr` → três colunas iguais;
+- `2fr 1fr` → a primeira coluna ocupa o dobro da segunda.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .grade {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;  /* três colunas iguais */
+      gap: 12px;                            /* espaço entre linhas e colunas */
+      padding: 12px;
+      background: #f1f5f9;
+    }
+    .item { background: #8b5cf6; color: white; padding: 24px; border-radius: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="grade">
+    <div class="item">1</div>
+    <div class="item">2</div>
+    <div class="item">3</div>
+    <div class="item">4</div>
+    <div class="item">5</div>
+    <div class="item">6</div>
+  </div>
+</body>
+</html>
+```
+
+Os seis itens se distribuem sozinhos em duas linhas de três. `gap` vale para os dois sentidos de uma vez.
+
+## repeat(): sem repetição manual
+
+Escrever `1fr 1fr 1fr 1fr` cansa. `repeat(4, 1fr)` diz a mesma coisa — "4 colunas de 1fr":
+
+```css
+.grade {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);  /* 4 colunas iguais */
+  gap: 16px;
+}
+```
+
+## minmax(): colunas com piso e teto
+
+`minmax(min, max)` define o tamanho mínimo e máximo de uma trilha. `minmax(200px, 1fr)` quer dizer "nunca menor que 200px, mas cresça até preencher o espaço". É a peça que falta para grids que se adaptam.
+
+## auto-fit: o grid responsivo sem media query
+
+Combinando `repeat()`, `auto-fit` e `minmax()`, você cria uma grade que **ajusta sozinha o número de colunas** conforme a largura da tela — sem escrever nenhuma media query:
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .galeria {
+      display: grid;
+      /* tantas colunas de no mínimo 180px quantas couberem; o resto vira espaço */
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      padding: 16px;
+      background: #f1f5f9;
+    }
+    .card { background: #0ea5e9; color: white; padding: 32px; border-radius: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="galeria">
+    <div class="card">A</div>
+    <div class="card">B</div>
+    <div class="card">C</div>
+    <div class="card">D</div>
+    <div class="card">E</div>
+  </div>
+</body>
+</html>
+```
+
+Redimensione a janela: o número de colunas muda automaticamente. Esse `repeat(auto-fit, minmax(180px, 1fr))` é o **padrão de galeria responsiva** mais usado — vale memorizar. (`auto-fill` é o primo que mantém trilhas vazias reservadas quando há poucos itens; `auto-fit` colapsa essas trilhas e estica o conteúdo.)
+
+## Posicionando itens em linhas e colunas
+
+Por padrão os itens preenchem a grade na ordem. Mas você pode mandar um item **ocupar várias colunas ou linhas** com `grid-column` e `grid-row`, usando `span` (quantas trilhas atravessar):
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    .painel {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 12px;
+      background: #f1f5f9;
+    }
+    .bloco { background: #64748b; color: white; padding: 24px; border-radius: 8px; text-align: center; }
+    .largo { grid-column: span 2; background: #ef4444; }  /* ocupa 2 colunas */
+    .alto  { grid-row: span 2;   background: #22c55e; }   /* ocupa 2 linhas */
+  </style>
+</head>
+<body>
+  <div class="painel">
+    <div class="bloco largo">Atravesso 2 colunas</div>
+    <div class="bloco alto">Atravesso 2 linhas</div>
+    <div class="bloco">3</div>
+    <div class="bloco">4</div>
+    <div class="bloco">5</div>
+  </div>
+</body>
+</html>
+```
+
+`grid-column: span 2` faz o item ocupar duas colunas; `grid-row: span 2`, duas linhas. É assim que se monta um destaque maior dentro de uma grade uniforme.
+
+## Grid ou Flexbox?
+
+Regra simples: **Flexbox para uma dimensão** (uma barra de botões, um menu, uma linha de itens) e **Grid para duas dimensões** (a grade de cards, o layout geral da página). Eles convivem — é normal um layout Grid conter caixas que por dentro usam Flexbox.
+
+> **Resumo:** **Grid** organiza em **duas dimensões** (linhas e colunas). Ligue com `display: grid` e desenhe as colunas em `grid-template-columns`, usando a unidade **`fr`** (fatia do espaço: `1fr 1fr` são duas colunas iguais) e **`repeat(n, 1fr)`** para não repetir à mão. **`gap`** espaça linhas e colunas de uma vez. Para grids que se adaptam, combine **`repeat(auto-fit, minmax(180px, 1fr))`** — tantas colunas de no mínimo 180px quantas couberem, sem nenhuma media query. Faça um item ocupar mais espaço com **`grid-column: span 2`** ou **`grid-row: span 2`**. Decida pela dimensão: **Flexbox** para uma (linha ou coluna), **Grid** para duas — e os dois se combinam no mesmo layout.

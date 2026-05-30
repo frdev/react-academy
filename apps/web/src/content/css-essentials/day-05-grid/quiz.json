@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que significa a unidade `fr` em `grid-template-columns: 1fr 1fr 1fr`?",
+      "options": [
+        "Frames por segundo",
+        "Uma fração do espaço disponível — aqui, três colunas de tamanho igual",
+        "Pixels fixos (1fr = 1px)",
+        "A fonte (font-resize)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`fr` representa uma fatia do espaço livre do contêiner. `1fr 1fr 1fr` divide o espaço em três partes iguais; `2fr 1fr` daria à primeira coluna o dobro da segunda."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como escrever de forma curta uma grade de 4 colunas iguais?",
+      "options": [
+        "`grid-template-columns: 4fr`",
+        "`grid-template-columns: repeat(4, 1fr)`",
+        "`grid-columns: 4`",
+        "`columns: 4 equal`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`repeat(4, 1fr)` é a forma compacta de `1fr 1fr 1fr 1fr` — quatro trilhas de uma fração cada. `repeat(n, valor)` repete o padrão n vezes."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `minmax(180px, 1fr)` define para uma coluna?",
+      "options": [
+        "Largura fixa de 180px sempre",
+        "Mínimo de 180px, podendo crescer até preencher o espaço disponível",
+        "Máximo de 180px, nunca maior",
+        "Exatamente entre 180px e 1px"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`minmax(min, max)` dá um piso e um teto à trilha. `minmax(180px, 1fr)` garante pelo menos 180px e deixa a coluna esticar (1fr) para ocupar o espaço que sobrar."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual declaração cria uma galeria responsiva que ajusta o número de colunas sozinha, sem media queries?",
+      "options": [
+        "`grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))`",
+        "`grid-template-columns: 1fr; flex-wrap: wrap`",
+        "`display: grid; columns: auto`",
+        "`grid-template-columns: 100%`"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`repeat(auto-fit, minmax(180px, 1fr))` encaixa quantas colunas de no mínimo 180px couberem na largura atual e estica para preencher. O navegador recalcula o número de colunas conforme a tela — sem nenhuma media query."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como fazer um item do grid ocupar duas colunas?",
+      "options": [
+        "`width: 200%`",
+        "`grid-column: span 2`",
+        "`colspan: 2`",
+        "`flex: 2`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`grid-column: span 2` faz o item atravessar duas colunas da grade. Analogamente, `grid-row: span 2` o faz ocupar duas linhas — útil para destacar um item dentro de uma grade uniforme."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "Para um layout de duas dimensões (linhas E colunas, como uma grade de cards), Grid costuma ser mais adequado que Flexbox.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Flexbox brilha em uma dimensão (uma linha ou uma coluna), enquanto Grid foi feito para controlar linhas e colunas ao mesmo tempo. Eles se complementam: um layout Grid pode conter caixas que usam Flexbox por dentro."
+    }
+  ]
+}

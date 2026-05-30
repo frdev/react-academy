@@ -183,6 +183,15 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-02': () => import('@/content/typescript-essentials/day-02-interfaces-e-narrowing/quiz.json'),
     'day-03': () => import('@/content/typescript-essentials/day-03-generics-e-utility-types/quiz.json'),
   },
+  'css-essentials': {
+    'day-01': () => import('@/content/css-essentials/day-01-seletores-cascata-especificidade/quiz.json'),
+    'day-02': () => import('@/content/css-essentials/day-02-box-model-display-position/quiz.json'),
+    'day-03': () => import('@/content/css-essentials/day-03-valores-unidades-cores-tipografia/quiz.json'),
+    'day-04': () => import('@/content/css-essentials/day-04-flexbox/quiz.json'),
+    'day-05': () => import('@/content/css-essentials/day-05-grid/quiz.json'),
+    'day-06': () => import('@/content/css-essentials/day-06-responsividade/quiz.json'),
+    'day-07': () => import('@/content/css-essentials/day-07-projeto-final-landing/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

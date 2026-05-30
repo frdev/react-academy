@@ -1,0 +1,22 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "Flexbox — Layout em Uma Dimensão",
+  "slug": "flexbox",
+  "topics": [
+    "display: flex e o eixo principal vs eixo cruzado",
+    "flex-direction: row e column",
+    "justify-content: alinhamento no eixo principal",
+    "align-items: alinhamento no eixo cruzado",
+    "gap para espaçar itens sem margin",
+    "flex-wrap para quebrar em várias linhas",
+    "flex: grow, shrink e basis"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-03"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

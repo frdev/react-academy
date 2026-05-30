@@ -23,23 +23,30 @@ const COLOR_MAP: Record<string, { ring: string; bg: string; text: string; icon: 
 
 const STACK_ICONS: Record<string, string> = {
   react:                   '⚛️',
-  javascript:              'JS',
-  typescript:              'TS',
   nodejs:                  '🟢',
   algorithms:              '🧮',
   css:                     '🎨',
   html:                    '📄',
   'css-essentials':        '🖌️',
-  'javascript-essentials': '📜',
-  'typescript-essentials': '🔷',
+  'react-essentials':      '⚛️',
   git:                     '🌿',
   'frontend-architecture': '🏛️',
   regex:                   '.*',
 }
 
+// Badges de texto das linguagens com as cores da marca:
+// JS em amarelo (#f7df1e, texto preto), TS em azul (#3178c6, texto branco).
+const STACK_BRANDS: Record<string, { label: string; bg: string; text: string }> = {
+  javascript:              { label: 'JS', bg: 'bg-[#f7df1e]', text: 'text-black' },
+  'javascript-essentials': { label: 'JS', bg: 'bg-[#f7df1e]', text: 'text-black' },
+  typescript:              { label: 'TS', bg: 'bg-[#3178c6]', text: 'text-white' },
+  'typescript-essentials': { label: 'TS', bg: 'bg-[#3178c6]', text: 'text-white' },
+}
+
 function StackCard({ stack, completed }: { stack: Stack; completed: number }) {
   const navigate = useNavigate()
   const colors = COLOR_MAP[stack.color] ?? COLOR_MAP.blue
+  const brand = STACK_BRANDS[stack.id]
   const isAvailable = stack.status === 'available'
   const done = Math.min(completed, stack.totalDays)
   const pct = stack.totalDays > 0 ? Math.round((done / stack.totalDays) * 100) : 0
@@ -60,9 +67,15 @@ function StackCard({ stack, completed }: { stack: Stack; completed: number }) {
         </div>
       )}
 
-      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${colors.icon} mb-4`}>
-        <span className="text-2xl">{STACK_ICONS[stack.id] ?? '📚'}</span>
-      </div>
+      {brand ? (
+        <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${brand.bg} mb-4`}>
+          <span className={`text-xl font-bold ${brand.text}`}>{brand.label}</span>
+        </div>
+      ) : (
+        <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${colors.icon} mb-4`}>
+          <span className="text-2xl">{STACK_ICONS[stack.id] ?? '📚'}</span>
+        </div>
+      )}
 
       <h3 className="text-xl font-bold text-white mb-1">{stack.name}</h3>
       <p className={`text-sm font-medium mb-3 ${isAvailable ? colors.text : 'text-gray-500'}`}>

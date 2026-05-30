@@ -1,0 +1,22 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Grid — Layout em Duas Dimensões",
+  "slug": "grid",
+  "topics": [
+    "display: grid e a diferença para o flexbox",
+    "grid-template-columns e a unidade fr",
+    "repeat() para repetir colunas",
+    "gap entre linhas e colunas",
+    "minmax() para colunas flexíveis com limite",
+    "auto-fit e auto-fill para grids responsivos sem media query",
+    "posicionar itens com grid-column e grid-row"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

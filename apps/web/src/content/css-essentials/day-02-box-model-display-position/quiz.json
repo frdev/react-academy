@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Da camada mais interna para a mais externa, qual é a ordem correta do box model?",
+      "options": [
+        "margin, border, padding, content",
+        "content, padding, border, margin",
+        "content, margin, border, padding",
+        "padding, content, border, margin"
+      ],
+      "correctAnswer": 1,
+      "explanation": "De dentro para fora: o conteúdo (content), o espaço interno (padding), a linha (border) e o espaço externo que afasta das vizinhas (margin)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Com `box-sizing: border-box`, um elemento com `width: 200px; padding: 20px; border: 4px` ocupa que largura real?",
+      "options": [
+        "248px, porque padding e borda somam por fora",
+        "200px, porque a width já inclui padding e borda",
+        "160px, porque o padding é descontado",
+        "204px, somando só a borda"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `border-box`, a régua de `width` inclui padding e borda — então 200px é a largura total e o conteúdo se ajusta por dentro. Sem ele (`content-box`, o padrão), seria 248px."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Um bloco com `margin-bottom: 30px` é seguido por outro com `margin-top: 20px`. Qual o espaço vertical entre eles?",
+      "options": [
+        "50px (a soma)",
+        "30px (a maior, por colapso de margens)",
+        "20px (a menor)",
+        "10px (a diferença)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Margens verticais entre blocos em fluxo colapsam: prevalece a maior das duas, não a soma. Logo, 30px."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual valor de `display` flui ao lado de outros elementos (como inline) mas, ao contrário do inline puro, respeita `width` e `height`?",
+      "options": [
+        "block",
+        "inline",
+        "inline-block",
+        "none"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`inline-block` combina os dois comportamentos: senta na linha ao lado dos vizinhos como um inline, mas aceita dimensões e padding vertical como um block. `inline` puro ignora width/height."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Você quer posicionar um selo \"NOVO\" no canto de um cartão. Qual combinação de `position` é a usual?",
+      "options": [
+        "`fixed` no cartão e `static` no selo",
+        "`relative` no cartão (âncora) e `absolute` no selo",
+        "`absolute` no cartão e `absolute` no selo",
+        "`sticky` no selo apenas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`absolute` posiciona o elemento em relação ao ancestral posicionado mais próximo. Pondo `position: relative` no cartão, ele vira essa âncora, e o selo `absolute` se ancora no canto dele com top/right."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "`z-index` controla a ordem de empilhamento mesmo em elementos com `position: static`.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. `z-index` só tem efeito em elementos posicionados (`relative`, `absolute`, `fixed` ou `sticky`). Em `static` (o padrão), ele é simplesmente ignorado."
+    }
+  ]
+}

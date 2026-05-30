@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O seletor `nav a` aplica estilo a quais elementos?",
+      "options": [
+        "A todos os links `<a>` da página",
+        "Apenas aos `<a>` que estão dentro de um `<nav>`",
+        "Apenas ao elemento `<nav>`",
+        "Aos elementos que têm class=\"nav\" e class=\"a\""
+      ],
+      "correctAnswer": 1,
+      "explanation": "`nav a` é um seletor descendente: o espaço entre `nav` e `a` significa \"qualquer `<a>` em qualquer nível dentro de um `<nav>`\". Links fora do `<nav>` não são afetados."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Dado `p { color: blue; }` e, logo abaixo, `p { color: green; }`, qual cor o parágrafo assume e por quê?",
+      "options": [
+        "Azul, porque foi declarada primeiro",
+        "Verde, porque com especificidade igual a última regra vence (cascata)",
+        "Preto, porque as duas se cancelam",
+        "Depende do tamanho da tela"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os dois seletores têm especificidade idêntica (`0,0,1`). Quando a especificidade empata, a cascata decide pela ordem: a última regra escrita vence. Logo, verde."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Um elemento tem `id=\"principal\"` e `class=\"texto\"`. Há `.texto { color: blue }` e, antes dela, `#principal { color: red }`. Qual cor vence?",
+      "options": [
+        "Azul, porque `.texto` aparece depois no arquivo",
+        "Vermelho, porque o id tem especificidade maior que a classe",
+        "Azul, porque classe sempre vence id",
+        "Vermelho, porque red vem antes no alfabeto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A especificidade é comparada antes da ordem. `#principal` vale `1,0,0` e `.texto` vale `0,1,0`. Um id ganha de qualquer número de classes, então vence o vermelho — a ordem no arquivo nem chega a ser considerada."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quais propriedades são herdadas pelos elementos filhos por padrão?",
+      "options": [
+        "border e padding",
+        "background e margin",
+        "color e font-family",
+        "width e height"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Propriedades de texto como `color`, `font-family`, `font-size` e `line-height` são herdadas: defini-las no `body` afeta os filhos. Já propriedades de caixa (`border`, `padding`, `margin`, `background`, `width`) não são herdadas."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `inherit` e `initial`?",
+      "options": [
+        "São sinônimos",
+        "`inherit` assume o valor do elemento pai; `initial` volta ao valor padrão da especificação",
+        "`inherit` zera a propriedade; `initial` copia do pai",
+        "`initial` só funciona em cores e `inherit` só em fontes"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`inherit` força o elemento a usar o valor do pai (útil em propriedades que normalmente não herdam, como a cor de um `<button>`). `initial` descarta qualquer influência e volta ao valor padrão definido pela especificação CSS."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "Estilizar elementos por `id` é uma boa prática geral, porque garante que o estilo sempre prevaleça.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Justamente por terem especificidade muito alta, ids são difíceis de sobrescrever depois e tornam o CSS rígido. A recomendação é estilizar com classes, que são reutilizáveis e fáceis de ajustar; reserve ids para casos pontuais."
+    }
+  ]
+}

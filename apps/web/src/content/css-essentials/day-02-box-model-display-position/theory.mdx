@@ -1,0 +1,196 @@
+# Box Model, Display e Posicionamento
+
+Todo elemento na página é uma **caixa retangular** — mesmo um texto solto. O CSS desenha essa caixa em quatro camadas, decide se ela ocupa a linha inteira ou senta ao lado das vizinhas, e onde exatamente ela aparece. Quando um espaçamento sai "errado" ou um elemento empurra os outros sem você pedir, quase sempre a explicação está aqui. Hoje você aprende a enxergar a caixa.
+
+Cada exemplo é um arquivo HTML completo: copie, salve como `.html` e abra no navegador.
+
+## As quatro camadas da caixa
+
+De dentro para fora, toda caixa tem:
+
+- **content** — o conteúdo (texto, imagem); seu tamanho base é `width` × `height`;
+- **padding** — o espaço *interno*, entre o conteúdo e a borda;
+- **border** — a linha da borda;
+- **margin** — o espaço *externo*, que afasta a caixa das vizinhas.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    .caixa {
+      width: 200px;
+      padding: 20px;             /* espaço interno */
+      border: 4px solid #2563eb; /* borda */
+      margin: 30px;              /* espaço externo */
+      background: #dbeafe;
+    }
+  </style>
+</head>
+<body>
+  <div class="caixa">Conteúdo da caixa</div>
+</body>
+</html>
+```
+
+## box-sizing: border-box (ligue sempre)
+
+Por padrão, `width` mede só o **content**. Então a caixa acima ocupa `200 + 20 + 20 + 4 + 4 = 248px` de largura real — o padding e a borda *somam* por fora. Isso torna contas de layout um inferno.
+
+`box-sizing: border-box` muda a régua: `width` passa a incluir padding e borda. Você diz `width: 200px` e a caixa tem 200px de verdade, com o conteúdo se ajustando por dentro.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Reset clássico: aplique a TUDO no início de todo projeto */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+    }
+    .caixa {
+      width: 200px;              /* 200px reais, padding incluso */
+      padding: 20px;
+      border: 4px solid #2563eb;
+      background: #dbeafe;
+    }
+  </style>
+</head>
+<body>
+  <div class="caixa">Agora width é width.</div>
+</body>
+</html>
+```
+
+O `* { box-sizing: border-box }` no topo do CSS é praticamente obrigatório em projetos reais.
+
+## Colapso de margens
+
+Quando duas caixas em bloco ficam **uma sobre a outra na vertical**, suas margens não se somam — elas **colapsam**, e vale a **maior** das duas. Um parágrafo com `margin-bottom: 30px` seguido de outro com `margin-top: 20px` resulta em **30px** de espaço entre eles, não 50px.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    .a { margin-bottom: 30px; background: #fde68a; }
+    .b { margin-top: 20px;    background: #bbf7d0; }
+  </style>
+</head>
+<body>
+  <p class="a">Bloco A (margin-bottom: 30px)</p>
+  <p class="b">Bloco B (margin-top: 20px) — o vão entre eles é 30px, não 50px.</p>
+</body>
+</html>
+```
+
+Isso só acontece com margens **verticais** de elementos em fluxo de bloco. Não estranhe quando o espaço parecer "menor que a soma" — é o colapso agindo.
+
+## display: como a caixa se comporta
+
+A propriedade `display` define o tipo da caixa:
+
+- **block** — ocupa a largura toda disponível e quebra linha (`div`, `p`, `h1`);
+- **inline** — flui no meio do texto, só ocupa o necessário, e **ignora** `width`/`height` (`span`, `a`);
+- **inline-block** — flui ao lado como inline, mas **aceita** `width`, `height`, `padding` vertical;
+- **none** — some completamente, sem ocupar espaço (diferente de `visibility: hidden`, que esconde mas reserva o lugar).
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    .tag {
+      display: inline-block;
+      width: 90px;
+      padding: 6px 0;
+      text-align: center;
+      background: #e0e7ff;
+      border-radius: 6px;
+    }
+    .escondido { display: none; }  /* não aparece nem ocupa espaço */
+  </style>
+</head>
+<body>
+  <span class="tag">HTML</span>
+  <span class="tag">CSS</span>
+  <span class="tag">JS</span>
+  <span class="escondido">Você não me vê.</span>
+</body>
+</html>
+```
+
+## position: tirando a caixa do fluxo
+
+Por padrão tudo é `position: static` — a caixa fica onde o fluxo natural a coloca. Os outros valores destravam `top`/`right`/`bottom`/`left`:
+
+- **relative** — desloca a caixa em relação à posição original (e o espaço dela continua reservado); também serve de **âncora** para filhos absolutos;
+- **absolute** — tira a caixa do fluxo e a posiciona em relação ao ancestral posicionado mais próximo (ou à página);
+- **fixed** — gruda na janela (viewport); não se move ao rolar a página;
+- **sticky** — fica normal até atingir um limite de scroll, e então "cola" ali.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    .cartao {
+      position: relative;        /* âncora para o selo */
+      width: 240px;
+      height: 120px;
+      margin: 60px auto;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+    }
+    .selo {
+      position: absolute;        /* posicionado em relação ao .cartao */
+      top: -10px;
+      right: -10px;
+      background: #ef4444;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font: 12px sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="cartao">
+    Cartão
+    <span class="selo">NOVO</span>
+  </div>
+</body>
+</html>
+```
+
+O par **`relative` no pai + `absolute` no filho** é um dos padrões mais usados do CSS: posiciona um selo, um badge ou um botão "fechar" no canto de um elemento.
+
+## z-index: quem fica na frente
+
+Quando caixas posicionadas se sobrepõem, `z-index` define a ordem de empilhamento: **maior número fica na frente**. Ele só funciona em elementos com `position` diferente de `static`.
+
+```html
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <style>
+    .quadro { position: absolute; width: 100px; height: 100px; }
+    .atras  { background: #93c5fd; z-index: 1; left: 20px; top: 20px; }
+    .frente { background: #fca5a5; z-index: 2; left: 60px; top: 60px; }
+  </style>
+</head>
+<body>
+  <div class="quadro atras"></div>
+  <div class="quadro frente">Na frente (z-index maior)</div>
+</body>
+</html>
+```
+
+> **Resumo:** Todo elemento é uma caixa de quatro camadas — **content**, **padding** (espaço interno), **border** e **margin** (espaço externo). Ligue **`box-sizing: border-box`** em tudo (`* { box-sizing: border-box }`) para que `width` inclua padding e borda e as contas fechem. Margens verticais entre blocos **colapsam** (vale a maior, não a soma). O **`display`** define o comportamento: `block` quebra linha e toma a largura toda, `inline` flui no texto e ignora dimensões, `inline-block` flui mas aceita tamanho, `none` remove o elemento. O **`position`** tira a caixa do fluxo: `relative` desloca e serve de âncora, `absolute` posiciona dentro do ancestral posicionado, `fixed` gruda na viewport e `sticky` cola ao rolar — o par `relative` no pai + `absolute` no filho é o padrão para selos e badges. Quando caixas posicionadas se sobrepõem, o **`z-index`** maior fica na frente.

@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Com a raiz (`<html>`) em 16px, quanto vale `font-size: 1.5rem`?",
+      "options": [
+        "1.5px",
+        "16px",
+        "24px",
+        "Depende do font-size do elemento pai"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`rem` é sempre relativo à raiz. Com a raiz em 16px, `1.5rem = 16 × 1.5 = 24px`. Por ser relativo à raiz (e não ao pai), o rem é previsível em qualquer profundidade do documento."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `rem` costuma ser preferível a `px` para tamanhos de fonte?",
+      "options": [
+        "Porque rem renderiza mais rápido",
+        "Porque rem escala junto quando a pessoa aumenta a fonte padrão do navegador (acessibilidade)",
+        "Porque px não funciona em telas modernas",
+        "Porque rem permite cores mais vivas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quem aumenta a fonte padrão do navegador (uma necessidade de acessibilidade) faz tudo que está em rem crescer proporcionalmente. Valores em px ficam travados no tamanho fixo, ignorando essa preferência."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual formato de cor é o mais conveniente quando você quer apenas escurecer ou clarear uma cor mantendo a mesma matiz?",
+      "options": [
+        "Hexadecimal (#rrggbb)",
+        "RGB",
+        "HSL",
+        "O nome em inglês (ex.: blue)"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Em HSL você isola a luminosidade (o terceiro valor): baixá-la escurece e aumentá-la clareia, sem mexer na matiz nem na saturação. Em hex ou rgb você teria que recalcular os três canais."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que `rgb(37 99 235 / 0.5)` representa?",
+      "options": [
+        "A cor com 50% de opacidade (meio transparente)",
+        "A cor com o dobro de brilho",
+        "Uma cor inválida — rgb não aceita barra",
+        "Metade do vermelho apenas"
+      ],
+      "correctAnswer": 0,
+      "explanation": "O valor após a barra é o canal alfa (opacidade), de 0 (invisível) a 1 (opaco). `0.5` deixa a cor 50% transparente, mostrando parcialmente o que está atrás."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que escrever `font-family: \"Segoe UI\", Roboto, Arial, sans-serif` em vez de só `\"Segoe UI\"`?",
+      "options": [
+        "Para deixar a fonte mais pesada",
+        "É uma lista de fallback: se a primeira fonte não existir, o navegador usa a próxima, terminando numa família genérica",
+        "Porque uma única fonte é proibida em CSS",
+        "Para aplicar as três fontes ao mesmo tempo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A lista é tentada em ordem até achar uma fonte instalada. Terminar com uma família genérica (`sans-serif`) garante que, mesmo sem nenhuma das nomeadas, o texto saia numa fonte sem serifa do sistema."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "Definir `line-height: 1.6` (número puro) deixa a altura da linha em 1,6 vez o tamanho da fonte do elemento.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Um number puro em `line-height` é um multiplicador do `font-size`, então acompanha o tamanho do texto. É a forma recomendada — valores como 1.5 a 1.6 dão boa legibilidade."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "day-07",
+  "day": 7,
+  "week": 1,
+  "title": "Projeto Final — Landing Responsiva",
+  "slug": "projeto-final-landing",
+  "topics": [
+    "estruturar uma página: header, hero, grid de cards e footer",
+    "barra de navegação com Flexbox e space-between",
+    "centralizar o hero com Flexbox",
+    "grade de recursos responsiva com Grid e auto-fit",
+    "container fluido com max-width e margin auto",
+    "media query para empilhar o layout no celular",
+    "montar um arquivo HTML+CSS completo do zero"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}
