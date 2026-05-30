@@ -50,6 +50,16 @@ export async function getAllLessonProgress(stackId: string): Promise<LessonProgr
   return db.lessonProgress.where('stackId').equals(stackId).toArray()
 }
 
+/** Returns the number of completed lessons per stack, keyed by stackId. */
+export async function getCompletedCountsByStack(): Promise<Record<string, number>> {
+  const completed = await db.lessonProgress.where('status').equals('completed').toArray()
+  const counts: Record<string, number> = {}
+  for (const row of completed) {
+    counts[row.stackId] = (counts[row.stackId] ?? 0) + 1
+  }
+  return counts
+}
+
 export async function getUserStats(): Promise<UserStats | undefined> {
   return db.userStats.orderBy('id').last()
 }
