@@ -1,0 +1,21 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "O que é um Gerenciador de Pacotes?",
+  "slug": "o-que-e",
+  "topics": [
+    "package.json e o manifesto do projeto",
+    "dependencies vs devDependencies",
+    "node_modules e o registry",
+    "semver e ranges (^ ~)",
+    "lockfiles e instalação determinística",
+    "scripts"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

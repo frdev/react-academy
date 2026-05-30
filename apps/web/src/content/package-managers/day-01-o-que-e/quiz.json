@@ -1,0 +1,87 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a função do arquivo `package.json` em um projeto JavaScript?",
+      "options": [
+        "Armazena o código compilado pronto para produção",
+        "É o manifesto do projeto: declara metadados, a lista de dependências e os scripts",
+        "Guarda as versões exatas instaladas de cada pacote",
+        "Contém o código baixado das dependências de terceiros"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `package.json` é o manifesto do projeto. Ele descreve nome, versão, as faixas de dependências (`dependencies` e `devDependencies`) e os `scripts`. Quem guarda as versões exatas instaladas é o lockfile; quem guarda o código baixado é a pasta `node_modules`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `dependencies` e `devDependencies`?",
+      "options": [
+        "`dependencies` são pacotes oficiais e `devDependencies` são de terceiros",
+        "`dependencies` precisam existir para o app rodar em produção; `devDependencies` são ferramentas usadas só no desenvolvimento",
+        "`dependencies` vão para o Git e `devDependencies` não",
+        "Não há diferença prática, é só organização visual"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`dependencies` são os pacotes que o app precisa para funcionar em produção (ex.: React). `devDependencies` são ferramentas usadas apenas durante o desenvolvimento (bundler, linter, testes, tipos). Classificar errado não quebra nada localmente, mas infla o que é publicado e confunde quem lê o manifesto."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "A pasta `node_modules` deve ser versionada no Git para garantir que todos tenham os mesmos pacotes.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. `node_modules` sempre fica no `.gitignore`. Ela é descartável e pode ser recriada a qualquer momento a partir do `package.json` e do lockfile. Quem garante versões idênticas para todos é o lockfile (que vai para o Git), não a pasta `node_modules` (que tem gigabytes de código de terceiros)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Na versão `19.4.2` (semver), o que representa o número `4`?",
+      "options": [
+        "MAJOR — pode haver quebra de compatibilidade",
+        "MINOR — recursos novos foram adicionados sem quebrar nada",
+        "PATCH — apenas correções de bug",
+        "O número de dependências do pacote"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em semver `MAJOR.MINOR.PATCH`, o `19` é MAJOR (quebras de compatibilidade), o `4` é MINOR (recursos novos compatíveis) e o `2` é PATCH (correções de bug). Esse contrato permite que ranges aceitem atualizações seguras e barrem as que podem quebrar."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que o range `^19.0.0` permite instalar?",
+      "options": [
+        "Apenas a versão exata 19.0.0",
+        "Qualquer versão a partir de 19.0.0, incluindo 20.0.0",
+        "Qualquer MINOR/PATCH dentro da major 19 (ex.: 19.4.0), mas não 20.0.0",
+        "Apenas correções de PATCH, como 19.0.1"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O caret `^` aceita atualizações de MINOR e PATCH dentro da mesma MAJOR. `^19.0.0` permite `19.0.1`, `19.4.0`, etc., mas não `20.0.0` (que seria uma major nova, com possíveis quebras). O til `~` é mais restrito (só PATCH), e uma versão sem prefixo trava exatamente naquele número."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que existe um lockfile (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) além do `package.json`?",
+      "options": [
+        "Para acelerar a abertura do projeto no editor",
+        "Porque o `package.json` define faixas de versão; o lockfile trava a versão exata instalada, tornando o build determinístico",
+        "Para guardar as senhas de acesso ao registry",
+        "Para substituir o `package.json` em produção"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `package.json` declara faixas (ex.: `^19.0.0`), que aceitam várias versões. O lockfile registra a versão exata de cada pacote (e de cada dependência transitiva) que foi de fato instalada. Como ele vai para o Git, toda a equipe e o CI instalam exatamente o mesmo, eliminando o 'na minha máquina funciona'."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "npm, yarn e pnpm baixam pacotes do mesmo registry (o npm registry).",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Os três gerenciadores usam, por padrão, o mesmo npm registry (`registry.npmjs.org`). Eles são ferramentas diferentes para instalar os mesmos pacotes — por isso é possível trocar de gerenciador sem trocar de ecossistema."
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+# O que é um Gerenciador de Pacotes?
+
+Nenhum projeto moderno de JavaScript é escrito do zero. Você usa um framework, uma biblioteca de datas, um validador, um bundler — dezenas de pacotes de **código de terceiros**. Um **gerenciador de pacotes** é a ferramenta que baixa esses pacotes, instala as versões certas, resolve o que cada um deles também precisa, e registra tudo de forma reproduzível. Sem ele, você baixaria arquivos `.js` na mão e rezaria para não esquecer nenhuma dependência. Hoje vamos entender as peças desse sistema — antes de comparar as ferramentas (npm, yarn, pnpm), você precisa entender *o que* elas gerenciam.
+
+## O manifesto: `package.json`
+
+Todo projeto JavaScript tem, na raiz, um arquivo `package.json`. Ele é o **manifesto** do projeto: descreve o nome, a versão e — o mais importante — a lista de dependências.
+
+```json
+{
+  "name": "meu-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "vite": "^8.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  }
+}
+```
+
+Você raramente edita esse arquivo na mão para adicionar dependências — o gerenciador o atualiza para você quando você roda um comando de instalação. Mas é ele que torna o projeto **reproduzível**: dê o `package.json` a outra pessoa, ela roda um comando de instalação, e tem o mesmo conjunto de pacotes que você.
+
+## `dependencies` vs `devDependencies`
+
+Repare nos dois blocos. A distinção é importante:
+
+- **`dependencies`** são os pacotes que seu código precisa **para rodar em produção** — o React, uma lib de requisições, um validador. Eles vão junto quando o app é publicado.
+- **`devDependencies`** são ferramentas que você usa **só durante o desenvolvimento** — o bundler, o linter, o framework de testes, os tipos do TypeScript. O usuário final nunca executa essas ferramentas; elas existem para *construir* o app, não para *rodá-lo*.
+
+Classificar errado não quebra seu projeto localmente (tudo é instalado em dev), mas infla o que vai para produção e confunde quem lê o manifesto. Regra prática: "isso precisa existir quando o app está no ar?" → `dependencies`. "Isso só serve na minha máquina enquanto desenvolvo?" → `devDependencies`.
+
+## Onde os pacotes moram: `node_modules`
+
+Quando você instala, o gerenciador baixa os pacotes do **registry** (veremos a seguir) e os coloca numa pasta chamada `node_modules`, na raiz do projeto. Essa pasta é a **materialização** das suas dependências — o código real que o `import` vai encontrar.
+
+Duas verdades sobre `node_modules`:
+
+1. **Ela é enorme.** Cada dependência tem suas próprias dependências (as *dependências transitivas*), então uma lista de 10 pacotes vira facilmente centenas de pastas. O meme "node_modules é o objeto mais pesado do universo" existe por um motivo.
+2. **Ela nunca vai para o Git.** `node_modules` é sempre listada no `.gitignore`. Ela é descartável: pode ser recriada a qualquer momento a partir do `package.json` e do lockfile. Versionar essa pasta seria versionar gigabytes de código que não é seu.
+
+## De onde vêm os pacotes: o registry
+
+O gerenciador não inventa os pacotes — ele os baixa de um **registry**, um servidor central que hospeda pacotes publicados. O registry padrão é o **npm registry** (`registry.npmjs.org`), um repositório público com milhões de pacotes. Quando você instala `react`, o gerenciador pergunta ao registry "me dê a versão X do react", e o registry responde com o arquivo.
+
+O importante: **npm, yarn e pnpm usam o mesmo registry**. Eles são ferramentas diferentes para baixar dos *mesmos* pacotes. Isso é o que torna possível trocar de gerenciador sem trocar de ecossistema.
+
+## Versões: o semver
+
+Repare no `"^19.0.0"` lá em cima. Pacotes seguem o **semver** (Semantic Versioning), um padrão de numeração com três partes: `MAJOR.MINOR.PATCH`.
+
+- **MAJOR** (`19`.0.0): muda quando há uma quebra de compatibilidade — código que funcionava pode parar.
+- **MINOR** (19.`2`.0): muda quando recursos novos são adicionados, sem quebrar nada.
+- **PATCH** (19.0.`3`): muda em correções de bug, sem recursos novos.
+
+Esse contrato deixa você dizer "aceito atualizações seguras, mas não as que quebram". É aí que entram os **ranges**:
+
+- `^19.0.0` (caret): aceita qualquer MINOR/PATCH dentro da major `19` — `19.0.1`, `19.4.0`, mas **não** `20.0.0`. É o padrão.
+- `~19.0.0` (til): mais conservador, aceita só PATCH dentro de `19.0` — `19.0.1`, mas não `19.1.0`.
+- `19.0.0` (exato): trava nessa versão exata, nada atualiza.
+
+Por isso o `package.json` descreve uma *faixa* de versões aceitáveis, não uma versão única.
+
+## O problema das faixas: lockfiles
+
+Mas espere — se `^19.0.0` aceita `19.0.1` *ou* `19.4.0`, qual delas você realmente instalou? Se um colega instalar amanhã, ele pode pegar uma versão mais nova e ter um comportamento diferente do seu. Isso é o pesadelo do "na minha máquina funciona".
+
+A solução é o **lockfile**. Além do `package.json` (que diz as *faixas*), o gerenciador gera um arquivo de trava — `package-lock.json` (npm), `yarn.lock` (yarn) ou `pnpm-lock.yaml` (pnpm) — que registra a **versão exata** de cada pacote (e de cada dependência transitiva) que foi de fato instalada.
+
+```text
+package.json   →  "aceito react ^19.0.0"        (a intenção, a faixa)
+lockfile       →  "instalei react 19.4.0 exato"  (o fato, a versão travada)
+```
+
+O lockfile **vai para o Git**. Com ele, toda a equipe e o servidor de CI instalam *exatamente* as mesmas versões, tornando o build **determinístico**. Nunca delete um lockfile achando que é lixo — ele é a garantia de reprodutibilidade.
+
+## Atalhos de automação: `scripts`
+
+Por fim, o bloco `scripts` do `package.json` define comandos nomeados:
+
+```json
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "test": "vitest"
+}
+```
+
+Em vez de digitar o comando longo, você roda `npm run dev` (ou `pnpm dev`). Scripts são o ponto de entrada padronizado de um projeto: qualquer pessoa que clone o repositório descobre como rodá-lo só de ler essa seção. Amanhã vamos explorar a fundo como usá-los com o npm.
+
+> **Resumo:** Um gerenciador de pacotes baixa, instala e versiona o código de terceiros do qual seu projeto depende. O `package.json` é o **manifesto**: lista `dependencies` (precisam existir em produção) e `devDependencies` (só ferramentas de desenvolvimento), além dos `scripts`. As dependências são baixadas de um **registry** (o npm registry, comum a npm/yarn/pnpm) e materializadas na pasta **`node_modules`**, que é enorme e nunca vai para o Git. Versões seguem o **semver** (`MAJOR.MINOR.PATCH`), e ranges como `^` (atualiza MINOR/PATCH) e `~` (só PATCH) definem o que pode atualizar. Como uma faixa aceita várias versões, o **lockfile** trava a versão exata instalada e **vai para o Git**, garantindo que toda a equipe e o CI tenham instalações **determinísticas** — o fim do "na minha máquina funciona".
