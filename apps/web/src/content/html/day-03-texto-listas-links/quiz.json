@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `<strong>` e `<b>`?",
+      "options": [
+        "Nenhuma, ambos deixam o texto em negrito",
+        "`strong` indica importância (com significado, anunciado pelo leitor de tela); `b` é só aparência em negrito",
+        "`strong` é mais escuro que `b`",
+        "`b` é obsoleto e foi removido do HTML"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Visualmente os dois deixam o texto em negrito, mas o significado difere. `strong` indica **importância** — algo que o leitor de tela enfatiza ('Atenção: irreversível'). `b` é apenas estético, sem peso semântico (um nome de produto, por exemplo). Prefira `strong` quando há importância de verdade; use `b` só quando é puramente visual."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Quando usar `<ol>` em vez de `<ul>`?",
+      "options": [
+        "Quando a lista tem mais de 5 itens",
+        "Quando a ordem dos itens importa, como passos de um tutorial ou um ranking",
+        "Quando os itens são números",
+        "Nunca, ol é obsoleto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`ol` (ordered list) é para quando a **ordem importa**: passos de uma receita, posições de um ranking, instruções sequenciais. `ul` (unordered list) é para quando a ordem é irrelevante, como uma lista de ingredientes. A escolha é semântica, não estética — o CSS pode mudar os marcadores de qualquer uma."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a diferença fundamental entre `<a>` e `<button>`?",
+      "options": [
+        "`a` é azul e `button` é cinza",
+        "`a` (com href) navega para outro lugar; `button` executa uma ação na página atual",
+        "`button` não funciona sem JavaScript",
+        "São intercambiáveis"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`a` com `href` é para **navegação** — ir a outra página ou âncora. `button` é para **ações** na página atual — enviar um formulário, abrir um menu, alternar um tema. Usar o elemento certo importa porque cada um traz comportamento e semântica próprios (o link pode ser aberto em nova aba; o botão é ativado por Espaço). Trocar um pelo outro confunde usuários e tecnologias assistivas."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que faz um link com `href=\"#secao-2\"`?",
+      "options": [
+        "Abre a segunda página do site",
+        "Leva a um elemento com `id=\"secao-2\"` na própria página (uma âncora interna)",
+        "Cria uma hashtag de rede social",
+        "Recarrega a página"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um `href` começando com `#` é uma **âncora interna**: ele rola a página até o elemento cujo `id` corresponde ao texto após o `#` (aqui, `<... id=\"secao-2\">`). É a base de índices ('pular para a seção X') e de links de 'voltar ao topo'. Não troca de página nem recarrega."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que evitar textos de link como \"clique aqui\"?",
+      "options": [
+        "Porque é feio",
+        "Porque leitores de tela listam os links fora de contexto, e 'clique aqui' não informa o destino",
+        "Porque o Google bane esses links",
+        "Porque links precisam ter no máximo uma palavra"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Usuários de leitor de tela costumam navegar por uma lista de todos os links da página, lida fora do contexto da frase. 'Clique aqui', 'clique aqui', 'clique aqui' não diz para onde nenhum deles vai. Um texto descritivo como 'Ver preços' funciona isolado e melhora também o SEO. Descreva o **destino** no próprio texto do link."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para que serve a lista de definições `<dl>` (com `<dt>` e `<dd>`)?",
+      "options": [
+        "Para listas que mudam dinamicamente",
+        "Para pares de termo e descrição, como um glossário ou metadados",
+        "Para listas ordenadas por data",
+        "Para desativar os marcadores de lista"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`dl` (description list) agrupa pares **termo/descrição**: `dt` é o termo (description term) e `dd` é a descrição (description details). É ideal para glossários, perguntas e respostas, ou metadados (Autor → Maria; Data → 30/05). Não é para listas comuns — para essas use `ul` ou `ol`."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que preferir `<button>` em vez de um `<div>` clicável com onClick?",
+      "options": [
+        "Porque div não aceita eventos de clique",
+        "Porque `button` já vem com foco por teclado, ativação por Enter/Espaço e papel anunciado ao leitor de tela",
+        "Porque div deixa a página mais pesada",
+        "Porque button é mais fácil de estilizar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um `div` clicável até funciona com mouse, mas não é focável por teclado, não é ativado por Enter/Espaço e não se anuncia como botão para leitores de tela — você teria que recriar tudo isso à mão (tabindex, handlers de teclado, role). O `<button>` traz esse comportamento de acessibilidade de graça. Use o elemento nativo certo em vez de reinventá-lo."
+    }
+  ]
+}

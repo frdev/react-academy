@@ -1,0 +1,14 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Tags Semânticas & Landmarks",
+  "slug": "tags-semanticas-landmarks",
+  "topics": ["header, nav, main, footer", "article e section", "aside", "landmarks", "hierarquia de headings"],
+  "difficulty": "beginner",
+  "estimatedMinutes": 40,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,14 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Texto, Listas & Links",
+  "slug": "texto-listas-links",
+  "topics": ["elementos de texto", "listas ul/ol/dl", "links e âncoras", "a vs button", "time e semântica inline"],
+  "difficulty": "beginner",
+  "estimatedMinutes": 40,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

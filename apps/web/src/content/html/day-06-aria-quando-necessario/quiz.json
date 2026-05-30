@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a primeira regra do uso de ARIA?",
+      "options": [
+        "Adicionar ARIA a todos os elementos por garantia",
+        "Se existe um elemento HTML nativo que faz o trabalho, use-o em vez de recriar com ARIA",
+        "Usar sempre `role` em divs",
+        "ARIA substitui o HTML semântico"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A primeira regra oficial do ARIA é: prefira o elemento HTML nativo. Um `<button>` já é focável, ativável por teclado e anunciado corretamente — recriar isso com `<div role=\"button\">` exige reimplementar tudo à mão e geralmente falha. ARIA é um complemento para o que o HTML não tem, não um substituto do que ele já faz bem."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que um atributo `role` faz?",
+      "options": [
+        "Define o estilo visual do elemento",
+        "Informa à tecnologia assistiva qual é o papel do elemento (o que ele é)",
+        "Adiciona um evento de clique",
+        "Valida formulários"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`role` comunica o **papel** de um elemento para tecnologias assistivas — o que ele representa. Como a maioria dos papéis já vem de elementos nativos (`nav`, `button`, `main`), roles explícitos ficam reservados para componentes customizados sem equivalente nativo. Ele não muda aparência nem adiciona comportamento."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando usar `aria-label`?",
+      "options": [
+        "Em todo elemento da página",
+        "Para dar um nome acessível a um controle sem texto visível, como um botão só com ícone",
+        "Para esconder elementos do leitor de tela",
+        "Para definir a cor de um botão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`aria-label` fornece um **nome acessível** quando não há texto visível — o caso clássico é um botão que mostra apenas um ícone (`<button aria-label=\"Fechar\">✕</button>`). Se já existe um texto visível em outro elemento, prefira `aria-labelledby` apontando para o `id` dele, em vez de repetir o texto."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Para que serve uma live region (`aria-live=\"polite\"`)?",
+      "options": [
+        "Para reproduzir vídeos ao vivo",
+        "Para fazer o leitor de tela anunciar conteúdo que muda dinamicamente sem recarregar a página",
+        "Para aumentar a prioridade de carregamento",
+        "Para criar um chat em tempo real"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma live region avisa o leitor de tela sobre mudanças que acontecem sem recarregar a página — uma notificação, um contador de resultados que atualiza. Ao inserir texto numa região com `aria-live=\"polite\"`, o leitor anuncia automaticamente (esperando uma pausa do usuário). `assertive` interrompe na hora e deve ser reservado a urgências."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que significa o mantra \"No ARIA is better than bad ARIA\"?",
+      "options": [
+        "ARIA nunca deve ser usado",
+        "ARIA aplicado incorretamente é pior que não usar ARIA nenhum, pois pode mentir sobre o conteúdo",
+        "ARIA só funciona em inglês",
+        "Quanto mais ARIA, melhor"
+      ],
+      "correctAnswer": 1,
+      "explanation": "ARIA mal aplicado — um `role` errado, um `aria-hidden` no lugar errado — pode esconder conteúdo ou descrever um elemento de forma falsa, quebrando a experiência de quem usa leitor de tela. Isso é pior que não ter ARIA, onde ao menos a semântica nativa permanece. Por isso: na dúvida, prefira HTML nativo e só use ARIA quando entender exatamente o efeito."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `aria-expanded=\"false\"` em um botão de menu comunica?",
+      "options": [
+        "Que o botão está desabilitado",
+        "Que o conteúdo que o botão controla está atualmente recolhido (fechado)",
+        "Que o botão é invisível",
+        "Que o menu tem 'false' itens"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`aria-expanded` comunica o **estado** de um controle que abre/fecha algo: `false` indica recolhido, `true` indica expandido. Você atualiza o valor (via JavaScript) conforme o usuário abre e fecha. Sem ele, o leitor de tela não sabe que o botão controla um conteúdo expansível nem em que estado ele está."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `<div role=\"button\">` ainda é pior que `<button>`, mesmo com o role correto?",
+      "options": [
+        "Porque o role está errado",
+        "Porque ARIA adiciona apenas descrição, não comportamento — o div ainda precisa de tabindex e handlers de teclado feitos à mão",
+        "Porque divs não podem ter role",
+        "Porque é mais lento para renderizar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `role=\"button\"` faz o leitor de tela anunciar 'botão', mas ARIA **não adiciona comportamento**: o `div` continua não sendo focável (precisa de `tabindex=\"0\"`) nem ativável por teclado (precisa de handlers para Enter e Espaço). O `<button>` nativo traz tudo isso pronto. Descrição sem comportamento é só meia solução."
+    }
+  ]
+}

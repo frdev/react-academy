@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Para que serve o atributo `alt` em uma `<img>`?",
+      "options": [
+        "Define o tamanho da imagem",
+        "Fornece um texto alternativo lido por leitores de tela e exibido quando a imagem falha em carregar",
+        "Aplica um filtro visual",
+        "Define o formato do arquivo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `alt` é o texto alternativo da imagem: leitores de tela o leem para descrever a imagem a quem não a vê, e o navegador o mostra quando a imagem não carrega. É o atributo de acessibilidade mais importante da web e deve estar presente em toda `img`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual o `alt` correto para uma imagem puramente decorativa (um enfeite sem informação)?",
+      "options": [
+        "Omitir o atributo `alt` por completo",
+        "`alt=\"\"` vazio, para que o leitor de tela a ignore",
+        "`alt=\"imagem decorativa\"`",
+        "`alt=\"enfeite.svg\"`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Imagens decorativas devem ter `alt=\"\"` **vazio**: assim o leitor de tela as pula em vez de incomodar o usuário. Atenção: `alt=\"\"` é diferente de omitir o atributo — sem o `alt`, alguns leitores leem o nome do arquivo. E descrever um enfeite ('imagem decorativa') só adiciona ruído. Vazio é o certo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando usar `<picture>` com `<source>` em vez de só `<img>`?",
+      "options": [
+        "Sempre, picture substituiu img",
+        "Quando você precisa servir imagens diferentes — formatos como WebP ou recortes distintos — com um fallback",
+        "Apenas para imagens decorativas",
+        "Quando a imagem é muito pequena"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`picture` permite oferecer **fontes alternativas** da imagem: um formato moderno como WebP (com fallback para JPG), ou recortes diferentes por tamanho de tela. O navegador escolhe o primeiro `source` que suporta e usa o `img` interno como reserva. Para apenas variar o tamanho da mesma imagem, basta `srcset` no próprio `img`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a função de `<figure>` com `<figcaption>`?",
+      "options": [
+        "Centralizar a imagem na página",
+        "Associar formalmente uma legenda a uma imagem (ou diagrama, código)",
+        "Comprimir a imagem",
+        "Criar uma galeria automática"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`figure` agrupa um conteúdo referenciado (imagem, diagrama, trecho de código) com sua legenda em `figcaption`, criando uma ligação **semântica** entre os dois. É melhor que um parágrafo solto embaixo da imagem, que não tem relação formal com ela. Tecnologias assistivas anunciam a legenda junto da figura."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como adicionar legendas a um `<video>` para pessoas surdas ou com dificuldade auditiva?",
+      "options": [
+        "Escrevendo a legenda dentro de um `<p>` abaixo do vídeo",
+        "Com um elemento `<track kind=\"captions\">` apontando para um arquivo de legendas",
+        "Usando o atributo `alt` no vídeo",
+        "Não é possível em HTML"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Dentro do `<video>`, um `<track src=\"...\" kind=\"captions\" srclang=\"pt\">` carrega um arquivo de legendas (geralmente .vtt) que o player exibe sincronizado. É o mecanismo nativo de acessibilidade para mídia falada — essencial para quem não ouve o áudio. Um parágrafo solto não sincroniza nem é reconhecido como legenda."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `loading=\"lazy\"` faz em uma imagem?",
+      "options": [
+        "Reduz a qualidade da imagem",
+        "Adia o carregamento até o usuário chegar perto dela, economizando dados e acelerando a página",
+        "Carrega a imagem em primeiro lugar, com prioridade",
+        "Desativa a imagem em celulares"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`loading=\"lazy\"` faz o navegador adiar o download de imagens fora da tela até que o usuário role perto delas. Isso economiza dados e acelera a primeira renderização. Use em imagens abaixo da dobra — mas **não** na imagem principal do topo, que você quer carregar o quanto antes."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é um bom texto `alt` para uma foto informativa de um gráfico de vendas?",
+      "options": [
+        "`alt=\"imagem\"`",
+        "`alt=\"grafico-vendas-final.png\"`",
+        "`alt=\"Gráfico: vendas dobraram entre janeiro e dezembro de 2026\"`",
+        "`alt=\"imagem de um gráfico\"`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Um bom `alt` descreve o **conteúdo ou a função** da imagem de forma concisa e útil. Para um gráfico, transmita a informação que ele comunica ('vendas dobraram...'), não o nome do arquivo nem um genérico 'imagem'. Evite começar com 'imagem de' — o leitor de tela já anuncia que é uma imagem."
+    }
+  ]
+}

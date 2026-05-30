@@ -1,0 +1,92 @@
+# Imagens & Mídia Acessível
+
+Imagens, vídeos e áudios deixam uma página viva — mas, se mal marcados, viram buracos para quem não consegue vê-los ou ouvi-los. A boa notícia: o HTML tem ferramentas simples para tornar mídia acessível e performática. Hoje você aprende a usá-las, começando pelo atributo mais importante de acessibilidade da web.
+
+## `img` e o atributo `alt`
+
+A imagem básica precisa de dois atributos: `src` (de onde carregar) e `alt` (o texto alternativo):
+
+```html
+<img src="/gato.jpg" alt="Um gato laranja dormindo numa almofada azul" />
+```
+
+O `alt` é lido por leitores de tela e aparece quando a imagem falha em carregar. Ele é **obrigatório** — mas o conteúdo dele depende do papel da imagem.
+
+## `alt` eficaz: informativo vs decorativo
+
+A pergunta-chave é: *se a imagem sumisse, que texto a substituiria sem perda?*
+
+- **Informativa** — descreva o conteúdo ou a função, de forma concisa: `alt="Gráfico mostrando vendas dobrando em 2026"`. Não comece com "imagem de" — o leitor de tela já anuncia que é uma imagem.
+- **Decorativa** — se a imagem é puro enfeite (uma borda, um ícone redundante ao lado de um texto), use `alt=""` **vazio**. Isso faz o leitor de tela pulá-la em vez de ler o nome do arquivo.
+
+```html
+<!-- Informativa -->
+<img src="/grafico.png" alt="Vendas dobraram entre janeiro e dezembro de 2026" />
+
+<!-- Decorativa: alt vazio, some para o leitor de tela -->
+<img src="/enfeite.svg" alt="" />
+```
+
+Omitir o `alt` é diferente de `alt=""`: sem o atributo, alguns leitores leem o nome do arquivo ("grafico-final-v2.png"). Sempre inclua o `alt`, mesmo que vazio.
+
+## Imagens responsivas: `srcset` e `picture`
+
+Servir a mesma imagem gigante para um celular desperdiça dados. O atributo `srcset` deixa o navegador escolher o tamanho certo:
+
+```html
+<img
+  src="/foto-800.jpg"
+  srcset="/foto-400.jpg 400w, /foto-800.jpg 800w, /foto-1600.jpg 1600w"
+  sizes="(max-width: 600px) 100vw, 800px"
+  alt="Paisagem montanhosa ao pôr do sol"
+/>
+```
+
+Quando você precisa de **imagens diferentes** (não só tamanhos) — um recorte vertical no celular, ou um formato moderno como WebP — use `picture`:
+
+```html
+<picture>
+  <source srcset="/banner.webp" type="image/webp" />
+  <img src="/banner.jpg" alt="Banner de boas-vindas" />
+</picture>
+```
+
+O navegador usa o primeiro `source` que suporta e cai no `img` como reserva.
+
+## `figure` e `figcaption`
+
+Quando uma imagem (ou diagrama, trecho de código) tem uma **legenda**, agrupe-os:
+
+```html
+<figure>
+  <img src="/diagrama.png" alt="Fluxo de dados do app" />
+  <figcaption>Figura 1: como os dados percorrem o sistema.</figcaption>
+</figure>
+```
+
+O `figcaption` associa formalmente a legenda à imagem — melhor que um `p` solto embaixo, que não tem ligação semântica.
+
+## Vídeo e áudio com legendas
+
+Mídia com fala precisa de **legendas** para quem é surdo ou tem dificuldade auditiva. Use `track`:
+
+```html
+<video controls>
+  <source src="/aula.mp4" type="video/mp4" />
+  <track src="/legendas.vtt" kind="captions" srclang="pt" label="Português" />
+</video>
+```
+
+O atributo `controls` mostra os botões nativos de play/pause/volume, e o `track` com `kind="captions"` carrega o arquivo de legendas.
+
+## Lazy loading
+
+Imagens fora da tela inicial não precisam carregar de imediato. `loading="lazy"` adia o carregamento até o usuário chegar perto, economizando dados e acelerando a primeira renderização:
+
+```html
+<img src="/abaixo-da-dobra.jpg" alt="..." loading="lazy" />
+```
+
+Use em imagens mais abaixo na página — não na imagem principal do topo, que você quer o mais rápido possível.
+
+> **Resumo:** Toda `img` precisa de `src` e de `alt`. O `alt` é o atributo mais importante de acessibilidade: descreva conteúdo/função de forma concisa em imagens **informativas** (sem "imagem de") e use `alt=""` **vazio** em imagens **decorativas**, para o leitor de tela pulá-las — nunca omita o atributo. Para responsividade, `srcset`/`sizes` deixam o navegador escolher o tamanho ideal, e `picture` com `source` serve formatos/recortes diferentes com fallback no `img`. Agrupe imagem e legenda com `figure` + `figcaption`. Vídeo e áudio com fala precisam de legendas via `track kind="captions"` (e `controls` para os controles nativos). Por fim, `loading="lazy"` adia imagens fora da tela — exceto a imagem principal do topo.

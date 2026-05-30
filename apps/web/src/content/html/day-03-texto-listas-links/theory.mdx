@@ -1,0 +1,99 @@
+# Texto, Listas & Links
+
+Com o esqueleto semântico no lugar, é hora de preencher o conteúdo. A maior parte de qualquer página é **texto**: parágrafos, ênfases, listas e links. O HTML tem um elemento certo para cada um desses papéis — e escolher o certo (em vez de `div`/`span` com CSS) é o que mantém o conteúdo acessível e significativo.
+
+## Parágrafos
+
+O bloco de texto mais comum é o parágrafo, `p`. Não use vários `<br>` para criar espaço entre blocos — isso é apresentação, e quem cuida de espaçamento é o CSS:
+
+```html
+<h2>Sobre nós</h2>
+<p>Somos uma equipe pequena que adora ensinar.</p>
+<p>Começamos em 2026 com um objetivo simples.</p>
+```
+
+## Ênfase com significado: `strong`, `em`, `b`, `i`
+
+Existem pares que parecem iguais na tela, mas significam coisas diferentes:
+
+- `strong` — **importância** forte ("Cuidado: isso apaga tudo"). Lido com ênfase pelo leitor de tela.
+- `em` — **ênfase** que muda o sentido da frase ("Eu acho que sim").
+- `b` e `i` — só **aparência** (negrito/itálico) sem significado extra: um nome de produto, um termo técnico.
+
+```html
+<p><strong>Atenção:</strong> esta ação é irreversível.</p>
+<p>Você <em>realmente</em> quer continuar?</p>
+```
+
+Prefira `strong`/`em` quando há significado; deixe `b`/`i` para o puramente estético.
+
+## Listas
+
+Três tipos, cada um com seu uso:
+
+```html
+<!-- Não-ordenada: a ordem não importa -->
+<ul>
+  <li>Maçã</li>
+  <li>Banana</li>
+</ul>
+
+<!-- Ordenada: a ordem importa (passos, ranking) -->
+<ol>
+  <li>Abra o terminal</li>
+  <li>Rode o comando</li>
+</ol>
+
+<!-- De definições: termo + descrição -->
+<dl>
+  <dt>HTML</dt>
+  <dd>A linguagem de marcação da web.</dd>
+</dl>
+```
+
+Use `ul` quando a ordem é irrelevante, `ol` quando é sequencial (passos, posições) e `dl` para pares termo/descrição (um glossário, metadados).
+
+## Links: o `a`
+
+O link é o coração da web. O atributo essencial é o `href`:
+
+```html
+<a href="https://exemplo.com">Site externo</a>
+<a href="/sobre">Página interna</a>
+<a href="#secao-2">Pular para a seção 2</a>
+<a href="mailto:oi@exemplo.com">Mande um e-mail</a>
+```
+
+- URLs absolutas (`https://...`) levam a outro site; relativas (`/sobre`) a outra página do mesmo site.
+- Um `href` começando com `#` é uma **âncora**: leva a um elemento com aquele `id` na própria página (`<h2 id="secao-2">`).
+- Ao usar `target="_blank"` (abrir em nova aba), adicione `rel="noopener"` por segurança.
+
+Escreva textos de link **descritivos**: `<a href="/precos">Ver preços</a>` é muito melhor que "clique aqui" — leitores de tela listam os links fora de contexto, e "clique aqui" não diz nada.
+
+## `a` vs `button`: a confusão clássica
+
+Esta distinção causa muitos bugs de acessibilidade:
+
+- `a` (com `href`) **navega** — leva você a outro lugar (outra página, outra âncora).
+- `button` **executa uma ação** na página atual — abre um menu, envia um formulário, alterna um tema.
+
+```html
+<a href="/carrinho">Ver carrinho</a>
+<button type="button">Adicionar ao carrinho</button>
+```
+
+Nunca use um `div` clicável no lugar deles: `a` e `button` já vêm com foco por teclado, ativação por Enter/Espaço e papel anunciado ao leitor de tela — tudo de graça.
+
+## Semântica inline útil
+
+Alguns elementos dão sentido a trechos dentro do texto:
+
+```html
+<p>Publicado em <time datetime="2026-05-30">30 de maio</time>.</p>
+<p>Use <code>npm install</code> para instalar.</p>
+<p><abbr title="HyperText Markup Language">HTML</abbr> é uma linguagem de marcação.</p>
+```
+
+`time` dá uma data legível por máquina, `code` marca trechos de código e `abbr` revela o significado de uma sigla.
+
+> **Resumo:** O conteúdo textual tem um elemento certo para cada papel. Parágrafos usam `p` (espaçamento é com CSS, não com `<br>`). Para ênfase com significado, use `strong` (importância) e `em` (ênfase que muda o sentido); deixe `b`/`i` para o estético. Listas: `ul` (ordem irrelevante), `ol` (sequencial) e `dl` (termo/descrição). Links usam `a` com `href` — absoluto para outros sites, relativo para páginas internas, `#id` para âncoras na própria página; escreva textos descritivos (nunca "clique aqui") e use `rel="noopener"` com `target="_blank"`. A distinção crucial: `a` **navega**, `button` **executa uma ação** — nunca um `div` clicável, pois `a`/`button` já trazem foco, teclado e semântica de graça. Inline, `time`, `code` e `abbr` dão sentido a trechos do texto.

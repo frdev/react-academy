@@ -1,0 +1,92 @@
+# Formulários & Validação
+
+Formulários são como os usuários **enviam dados**: login, busca, cadastro, checkout. Eles também são, historicamente, um dos pontos mais problemáticos de acessibilidade — campos sem rótulo, erros que ninguém entende. A boa notícia é que o HTML moderno resolve quase tudo nativamente, sem JavaScript. Hoje você monta formulários corretos e validados.
+
+## O básico: `form`, `input`, `button`
+
+```html
+<form action="/cadastrar" method="post">
+  <input type="text" name="nome" />
+  <button type="submit">Enviar</button>
+</form>
+```
+
+O `form` envolve os campos; `action` é para onde os dados vão e `method` como são enviados. Cada campo tem um `name` (a chave do dado enviado). O `button type="submit"` dispara o envio.
+
+## O rótulo é obrigatório: `label`
+
+Todo campo precisa de um `label` associado. Há duas formas:
+
+```html
+<!-- Explícita: for aponta para o id do campo -->
+<label for="email">E-mail</label>
+<input type="email" id="email" name="email" />
+
+<!-- Implícita: o input dentro do label -->
+<label>
+  E-mail
+  <input type="email" name="email" />
+</label>
+```
+
+O `label` associado faz duas coisas: clicar no texto **foca o campo** (alvo maior, ótimo no celular) e o leitor de tela **anuncia o rótulo** ao chegar no campo. Um `placeholder` **não** substitui o `label` — ele some quando você digita e costuma ter contraste fraco.
+
+## Tipos de `input`
+
+O atributo `type` muda o teclado, os controles e a validação:
+
+```html
+<input type="email" name="email" />
+<input type="password" name="senha" />
+<input type="number" name="idade" />
+<input type="date" name="nascimento" />
+<input type="tel" name="telefone" />
+<input type="checkbox" name="aceito" />
+<input type="radio" name="plano" value="pro" />
+```
+
+No celular, `type="email"` mostra um teclado com `@`, e `type="tel"` um teclado numérico. Escolher o tipo certo melhora a experiência e ativa validações específicas.
+
+## Validação nativa
+
+Você não precisa de JavaScript para validações comuns:
+
+```html
+<input type="email" name="email" required />
+<input type="text" name="cep" pattern="[0-9]{5}-?[0-9]{3}" />
+<input type="number" name="idade" min="0" max="120" />
+<input type="text" name="usuario" minlength="3" maxlength="20" />
+```
+
+- `required` — o campo não pode ficar vazio.
+- `pattern` — o valor precisa casar com uma expressão regular.
+- `min`/`max` — limites para números e datas.
+- `minlength`/`maxlength` — limites de tamanho do texto.
+
+O navegador bloqueia o envio e mostra uma mensagem se algo não bate — de graça.
+
+## Agrupando campos: `fieldset` e `legend`
+
+Quando vários campos formam um grupo (especialmente botões de rádio), envolva-os:
+
+```html
+<fieldset>
+  <legend>Escolha um plano</legend>
+
+  <label><input type="radio" name="plano" value="free" /> Grátis</label>
+  <label><input type="radio" name="plano" value="pro" /> Pro</label>
+</fieldset>
+```
+
+O `legend` dá um **título ao grupo**. Leitores de tela anunciam "Escolha um plano" junto de cada opção, dando contexto — algo que um título solto não faz.
+
+## Cuidado com o `button` dentro do `form`
+
+Um detalhe que pega muita gente: dentro de um `form`, um `button` sem `type` é, por padrão, `type="submit"` — ele envia o formulário. Se o botão faz outra coisa (ex.: "mostrar senha"), declare `type="button"`:
+
+```html
+<button type="button">Mostrar senha</button>
+<button type="submit">Entrar</button>
+```
+
+> **Resumo:** Formulários enviam dados, e o HTML moderno os torna corretos sem JavaScript. Envolva campos em `form` (`action`/`method`); cada campo tem um `name`. **Todo campo precisa de um `label` associado** — por `for`/`id` ou envolvendo o input — porque clicar no rótulo foca o campo e o leitor de tela o anuncia; `placeholder` **não** é rótulo. O `type` do `input` (email, password, number, date, tel, checkbox, radio) ajusta teclado, controles e validação. A validação é nativa: `required`, `pattern`, `min`/`max`, `minlength`/`maxlength` — o navegador bloqueia o envio inválido sozinho. Agrupe campos relacionados com `fieldset` + `legend` (essencial para grupos de rádio). E lembre: dentro de um `form`, um `button` sem `type` envia o formulário — use `type="button"` quando a ação for outra.

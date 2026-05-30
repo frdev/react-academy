@@ -1,0 +1,14 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Formulários & Validação",
+  "slug": "formularios-validacao",
+  "topics": ["label e input", "tipos de input", "required e pattern", "validação nativa", "fieldset e legend"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

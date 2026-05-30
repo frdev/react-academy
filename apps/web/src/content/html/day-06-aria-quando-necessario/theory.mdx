@@ -1,0 +1,66 @@
+# ARIA Quando o HTML Não Basta
+
+Nos últimos dias você viu que o HTML semântico já entrega muita acessibilidade de graça: `button`, `label`, landmarks, `alt`. Então por que existe o **ARIA** (Accessible Rich Internet Applications)? Porque às vezes você constrói componentes que o HTML não tem — uma aba, um menu suspenso customizado — e precisa **descrever** para tecnologias assistivas o que aquilo é e em que estado está. Hoje você aprende a usar ARIA com responsabilidade.
+
+## A primeira regra do ARIA: não use ARIA
+
+Parece contraditório, mas é a regra oficial número 1: **se existe um elemento HTML nativo que faz o trabalho, use-o em vez de recriar com ARIA.**
+
+```html
+<!-- Ruim: um div fingindo ser botão -->
+<div role="button" tabindex="0" onclick="...">Salvar</div>
+
+<!-- Bom: o elemento nativo já traz tudo -->
+<button>Salvar</button>
+```
+
+O `button` nativo já é focável, ativável por teclado e anunciado como botão. A versão com `div` + `role` precisa reimplementar tudo isso à mão — e quase sempre esquece algo. ARIA não adiciona comportamento, só **descrição**.
+
+## Roles: dizendo o que algo é
+
+Um `role` informa à tecnologia assistiva o **papel** de um elemento quando ele não é óbvio:
+
+```html
+<div role="alert">Erro: senha incorreta.</div>
+```
+
+A maioria dos roles que você precisaria (`button`, `navigation`, `main`) já vem de elementos nativos (`button`, `nav`, `main`) — por isso roles explícitos ficam reservados para componentes customizados sem equivalente nativo direto.
+
+## States e properties: `aria-*`
+
+Atributos `aria-*` comunicam **estado** e **propriedades** que mudam com a interação:
+
+```html
+<button aria-expanded="false" aria-controls="menu">Menu</button>
+<ul id="menu" hidden>
+  <li><a href="/perfil">Perfil</a></li>
+</ul>
+```
+
+`aria-expanded` diz se o menu está aberto ou fechado — você atualiza para `true` ao abrir. Sem isso, o leitor de tela não sabe que o botão controla algo que expande. Outros comuns: `aria-checked`, `aria-disabled`, `aria-hidden`.
+
+## Nomeando o que não tem texto: `aria-label`
+
+Um botão só com ícone não tem texto para o leitor de tela ler. `aria-label` fornece um **nome acessível**:
+
+```html
+<button aria-label="Fechar">✕</button>
+```
+
+Se já existe um texto visível em outro elemento, use `aria-labelledby` apontando para o `id` dele, em vez de repetir o texto.
+
+## Live regions: anunciando mudanças
+
+Quando algo muda na tela **sem** recarregar a página (uma notificação, um resultado de busca que atualiza), o leitor de tela não percebe sozinho. Uma *live region* avisa:
+
+```html
+<div aria-live="polite" id="status"></div>
+```
+
+Quando você insere texto nesse `div` via JavaScript ("3 resultados encontrados"), o leitor de tela anuncia automaticamente. `polite` espera uma pausa do usuário; `assertive` interrompe na hora (use só para urgências).
+
+## "No ARIA is better than bad ARIA"
+
+Esse é o mantra da comunidade de acessibilidade: **ARIA errado é pior que ARIA nenhum**. Um `role` incorreto, ou um `aria-hidden="true"` no lugar errado, pode esconder conteúdo ou mentir sobre o que um elemento é, quebrando a experiência de quem depende do leitor de tela. Na dúvida: prefira HTML nativo e só adicione ARIA quando souber exatamente o que ele comunica.
+
+> **Resumo:** ARIA descreve para tecnologias assistivas o que o HTML nativo não expressa — mas a regra nº 1 é **não usar ARIA quando há um elemento nativo** (`button` em vez de `div role="button"`), porque ARIA adiciona descrição, não comportamento. `role` diz o que um elemento é (reservado para componentes sem equivalente nativo); atributos `aria-*` comunicam estado e propriedades (`aria-expanded`, `aria-checked`, `aria-disabled`). `aria-label` dá nome acessível a controles sem texto visível (botão de ícone), e `aria-labelledby` reaproveita um texto existente. *Live regions* (`aria-live="polite"`) anunciam mudanças dinâmicas. E o mantra: **ARIA errado é pior que ARIA nenhum** — na dúvida, fique no HTML nativo.

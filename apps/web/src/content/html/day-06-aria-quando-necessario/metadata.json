@@ -1,0 +1,14 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "ARIA Quando o HTML Não Basta",
+  "slug": "aria-quando-necessario",
+  "topics": ["roles", "states e properties", "aria-label", "live regions", "foco programático"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

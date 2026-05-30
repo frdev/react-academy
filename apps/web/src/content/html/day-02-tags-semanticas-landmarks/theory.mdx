@@ -1,0 +1,104 @@
+# Tags Semânticas & Landmarks
+
+No começo da web, os desenvolvedores usavam `div` para absolutamente tudo: `<div class="header">`, `<div class="menu">`, `<div class="content">`. O resultado era uma "sopa de divs" — um HTML em que nada significava nada e só as classes davam pistas. O HTML5 resolveu isso trazendo **elementos semânticos**: tags cujo nome já diz o papel daquele bloco. Hoje você vai montar o esqueleto de uma página com significado.
+
+## A sopa de divs e o problema dela
+
+Veja este trecho — tecnicamente funciona, mas é mudo:
+
+```html
+<div class="top">
+  <div class="logo">Meu Site</div>
+  <div class="links">...</div>
+</div>
+<div class="main">...</div>
+<div class="bottom">...</div>
+```
+
+Um `div` é um container genérico, sem significado. Para o navegador, o leitor de tela e o próximo dev que abrir o código, `<div class="top">` é só "uma caixa qualquer". Trocar por tags semânticas resolve isso.
+
+## Os landmarks principais
+
+Landmarks são as grandes regiões de uma página. Quatro são o feijão com arroz:
+
+```html
+<header>
+  <h1>Meu Site</h1>
+  <nav>
+    <a href="/">Início</a>
+    <a href="/sobre">Sobre</a>
+  </nav>
+</header>
+
+<main>
+  <h2>Bem-vindo</h2>
+  <p>Conteúdo principal da página.</p>
+</main>
+
+<footer>
+  <p>© 2026 Meu Site</p>
+</footer>
+```
+
+- `header` — o topo introdutório (logo, título, busca). Pode haver mais de um (ex.: o cabeçalho de um artigo).
+- `nav` — um bloco de navegação com links importantes. Use para o menu principal, não para cada link da página.
+- `main` — o conteúdo central da página. **Só pode haver um `main`** por página, e ele não deve repetir cabeçalho, menu ou rodapé.
+- `footer` — o rodapé (créditos, contato, links secundários).
+
+Leitores de tela permitem **pular direto** para esses landmarks ("ir para o main"), o que é impossível com `div`.
+
+## `article` vs `section`
+
+Os dois agrupam conteúdo, mas com intenções diferentes:
+
+- `article` — um bloco **autossuficiente**, que faria sentido sozinho, fora do contexto: um post de blog, um card de produto, um comentário.
+- `section` — um **agrupamento temático** dentro de um fluxo maior, normalmente com seu próprio título: a seção "Depoimentos", a seção "Preços".
+
+```html
+<article>
+  <h2>Como aprender HTML</h2>
+  <p>Publicado em 30 de maio.</p>
+  <section>
+    <h3>Comece pela estrutura</h3>
+    <p>...</p>
+  </section>
+</article>
+```
+
+Regra prática: se dá pra imaginar aquilo isolado num feed, é um `article`. Se é "um pedaço temático de algo maior", é `section`.
+
+## `aside`
+
+O `aside` é conteúdo **tangencial** — relacionado, mas não essencial ao redor: uma barra lateral, um box "leia também", uma propaganda.
+
+```html
+<aside>
+  <h2>Leia também</h2>
+  <ul>
+    <li><a href="/css">CSS Essencial</a></li>
+  </ul>
+</aside>
+```
+
+## Hierarquia de headings
+
+Os títulos `h1` a `h6` formam o **índice** da página. Eles devem descer em ordem, sem pular níveis:
+
+```html
+<h1>Título da página</h1>
+  <h2>Uma seção</h2>
+    <h3>Uma subseção</h3>
+  <h2>Outra seção</h2>
+```
+
+Use **um `h1`** por página (o assunto principal). Não escolha o nível pelo tamanho da fonte — isso é trabalho do CSS — escolha pelo significado. Leitores de tela geram uma lista de títulos a partir dessa hierarquia; pular de `h1` para `h4` confunde quem navega por ela.
+
+## Por que isso importa
+
+Tags semânticas não mudam a aparência — mudam o **significado**. E significado paga três contas de uma vez:
+
+1. **Acessibilidade** — leitores de tela navegam por landmarks e headings.
+2. **SEO** — buscadores entendem melhor a estrutura do conteúdo.
+3. **Manutenção** — `<main>` é mais claro que `<div class="main-content-wrapper">` para o próximo dev.
+
+> **Resumo:** O HTML5 substituiu a "sopa de divs" por elementos **semânticos**, cujo nome revela o papel do bloco. Os landmarks estruturam a página: `header` (topo introdutório), `nav` (navegação principal), `main` (conteúdo central e **único** — só um por página) e `footer` (rodapé). Para agrupar conteúdo, use `article` quando o bloco é autossuficiente (post, card, comentário) e `section` quando é um pedaço temático de algo maior; `aside` é conteúdo tangencial. Os títulos `h1`–`h6` formam a hierarquia/índice e devem descer em ordem, sem pular níveis, com um único `h1`. Semântica não muda a aparência (isso é CSS), mas paga três contas: acessibilidade, SEO e manutenção.
