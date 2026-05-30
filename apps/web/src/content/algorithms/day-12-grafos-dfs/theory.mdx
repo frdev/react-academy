@@ -1,0 +1,130 @@
+# Grafos: DFS & Aplicações
+
+Se o BFS explora em largura, o **DFS** (*Depth-First Search*) explora em profundidade: vai fundo num caminho até o fim, depois volta (*backtrack*) e tenta outro. Essa mudança de estratégia desbloqueia toda uma família de problemas — componentes, ciclos e ordenação de dependências.
+
+## A ideia: ir fundo, depois voltar
+
+O DFS escolhe um vizinho, mergulha nele, e só retrocede quando não há mais para onde ir. É a mesma disciplina **LIFO** da pilha (dia 7) — e por isso tem duas formas naturais.
+
+**Recursivo** (usa a call stack implicitamente):
+
+```js
+function dfs(grafo, atual, visitados = new Set()) {
+  visitados.add(atual)
+  console.log(atual)                       // processa
+  for (const vizinho of grafo.get(atual)) {
+    if (!visitados.has(vizinho)) {
+      dfs(grafo, vizinho, visitados)        // mergulha
+    }
+  }
+  return visitados
+}
+```
+
+**Iterativo** (pilha explícita — evita stack overflow em grafos profundos, lembre do dia 4):
+
+```js
+function dfsIterativo(grafo, inicio) {
+  const visitados = new Set()
+  const pilha = [inicio]
+  while (pilha.length) {
+    const atual = pilha.pop()               // LIFO
+    if (visitados.has(atual)) continue
+    visitados.add(atual)
+    for (const v of grafo.get(atual)) {
+      if (!visitados.has(v)) pilha.push(v)
+    }
+  }
+  return visitados
+}
+```
+
+> Note a simetria com o BFS: troque a **fila** por uma **pilha** e o BFS vira DFS. Custo igual: `O(V + E)`.
+
+## Aplicação 1: componentes conexos
+
+Quantos "pedaços" desconexos o grafo tem? Rode DFS a partir de cada vértice ainda não visitado — cada disparo cobre um componente inteiro.
+
+```js
+function contarComponentes(grafo, vertices) {
+  const visitados = new Set()
+  let componentes = 0
+  for (const v of vertices) {
+    if (!visitados.has(v)) {
+      dfs(grafo, v, visitados)   // visita todo o componente de v
+      componentes++
+    }
+  }
+  return componentes
+}
+```
+
+Esse padrão resolve "ilhas" em matrizes, agrupamento de itens relacionados, e flood fill (o balde de tinta do Paint).
+
+## Aplicação 2: detecção de ciclos
+
+Em um grafo **dirigido**, há ciclo se, durante o DFS, encontramos um vértice que **ainda está na pilha de recursão atual** (uma *back edge*). Usamos três cores/estados:
+
+```js
+function temCiclo(grafo, vertices) {
+  const estado = new Map()  // 0=não visto, 1=na pilha atual, 2=concluído
+
+  function dfs(u) {
+    estado.set(u, 1)                          // entrou na pilha
+    for (const v of grafo.get(u) ?? []) {
+      const e = estado.get(v) ?? 0
+      if (e === 1) return true                 // back edge → ciclo!
+      if (e === 0 && dfs(v)) return true
+    }
+    estado.set(u, 2)                           // saiu da pilha
+    return false
+  }
+
+  for (const v of vertices) {
+    if ((estado.get(v) ?? 0) === 0 && dfs(v)) return true
+  }
+  return false
+}
+```
+
+A distinção é sutil mas crucial: reencontrar um vértice **já concluído** (estado 2) não é ciclo — é só um caminho alternativo. Só a aresta para um vértice **em progresso** (estado 1) fecha um ciclo.
+
+## Aplicação 3: ordenação topológica
+
+Dado um **DAG** (grafo dirigido acíclico) de dependências — "A precisa vir antes de B" —, a **ordenação topológica** produz uma sequência linear que respeita todas as dependências. É como o `npm` resolve a ordem de instalação, ou como você ordena tarefas de um build.
+
+Com DFS, a ordem topológica é o **post-order invertido**: um vértice só é adicionado à resposta depois de todos os seus dependentes.
+
+```js
+function topoSort(grafo, vertices) {
+  const visitados = new Set()
+  const pilha = []                    // acumula em post-order
+
+  function dfs(u) {
+    visitados.add(u)
+    for (const v of grafo.get(u) ?? []) {
+      if (!visitados.has(v)) dfs(v)
+    }
+    pilha.push(u)                     // adiciona DEPOIS dos descendentes
+  }
+
+  for (const v of vertices) if (!visitados.has(v)) dfs(v)
+  return pilha.reverse()              // inverte → ordem topológica
+}
+```
+
+> A ordenação topológica **só existe se o grafo não tiver ciclos**. Se houver um ciclo (A depende de B que depende de A), não há ordem válida — por isso detecção de ciclo e topo sort andam juntas. A alternativa por BFS é o **algoritmo de Kahn**, que processa vértices com grau de entrada zero.
+
+## DFS vs BFS: quando usar cada um
+
+```text
+                  BFS                      DFS
+estrutura         fila (FIFO)              pilha / recursão (LIFO)
+explora           em camadas               em profundidade
+menor caminho     sim (não-ponderado)      não garante
+memória           O(largura da camada)     O(profundidade)
+brilha em         caminho mínimo, níveis   ciclos, topo sort, componentes,
+                                           backtracking
+```
+
+> **Resumo:** O **DFS** mergulha fundo e retrocede, usando recursão ou uma **pilha** explícita (`O(V+E)`). Trocar a fila do BFS por pilha dá DFS. Ele resolve **componentes conexos** (um DFS por vértice não visitado), **detecção de ciclos** (back edge para um vértice em progresso, via 3 estados) e **ordenação topológica** (post-order invertido num DAG). Use **BFS** para menor caminho e níveis; **DFS** para estrutura, ciclos e dependências.

@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-13",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o ciclo fundamental de um algoritmo de backtracking?",
+      "options": [
+        "Ordenar → buscar → retornar",
+        "Escolher → explorar → desfazer",
+        "Dividir → conquistar → combinar",
+        "Empilhar → desempilhar → repetir"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Backtracking aplica uma escolha, explora recursivamente e depois desfaz a escolha para tentar a próxima opção."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual passo do backtracking é o que de fato define a técnica?",
+      "options": [
+        "A recursão",
+        "O 'desfazer' (restaurar o estado anterior antes de tentar outro ramo)",
+        "A ordenação",
+        "O caso base"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O 'desfazer' restaura o estado para que cada ramo da árvore de decisões comece limpo — é a essência do backtracking."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Backtracking é essencialmente qual tipo de busca?",
+      "options": [
+        "BFS sobre o grafo",
+        "DFS sobre a árvore de estados/decisões",
+        "Busca binária",
+        "Busca linear"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Backtracking percorre o espaço de estados em profundidade (DFS), retrocedendo quando um ramo se esgota ou é inválido."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quantos subconjuntos tem um conjunto de n elementos, e qual a complexidade de gerá-los?",
+      "options": ["n, O(n)", "2ⁿ, O(2ⁿ)", "n!, O(n!)", "n², O(n²)"],
+      "correctAnswer": 1,
+      "explanation": "Cada elemento pode ser incluído ou não, gerando 2ⁿ subconjuntos — a complexidade O(2ⁿ) é inerente ao problema."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é 'poda' (pruning) em backtracking?",
+      "options": [
+        "Remover elementos do array",
+        "Abandonar um ramo assim que ele se mostra inválido, antes de explorá-lo até o fim",
+        "Ordenar as escolhas",
+        "Usar memoization"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A poda corta subárvores inteiras de escolhas inválidas cedo, reduzindo drasticamente o trabalho na prática."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "No problema das N-Rainhas, qual o papel da função `ehSegura`?",
+      "options": [
+        "Contar as rainhas",
+        "Servir como poda: impede explorar posições onde a rainha seria atacada",
+        "Ordenar o tabuleiro",
+        "Desfazer a última jogada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "ehSegura é a condição de poda: só exploramos posições válidas, eliminando logo no topo a maioria das configurações inválidas."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual pista no enunciado de um problema sugere backtracking?",
+      "options": [
+        "'Ordene o array'",
+        "'Encontre TODAS as soluções' ou 'existe alguma configuração que satisfaz as restrições'",
+        "'Some os elementos'",
+        "'Encontre o maior valor'"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Pedidos por 'todas as' combinações/permutações ou pela existência de uma configuração válida são a assinatura do backtracking."
+    }
+  ]
+}

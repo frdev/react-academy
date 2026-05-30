@@ -1,0 +1,67 @@
+{
+  "lessonId": "day-10",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Em um min-heap, onde fica o menor elemento?",
+      "options": ["Em uma folha", "Na raiz", "No último índice do array", "No meio"],
+      "correctAnswer": 1,
+      "explanation": "A propriedade de min-heap garante que todo nó é <= seus filhos, então o menor de todos fica na raiz, acessível em O(1)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em um heap armazenado em array, qual é o índice do filho esquerdo do nó i?",
+      "options": ["i - 1", "2*i + 1", "i / 2", "2*i"],
+      "correctAnswer": 1,
+      "explanation": "Os filhos do nó i ficam em 2*i+1 (esquerdo) e 2*i+2 (direito); o pai fica em (i-1)/2."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de inserir (push) em um heap?",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "correctAnswer": 1,
+      "explanation": "O elemento entra no fim e sobe (sift-up) por no máximo a altura da árvore completa, que é O(log n)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre um heap e uma BST?",
+      "options": [
+        "Não há diferença",
+        "O heap só garante a relação pai-filho (extremo na raiz); a BST é totalmente ordenada (esquerda<nó<direita)",
+        "A BST é sempre um array",
+        "O heap é ordenado e a BST não"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O heap faz menos promessas: só ordena pai vs filhos. A BST mantém ordenação total, permitindo busca por valor em O(log n)."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade de `peek()` (ver o mínimo sem remover) em um min-heap?",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "correctAnswer": 0,
+      "explanation": "O mínimo está sempre na raiz (índice 0), então olhá-lo é O(1)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para encontrar os K maiores de n elementos (k << n) com um min-heap de tamanho K, a complexidade é:",
+      "options": ["O(n²)", "O(n log n)", "O(n log k)", "O(k)"],
+      "correctAnswer": 2,
+      "explanation": "Mantendo um heap de tamanho K, cada um dos n elementos custa O(log k), totalizando O(n log k) — melhor que ordenar tudo quando k é pequeno."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual algoritmo clássico de menor caminho usa uma priority queue?",
+      "options": ["Bubble sort", "Dijkstra", "Busca binária", "Merge sort"],
+      "correctAnswer": 1,
+      "explanation": "Dijkstra usa uma fila de prioridade para sempre expandir o vértice de menor distância conhecida — base do seu desempenho."
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+# Busca Binária
+
+Busca binária é o exemplo mais limpo de `O(log n)`: a cada comparação, você descarta **metade** do espaço de busca. É simples de descrever e notoriamente fácil de implementar errado — vale entender cada detalhe.
+
+## A ideia: descartar metade a cada passo
+
+Pré-condição **inegociável**: o array precisa estar **ordenado**. Olhamos o elemento do meio e, com uma comparação, sabemos em qual metade o alvo pode estar — a outra metade é descartada.
+
+```js
+function buscaBinaria(arr, alvo) {
+  let esq = 0
+  let dir = arr.length - 1
+  while (esq <= dir) {
+    const meio = Math.floor((esq + dir) / 2)
+    if (arr[meio] === alvo) return meio       // achou
+    if (arr[meio] < alvo) esq = meio + 1       // alvo está à direita
+    else dir = meio - 1                        // alvo está à esquerda
+  }
+  return -1                                    // não encontrado
+}
+```
+
+Como o espaço cai pela metade a cada iteração, são no máximo `log₂(n)` passos. Em um array de 1 bilhão de elementos, ~30 comparações bastam.
+
+## Os detalhes que quebram implementações
+
+**1. A condição do `while`: `<=` e não `<`.** Com `esq <= dir`, a janela de busca inclui ambas as bordas. Trocar por `<` faz o algoritmo ignorar o último elemento quando `esq === dir`.
+
+**2. O invariante de loop.** A cada iteração mantemos a promessa: *"se o alvo existe, ele está em `[esq, dir]`"*. Toda atualização (`meio + 1`, `meio - 1`) preserva isso e garante que a janela **encolhe** — sem isso, loop infinito.
+
+**3. Overflow no cálculo do meio.** `(esq + dir) / 2` pode estourar inteiros em linguagens de tamanho fixo. A forma robusta:
+
+```js
+const meio = esq + Math.floor((dir - esq) / 2)
+```
+
+Em JavaScript os números são doubles de 64 bits, então o risco é menor, mas é o idioma correto e portável.
+
+## Lower bound e upper bound: além do "achou/não achou"
+
+A busca binária clássica retorna *uma* posição qualquer do alvo. Frequentemente queremos a **fronteira**: o primeiro índice onde uma condição passa a valer. Esse é o padrão mais poderoso.
+
+```js
+// lower bound: primeiro índice com arr[i] >= alvo
+function lowerBound(arr, alvo) {
+  let esq = 0
+  let dir = arr.length          // note: length, não length - 1
+  while (esq < dir) {
+    const meio = esq + Math.floor((dir - esq) / 2)
+    if (arr[meio] < alvo) esq = meio + 1
+    else dir = meio             // não descarta o meio: pode ser a resposta
+  }
+  return esq
+}
+```
+
+Com `lowerBound` e `upperBound` (primeiro índice com `arr[i] > alvo`) você conta ocorrências, encontra faixas e insere mantendo a ordem — tudo em `O(log n)`. Esse é, inclusive, o comportamento de `Array.prototype.sort` + buscas de inserção em estruturas ordenadas.
+
+## Busca binária na resposta (não só no array)
+
+A técnica não se limita a arrays. Sempre que existe uma **função monótona** — algo que é "falso, falso, ..., verdadeiro, verdadeiro" — você pode buscar binariamente a fronteira.
+
+```js
+// Menor capacidade que permite carregar tudo em <= D dias.
+// "consegue com capacidade c?" é monótona: se c funciona, c+1 também.
+function buscaNaResposta(podeFazer, lo, hi) {
+  while (lo < hi) {
+    const meio = lo + Math.floor((hi - lo) / 2)
+    if (podeFazer(meio)) hi = meio    // tenta um valor menor
+    else lo = meio + 1                // precisa de mais
+  }
+  return lo
+}
+```
+
+Reconhecer essa monotonicidade é o que separa quem usa busca binária só para "achar número no array" de quem a usa para otimização.
+
+## Complexidade
+
+```text
+Tempo:   O(log n)
+Espaço:  O(1) iterativa  |  O(log n) recursiva (pela call stack)
+```
+
+> **Resumo:** Busca binária exige array **ordenado** e descarta metade do espaço a cada passo, custando `O(log n)`. Os detalhes mortais são a condição do `while` (`<=`), preservar o **invariante** para a janela sempre encolher, e calcular o meio com `esq + (dir - esq) / 2`. Domine **lower/upper bound** para achar fronteiras e contar ocorrências, e perceba quando o problema esconde uma função **monótona** para buscar binariamente na própria resposta.

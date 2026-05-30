@@ -1,0 +1,135 @@
+# Árvores Binárias & BST
+
+Listas e arrays são lineares. Árvores introduzem **hierarquia** — e a árvore binária de busca (BST) combina a flexibilidade da estrutura encadeada com a velocidade logarítmica da busca binária. É a ponte entre tudo que vimos até aqui.
+
+## Vocabulário essencial
+
+Uma **árvore binária** é um conjunto de nós em que cada nó tem no máximo dois filhos (`left` e `right`).
+
+```text
+        50          ← raiz (root)
+       /  \
+      30    70       ← 30 e 70 são filhos de 50
+     / \    \
+    20 40    80      ← 20, 40, 80 são folhas (sem filhos)
+```
+
+- **Raiz:** o nó do topo. **Folha:** nó sem filhos.
+- **Altura:** o caminho mais longo da raiz até uma folha.
+- **Profundidade:** a distância de um nó até a raiz.
+- **Subárvore:** qualquer nó com seus descendentes.
+
+```js
+class No {
+  constructor(valor) {
+    this.valor = valor
+    this.left = null
+    this.right = null
+  }
+}
+```
+
+A estrutura é naturalmente **recursiva**: cada filho é a raiz de uma subárvore. Por isso quase todo algoritmo de árvore é recursivo (dia 4).
+
+## Traversals: as 4 formas de visitar todos os nós
+
+**Em profundidade (DFS)** — três ordens, definidas por *quando* você processa a raiz:
+
+```js
+function preOrder(no, out = []) {   // raiz → esquerda → direita
+  if (!no) return out
+  out.push(no.valor)                // processa ANTES de descer
+  preOrder(no.left, out)
+  preOrder(no.right, out)
+  return out
+}
+
+function inOrder(no, out = []) {    // esquerda → raiz → direita
+  if (!no) return out
+  inOrder(no.left, out)
+  out.push(no.valor)                // processa NO MEIO
+  inOrder(no.right, out)
+  return out
+}
+
+function postOrder(no, out = []) {  // esquerda → direita → raiz
+  if (!no) return out
+  postOrder(no.left, out)
+  postOrder(no.right, out)
+  out.push(no.valor)                // processa DEPOIS
+  return out
+}
+```
+
+- **Pre-order:** útil para **copiar/serializar** a árvore.
+- **In-order:** numa BST, **visita os valores em ordem crescente** (propriedade mágica!).
+- **Post-order:** útil para **deletar/liberar** ou avaliar expressões (filhos antes do pai).
+
+**Em largura (BFS) — level-order** — visita nível por nível, usando uma **fila** (dia 7):
+
+```js
+function levelOrder(raiz) {
+  if (!raiz) return []
+  const out = [], fila = [raiz]
+  while (fila.length) {
+    const no = fila.shift()
+    out.push(no.valor)
+    if (no.left) fila.push(no.left)
+    if (no.right) fila.push(no.right)
+  }
+  return out
+}
+```
+
+Todos os traversals são `O(n)` — visitam cada nó uma vez.
+
+## Binary Search Tree: a ordem que dá velocidade
+
+Uma **BST** é uma árvore binária com um invariante: para todo nó, **tudo na subárvore esquerda é menor**, e **tudo na direita é maior**. Esse invariante é a busca binária em forma de árvore.
+
+```js
+function buscar(no, alvo) {
+  if (!no) return null
+  if (alvo === no.valor) return no
+  return alvo < no.valor
+    ? buscar(no.left, alvo)    // alvo é menor → vai para a esquerda
+    : buscar(no.right, alvo)   // alvo é maior → vai para a direita
+}
+
+function inserir(no, valor) {
+  if (!no) return new No(valor)
+  if (valor < no.valor) no.left = inserir(no.left, valor)
+  else if (valor > no.valor) no.right = inserir(no.right, valor)
+  return no
+}
+```
+
+Busca, inserção e remoção custam `O(h)`, onde `h` é a altura. E aí mora o problema.
+
+## Balanceamento: o detalhe que faz ou quebra a BST
+
+Se a árvore está **balanceada**, a altura é `O(log n)` e tudo é rápido. Mas se você inserir valores já ordenados, a BST degenera numa lista encadeada — altura `O(n)`!
+
+```text
+Inserindo 1,2,3,4 em ordem:        Balanceada:
+   1                                    3
+    \                                  / \
+     2          altura O(n)           2   4
+      \         (degenerada!)        /
+       3                            1
+        \
+         4
+```
+
+> A solução são as **árvores auto-balanceadas**, que se reorganizam (via *rotações*) a cada inserção para manter a altura logarítmica: **AVL** (balanceamento estrito) e **red-black trees** (balanceamento aproximado, usado em `Map`/`Set` ordenados de muitas linguagens e no kernel do Linux). Os detalhes das rotações ficam para um aprofundamento, mas a ideia central é: **garantir altura `O(log n)` é o que torna a BST útil.**
+
+## Resumo de complexidade
+
+```text
+operação          balanceada    degenerada
+busca/inserção    O(log n)      O(n)
+traversal         O(n)          O(n)
+espaço            O(n)          O(n)
+```
+
+> **Resumo:** Árvores binárias são estruturas hierárquicas e recursivas. Os **traversals** DFS (pre/in/post) diferem em *quando* processam a raiz — e o **in-order numa BST sai em ordem crescente**; o **level-order** (BFS) usa fila. A **BST** mantém esquerda-menor/direita-maior, dando busca `O(h)`. Tudo depende da **altura**: balanceada é `O(log n)`, degenerada (inserções ordenadas) vira `O(n)` — por isso existem **AVL** e **red-black trees**.

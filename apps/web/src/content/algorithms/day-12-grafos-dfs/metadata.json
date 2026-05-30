@@ -1,0 +1,20 @@
+{
+  "id": "day-12",
+  "day": 12,
+  "week": 2,
+  "title": "Grafos: DFS & Aplicações",
+  "slug": "grafos-dfs",
+  "topics": [
+    "DFS recursivo e iterativo",
+    "componentes conexos",
+    "detecção de ciclos",
+    "ordenação topológica",
+    "DFS vs BFS"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 140
+}

@@ -1,0 +1,87 @@
+{
+  "lessonId": "day-12",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual estrutura caracteriza o DFS (em sua forma iterativa)?",
+      "options": ["Fila (FIFO)", "Pilha (LIFO) ou recursão", "Heap", "Hash map"],
+      "correctAnswer": 1,
+      "explanation": "O DFS usa uma pilha (explícita ou a call stack da recursão) — LIFO. Trocar a fila do BFS por pilha transforma-o em DFS."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como contar componentes conexos com DFS?",
+      "options": [
+        "Rodar um único DFS",
+        "Disparar um DFS a partir de cada vértice ainda não visitado; cada disparo cobre um componente",
+        "Contar as arestas",
+        "Usar BFS obrigatoriamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Cada DFS a partir de um vértice não visitado percorre todo o seu componente; o número de disparos é o número de componentes."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Na detecção de ciclo em grafo dirigido, o que indica um ciclo?",
+      "options": [
+        "Reencontrar um vértice já concluído",
+        "Encontrar uma aresta para um vértice que ainda está na pilha de recursão atual (em progresso)",
+        "Visitar todos os vértices",
+        "Ter mais arestas que vértices"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma back edge para um vértice 'em progresso' (estado 1) fecha um ciclo. Reencontrar um vértice já concluído (estado 2) é apenas um caminho alternativo."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "A ordenação topológica via DFS corresponde a qual ordem?",
+      "options": [
+        "Pre-order",
+        "Post-order invertido",
+        "Level-order",
+        "Ordem de chegada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um vértice é adicionado depois de todos os seus descendentes (post-order); invertendo essa ordem, obtemos a ordenação topológica."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Quando uma ordenação topológica existe?",
+      "options": [
+        "Sempre",
+        "Apenas se o grafo dirigido for acíclico (DAG)",
+        "Apenas em grafos não-dirigidos",
+        "Apenas em grafos ponderados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se houver um ciclo de dependências (A depende de B que depende de A), não há ordem válida. Topo sort só existe em DAGs."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para encontrar o menor caminho em um grafo não-ponderado, qual escolher?",
+      "options": ["DFS", "BFS", "Tanto faz", "Nenhum dos dois"],
+      "correctAnswer": 1,
+      "explanation": "O BFS explora em camadas e garante o menor número de arestas; o DFS pode encontrar um caminho mais longo primeiro."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que usar DFS iterativo (pilha explícita) em vez do recursivo?",
+      "options": [
+        "É mais rápido em tempo",
+        "Evita estourar a call stack em grafos muito profundos",
+        "Não precisa de visitados",
+        "Encontra o menor caminho"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Grafos profundos podem exceder o limite da call stack; uma pilha explícita move o controle para o heap, evitando o stack overflow."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Big-O & Análise de Complexidade",
+  "slug": "big-o-complexidade",
+  "topics": [
+    "notação Big-O",
+    "complexidade de tempo",
+    "complexidade de espaço",
+    "classes de crescimento",
+    "análise de pior caso"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

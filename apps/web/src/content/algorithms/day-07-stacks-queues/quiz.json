@@ -1,0 +1,64 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual disciplina de acesso uma pilha (stack) segue?",
+      "options": ["FIFO — primeiro a entrar, primeiro a sair", "LIFO — último a entrar, primeiro a sair", "Acesso aleatório", "Ordenada"],
+      "correctAnswer": 1,
+      "explanation": "Pilha é LIFO: o último elemento inserido (topo) é o primeiro a ser removido."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual estrutura é a escolha natural para verificar parênteses balanceados?",
+      "options": ["Fila", "Pilha", "Hash map", "Árvore"],
+      "correctAnswer": 1,
+      "explanation": "A pilha casa cada fechamento com o último abertura empilhado (LIFO), exatamente o que o balanceamento exige."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que usar `array.shift()` para dequeue pode virar um gargalo?",
+      "options": [
+        "Porque é O(1)",
+        "Porque shift reindexa todos os elementos do array, custando O(n)",
+        "Porque shift não funciona em arrays",
+        "Porque shift remove do fim"
+      ],
+      "correctAnswer": 1,
+      "explanation": "shift remove da frente e desloca todos os demais elementos, O(n). Para filas grandes, use ponteiro de cabeça ou linked list."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que é um deque?",
+      "options": [
+        "Uma fila que só remove do fim",
+        "Uma estrutura que permite inserir/remover nas duas pontas em O(1)",
+        "Uma pilha dupla",
+        "Uma árvore binária"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Deque (double-ended queue) permite operações O(1) em ambas as extremidades, generalizando pilha e fila."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual estrutura é usada pela busca em largura (BFS) em grafos?",
+      "options": ["Pilha", "Fila", "Hash map", "Heap"],
+      "correctAnswer": 1,
+      "explanation": "O BFS usa uma fila (FIFO) para processar os nós na ordem em que são descobertos, garantindo a exploração por camadas."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a complexidade da monotonic stack para resolver 'próximo elemento maior'?",
+      "options": ["O(n²)", "O(n log n)", "O(n)", "O(log n)"],
+      "correctAnswer": 2,
+      "explanation": "Cada índice entra e sai da pilha no máximo uma vez, então o algoritmo todo é O(n), em vez do O(n²) ingênuo."
+    }
+  ]
+}

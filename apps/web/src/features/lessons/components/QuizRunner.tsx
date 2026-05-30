@@ -101,6 +101,22 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-29': () => import('@/content/typescript/day-29-type-checker-performance/quiz.json'),
     'day-30': () => import('@/content/typescript/day-30-projeto-final-query-builder/quiz.json'),
   },
+  algorithms: {
+    'day-01': () => import('@/content/algorithms/day-01-big-o-complexidade/quiz.json'),
+    'day-02': () => import('@/content/algorithms/day-02-arrays-two-pointers/quiz.json'),
+    'day-03': () => import('@/content/algorithms/day-03-hash-maps-sets/quiz.json'),
+    'day-04': () => import('@/content/algorithms/day-04-recursao/quiz.json'),
+    'day-05': () => import('@/content/algorithms/day-05-busca-binaria/quiz.json'),
+    'day-06': () => import('@/content/algorithms/day-06-linked-lists/quiz.json'),
+    'day-07': () => import('@/content/algorithms/day-07-stacks-queues/quiz.json'),
+    'day-08': () => import('@/content/algorithms/day-08-sorting-merge-quick/quiz.json'),
+    'day-09': () => import('@/content/algorithms/day-09-arvores-bst/quiz.json'),
+    'day-10': () => import('@/content/algorithms/day-10-heaps-priority-queue/quiz.json'),
+    'day-11': () => import('@/content/algorithms/day-11-grafos-bfs/quiz.json'),
+    'day-12': () => import('@/content/algorithms/day-12-grafos-dfs/quiz.json'),
+    'day-13': () => import('@/content/algorithms/day-13-backtracking/quiz.json'),
+    'day-14': () => import('@/content/algorithms/day-14-programacao-dinamica/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

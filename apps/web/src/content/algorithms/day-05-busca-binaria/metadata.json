@@ -1,0 +1,20 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Busca Binária",
+  "slug": "busca-binaria",
+  "topics": [
+    "pré-requisito de ordenação",
+    "invariante de loop",
+    "overflow do meio",
+    "lower e upper bound",
+    "busca em espaço de respostas"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01", "day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 110
+}

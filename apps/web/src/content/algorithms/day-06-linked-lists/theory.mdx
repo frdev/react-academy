@@ -1,0 +1,112 @@
+# Linked Lists
+
+Arrays guardam elementos em memória contígua. A lista encadeada faz o oposto: cada elemento mora onde der, e aponta para o próximo. Esse design troca o acesso rápido por índice pela inserção e remoção baratas — um trade-off que vale entender a fundo.
+
+## Nós e ponteiros
+
+Uma lista encadeada é uma corrente de **nós**. Cada nó guarda um valor e uma referência (`next`) ao próximo. O último aponta para `null`.
+
+```js
+class No {
+  constructor(valor) {
+    this.valor = valor
+    this.next = null
+  }
+}
+
+// 10 -> 20 -> 30 -> null
+const a = new No(10)
+a.next = new No(20)
+a.next.next = new No(30)
+```
+
+Você guarda apenas o **head** (primeiro nó). Para chegar a qualquer outro, precisa seguir os ponteiros a partir dele.
+
+## Array vs Linked List: o trade-off central
+
+```text
+operação              array        linked list
+acesso por índice     O(1)         O(n)   ← precisa percorrer
+inserir/remover início O(n)        O(1)   ← só remapeia ponteiros
+inserir/remover fim   O(1)*        O(n) ou O(1) com tail
+buscar valor          O(n)         O(n)
+memória               compacta     overhead por ponteiro
+```
+
+A lista **não** tem acesso `O(1)` por índice — esse é o preço. Em troca, inserir/remover no início (ou em qualquer nó que você já tenha em mãos) é `O(1)`, pois basta religar ponteiros, sem deslocar nada.
+
+> Na prática, em JavaScript, arrays costumam vencer pela localidade de cache (memória contígua é amiga do processador). Listas encadeadas brilham conceitualmente e em casos específicos: implementar filas/pilhas, LRU caches, ou quando você faz muitas inserções/remoções no meio com referências em mãos.
+
+## Singly vs Doubly
+
+- **Singly linked** (`next`): anda só para frente. Leve.
+- **Doubly linked** (`next` + `prev`): anda nos dois sentidos; remover um nó conhecido é `O(1)` sem precisar do anterior. Custa um ponteiro a mais por nó.
+
+```js
+class NoDuplo {
+  constructor(valor) {
+    this.valor = valor
+    this.next = null
+    this.prev = null
+  }
+}
+```
+
+> Há ainda a **circular linked list**, em que o último nó aponta de volta para o head — útil para buffers circulares e escalonamento round-robin.
+
+## A operação canônica: reverter uma lista
+
+Reverter uma lista singly é o exercício que prova se você entende ponteiros. O truque é caminhar com três referências, religando cada `next` para trás.
+
+```js
+function reverter(head) {
+  let anterior = null
+  let atual = head
+  while (atual !== null) {
+    const proximo = atual.next   // guarda o resto antes de quebrar o elo
+    atual.next = anterior        // inverte o ponteiro
+    anterior = atual             // avança anterior
+    atual = proximo              // avança atual
+  }
+  return anterior                // novo head
+}
+// O(n) tempo, O(1) espaço
+```
+
+Desenhar isso no papel, nó a nó, é o melhor jeito de internalizar. Perder a referência `proximo` antes de sobrescrever `atual.next` é o erro clássico.
+
+## Fast & Slow pointers (técnica de Floyd)
+
+Dois ponteiros que avançam em **velocidades diferentes** resolvem problemas elegantes em uma passada.
+
+**Encontrar o meio** — quando o rápido chega ao fim, o lento está no meio:
+
+```js
+function meio(head) {
+  let lento = head, rapido = head
+  while (rapido && rapido.next) {
+    lento = lento.next            // 1 passo
+    rapido = rapido.next.next     // 2 passos
+  }
+  return lento                    // meio da lista
+}
+```
+
+**Detectar ciclo** — se há um ciclo, o rápido eventualmente "dá a volta" e encontra o lento:
+
+```js
+function temCiclo(head) {
+  let lento = head, rapido = head
+  while (rapido && rapido.next) {
+    lento = lento.next
+    rapido = rapido.next.next
+    if (lento === rapido) return true   // se encontram, há ciclo
+  }
+  return false
+}
+// O(n) tempo, O(1) espaço — sem usar Set extra
+```
+
+Sem fast/slow, detectar ciclo exigiria um `Set` de nós visitados (`O(n)` de espaço). Os dois ponteiros resolvem em `O(1)`.
+
+> **Resumo:** Listas encadeadas trocam o acesso `O(1)` por índice (que viram `O(n)`) por inserção/remoção `O(1)` quando você tem o nó em mãos. **Singly** anda para frente; **doubly** anda nos dois sentidos ao custo de um ponteiro extra. Reverter uma lista é o exercício-chave de manipulação de ponteiros. **Fast & slow pointers** acham o meio e detectam ciclos em `O(n)` tempo e `O(1)` espaço.

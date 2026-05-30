@@ -1,0 +1,87 @@
+{
+  "lessonId": "day-14",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Quais são as duas condições para um problema ser resolvível por Programação Dinâmica?",
+      "options": [
+        "Recursão e ordenação",
+        "Subproblemas sobrepostos e subestrutura ótima",
+        "Grafo acíclico e pesos positivos",
+        "Array ordenado e pivô"
+      ],
+      "correctAnswer": 1,
+      "explanation": "DP requer subproblemas que se repetem (sobrepostos) e que a solução ótima possa ser montada a partir das soluções ótimas dos subproblemas."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre memoization e tabulação?",
+      "options": [
+        "São algoritmos totalmente diferentes",
+        "Memoization é top-down (recursão + cache); tabulação é bottom-up (tabela iterativa, sem call stack)",
+        "Memoization é mais lenta",
+        "Tabulação usa recursão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Ambas resolvem cada subproblema uma vez: memoization desce recursivamente com cache; tabulação sobe iterativamente preenchendo uma tabela."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Aplicar memoization ao Fibonacci recursivo muda a complexidade de:",
+      "options": ["O(n) para O(1)", "O(2ⁿ) para O(n)", "O(n²) para O(n log n)", "Não muda"],
+      "correctAnswer": 1,
+      "explanation": "Sem cache, há recálculo exponencial O(2ⁿ). Guardando cada resultado, cada n é resolvido uma vez: O(n)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Se um problema tem subestrutura ótima mas NÃO tem subproblemas sobrepostos, qual técnica é apropriada?",
+      "options": [
+        "Programação dinâmica",
+        "Divisão e conquista (como merge sort)",
+        "Backtracking",
+        "Busca binária"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem sobreposição, não há o que cachear; é divisão e conquista. DP só compensa quando os mesmos subproblemas se repetem."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Quando é possível reduzir o espaço de uma DP de O(n) para O(1)?",
+      "options": [
+        "Nunca",
+        "Quando cada estado depende apenas dos últimos poucos estados",
+        "Quando o array está ordenado",
+        "Apenas em problemas de grafo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Se dp[i] depende só de dp[i-1] e dp[i-2], por exemplo, basta manter essas variáveis e descartar o resto da tabela — O(1) de espaço."
+    },
+    {
+      "id": "q6",
+      "type": "code-output",
+      "question": "Qual o retorno de `trocoMinimo([1,3,4], 6)` (menor número de moedas para somar 6)?",
+      "options": ["3", "2", "6", "-1"],
+      "correctAnswer": 1,
+      "explanation": "3 + 3 = 6 usa apenas 2 moedas. O guloso (4+1+1) daria 3 — por isso DP, que considera todas as combinações, é necessária."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o passo MAIS importante ao modelar uma solução de DP?",
+      "options": [
+        "Escolher a linguagem",
+        "Definir o estado (o que dp[i] ou dp[i][j] significa)",
+        "Ordenar a entrada",
+        "Escrever o caso base primeiro"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Definir corretamente o significado do estado é a decisão central; dela decorrem a recorrência, os casos base e a ordem de preenchimento."
+    }
+  ]
+}

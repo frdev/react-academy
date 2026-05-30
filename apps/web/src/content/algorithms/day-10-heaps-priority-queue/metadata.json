@@ -1,0 +1,20 @@
+{
+  "id": "day-10",
+  "day": 10,
+  "week": 2,
+  "title": "Heaps & Priority Queue",
+  "slug": "heaps-priority-queue",
+  "topics": [
+    "heap binário",
+    "array como árvore",
+    "sift-up e sift-down",
+    "priority queue",
+    "top-k e heapsort"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-09"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 140
+}

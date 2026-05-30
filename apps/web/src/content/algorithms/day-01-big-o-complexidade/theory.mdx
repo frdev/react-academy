@@ -1,0 +1,126 @@
+# Big-O & Análise de Complexidade
+
+Antes de escrever um único algoritmo, você precisa de uma linguagem para comparar soluções. "Qual código é mais rápido?" é uma pergunta mal formulada — depende da máquina, da linguagem, do compilador. A pergunta certa é: **como o custo cresce quando a entrada cresce?** Essa é a ideia da notação Big-O.
+
+## O que Big-O realmente mede
+
+Big-O descreve o **comportamento assintótico** — como o número de operações cresce conforme o tamanho da entrada `n` tende ao infinito. Ela ignora constantes e termos de menor ordem, porque o que domina em larga escala é o termo de maior crescimento.
+
+```js
+// 3n + 5 operações → O(n)
+// As constantes 3 e 5 não importam: o crescimento é linear.
+function soma(arr) {
+  let total = 0          // 1 operação
+  for (let x of arr) {   // n iterações
+    total += x           // n operações
+  }
+  return total           // 1 operação
+}
+```
+
+Não medimos tempo em segundos — medimos **quantas operações** em função de `n`. Isso torna a análise independente de hardware.
+
+## As classes de crescimento que importam
+
+Da mais rápida para a mais lenta:
+
+```text
+O(1)        constante      — acesso a índice, push em array
+O(log n)    logarítmica    — busca binária
+O(n)        linear         — percorrer um array
+O(n log n)  linearítmica   — merge sort, quick sort (médio)
+O(n²)       quadrática     — loops aninhados, bubble sort
+O(2ⁿ)       exponencial    — recursão sem memoization (fib ingênuo)
+O(n!)       fatorial       — gerar todas as permutações
+```
+
+Para ter intuição do impacto, com `n = 1.000.000`:
+
+```text
+O(log n)  ≈ 20 operações
+O(n)      ≈ 1.000.000
+O(n log n)≈ 20.000.000
+O(n²)     ≈ 1.000.000.000.000   ← inviável
+```
+
+## Como analisar na prática
+
+**Regra 1 — Loops sequenciais somam, loops aninhados multiplicam.**
+
+```js
+// Dois loops separados: O(n) + O(n) = O(2n) = O(n)
+for (let i = 0; i < n; i++) { /* ... */ }
+for (let j = 0; j < n; j++) { /* ... */ }
+
+// Loops aninhados: O(n) * O(n) = O(n²)
+for (let i = 0; i < n; i++) {
+  for (let j = 0; j < n; j++) { /* ... */ }
+}
+```
+
+**Regra 2 — Descarte constantes e termos menores.** `O(n² + n + 100)` vira `O(n²)`.
+
+**Regra 3 — Dividir o problema pela metade a cada passo é `O(log n)`.**
+
+```js
+// A cada iteração, n vira n/2 → log₂(n) iterações
+let i = n
+while (i > 1) {
+  i = Math.floor(i / 2)
+}
+```
+
+## Complexidade de espaço
+
+Tempo não é o único recurso: memória também conta. Complexidade de espaço mede a memória **adicional** que o algoritmo aloca além da entrada.
+
+```js
+// O(1) de espaço — só uma variável extra, independente de n
+function max(arr) {
+  let m = arr[0]
+  for (let x of arr) if (x > m) m = x
+  return m
+}
+
+// O(n) de espaço — cria um novo array proporcional à entrada
+function dobrar(arr) {
+  return arr.map(x => x * 2)
+}
+```
+
+Quase sempre há um **trade-off tempo × espaço**: gastar mais memória (ex.: um hash map) costuma comprar tempo, como veremos no dia de Hash Maps.
+
+## Pior, melhor e caso médio
+
+Por padrão, Big-O fala do **pior caso** — a garantia. Mas há nuances:
+
+```js
+function buscaLinear(arr, alvo) {
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] === alvo) return i   // melhor caso: O(1) (primeiro elemento)
+  }
+  return -1                          // pior caso: O(n) (não está / é o último)
+}
+```
+
+- **Melhor caso (Ω, ômega):** o piso, o cenário mais favorável.
+- **Caso médio (Θ, theta):** o comportamento típico.
+- **Pior caso (O):** o teto, a garantia que usamos para decidir.
+
+> Você vai ouvir falar também em **complexidade amortizada**: o custo médio por operação ao longo de uma sequência. É por isso que `array.push` é considerado `O(1)` mesmo que, ocasionalmente, o array precise realocar e copiar tudo — esse custo raro se dilui entre as muitas operações baratas.
+
+## Cuidado com as armadilhas de JavaScript
+
+Métodos que parecem baratos escondem custo:
+
+```js
+arr.includes(x)   // O(n) — varre o array inteiro
+arr.indexOf(x)    // O(n)
+arr.unshift(x)    // O(n) — reindexa todos os elementos
+set.has(x)        // O(1) — Set usa hashing
+arr.sort()        // O(n log n)
+```
+
+Trocar um `arr.includes` dentro de um loop por um `Set.has` transforma um algoritmo `O(n²)` em `O(n)`.
+
+> **Resumo:** Big-O mede como o custo cresce com `n`, ignorando constantes e focando no termo dominante. Memorize a hierarquia `O(1) < O(log n) < O(n) < O(n log n) < O(n²) < O(2ⁿ)`. Loops aninhados multiplicam; dividir pela metade é logarítmico. Pense sempre em tempo **e** espaço, e desconfie de métodos de array que escondem `O(n)`.

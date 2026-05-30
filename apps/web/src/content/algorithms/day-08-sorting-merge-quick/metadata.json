@@ -1,0 +1,20 @@
+{
+  "id": "day-08",
+  "day": 8,
+  "week": 2,
+  "title": "Sorting: Merge Sort & Quick Sort",
+  "slug": "sorting-merge-quick",
+  "topics": [
+    "divisão e conquista",
+    "merge sort",
+    "quick sort",
+    "estabilidade",
+    "limite O(n log n)"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 130
+}

@@ -1,0 +1,20 @@
+{
+  "id": "day-11",
+  "day": 11,
+  "week": 2,
+  "title": "Grafos: Representação & BFS",
+  "slug": "grafos-bfs",
+  "topics": [
+    "vértices e arestas",
+    "lista vs matriz de adjacência",
+    "BFS com fila",
+    "menor caminho não-ponderado",
+    "grafos dirigidos e ponderados"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-07"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 140
+}

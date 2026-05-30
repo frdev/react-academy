@@ -1,0 +1,137 @@
+# Backtracking
+
+Alguns problemas pedem que você explore **todas as combinações possíveis** — todas as permutações, todos os caminhos, todas as configurações válidas. Backtracking é a técnica que faz isso de forma organizada: construir uma solução incrementalmente e **desfazer** escolhas que não levam a lugar nenhum.
+
+## A ideia: a árvore de decisões
+
+Backtracking é DFS (dia 12) sobre o **espaço de estados** — a árvore de todas as escolhas possíveis. Em cada passo você decide algo, explora as consequências e, ao voltar, **desfaz** a decisão para tentar a próxima.
+
+O esqueleto é sempre o mesmo, o famoso **escolher → explorar → desfazer**:
+
+```js
+function backtrack(estadoParcial) {
+  if (ehSolucaoCompleta(estadoParcial)) {
+    registrar(estadoParcial)
+    return
+  }
+  for (const escolha of escolhasPossiveis(estadoParcial)) {
+    aplicar(escolha)              // ESCOLHER
+    backtrack(estadoParcial)      // EXPLORAR (recursão)
+    desfazer(escolha)             // DESFAZER (backtrack!)
+  }
+}
+```
+
+A linha `desfazer` é o coração da técnica: ela restaura o estado para que o próximo ramo da árvore comece limpo.
+
+## Exemplo 1: subconjuntos (o power set)
+
+Gerar todos os subconjuntos de `[1, 2, 3]`. Para cada elemento há duas escolhas: incluir ou não.
+
+```js
+function subconjuntos(nums) {
+  const res = []
+  const atual = []
+
+  function bt(inicio) {
+    res.push([...atual])                 // todo estado é uma solução válida
+    for (let i = inicio; i < nums.length; i++) {
+      atual.push(nums[i])                // escolher
+      bt(i + 1)                          // explorar (sem reusar)
+      atual.pop()                        // desfazer
+    }
+  }
+
+  bt(0)
+  return res
+}
+// [[], [1], [1,2], [1,2,3], [1,3], [2], [2,3], [3]]
+```
+
+Há `2ⁿ` subconjuntos, então o algoritmo é `O(2ⁿ)` — inerente ao problema, não um defeito.
+
+## Exemplo 2: permutações
+
+Todas as ordenações de `[1, 2, 3]`. Aqui rastreamos o que já foi usado.
+
+```js
+function permutacoes(nums) {
+  const res = []
+  const atual = []
+  const usado = new Array(nums.length).fill(false)
+
+  function bt() {
+    if (atual.length === nums.length) {
+      res.push([...atual])
+      return
+    }
+    for (let i = 0; i < nums.length; i++) {
+      if (usado[i]) continue             // pula o que já está na permutação
+      usado[i] = true; atual.push(nums[i])   // escolher
+      bt()                                    // explorar
+      usado[i] = false; atual.pop()           // desfazer
+    }
+  }
+
+  bt()
+  return res
+}
+// O(n · n!) — há n! permutações
+```
+
+## Poda (pruning): a diferença entre viável e inviável
+
+Backtracking puro é exponencial. O que o torna prático é a **poda**: abandonar um ramo assim que ele se mostra inválido, **antes** de explorá-lo até o fim. Cortar cedo elimina subárvores inteiras do espaço de busca.
+
+```text
+sem poda:                      com poda:
+explora TODA a árvore          corta ramos inválidos cedo
+        ●                              ●
+      / | \                          / | ✂
+    ...todos...                    ✓   ✗
+```
+
+A poda não muda o pior caso teórico, mas na prática pode reduzir o tempo em ordens de magnitude. É o que diferencia uma solução que roda em milissegundos de uma que nunca termina.
+
+## Exemplo 3: N-Rainhas (poda em ação)
+
+Posicionar `N` rainhas num tabuleiro `N×N` sem que se ataquem. A poda é essencial: só colocamos uma rainha numa posição **se ela for segura**, cortando imediatamente milhares de configurações inválidas.
+
+```js
+function nRainhas(n) {
+  const res = []
+  const colunas = new Set()
+  const diag1 = new Set()    // linha - coluna
+  const diag2 = new Set()    // linha + coluna
+  const tabuleiro = []
+
+  function ehSegura(lin, col) {              // a função de PODA
+    return !colunas.has(col) &&
+           !diag1.has(lin - col) &&
+           !diag2.has(lin + col)
+  }
+
+  function bt(linha) {
+    if (linha === n) { res.push([...tabuleiro]); return }
+    for (let col = 0; col < n; col++) {
+      if (!ehSegura(linha, col)) continue   // PODA: nem explora
+      colunas.add(col); diag1.add(linha - col); diag2.add(linha + col)
+      tabuleiro.push(col)                    // escolher
+      bt(linha + 1)                          // explorar
+      colunas.delete(col); diag1.delete(linha - col); diag2.delete(linha + col)
+      tabuleiro.pop()                        // desfazer
+    }
+  }
+
+  bt(0)
+  return res
+}
+```
+
+Sem a checagem `ehSegura`, exploraríamos `Nᴺ` configurações. Com ela, podamos a maior parte da árvore logo no topo.
+
+## Onde backtracking aparece
+
+Sudoku, geração de combinações/permutações, particionamento de strings, problema da soma de subconjuntos, labirintos, e qualquer "encontre todas as soluções que satisfazem restrições". Sempre que o enunciado pede **"todas as"** ou **"existe alguma configuração que..."**, pense em backtracking.
+
+> **Resumo:** Backtracking é DFS sobre a árvore de decisões, seguindo o ciclo **escolher → explorar → desfazer** — e o `desfazer` (restaurar o estado) é o que define a técnica. Resolve subconjuntos (`O(2ⁿ)`), permutações (`O(n·n!)`) e problemas de restrição. É exponencial por natureza, mas a **poda** — abandonar ramos inválidos cedo, como o `ehSegura` das N-Rainhas — é o que o torna viável na prática.
