@@ -149,3 +149,10 @@ export const STACKS: Stack[] = [
 export function getStackById(id: string): Stack | undefined {
   return STACKS.find(s => s.id === id)
 }
+
+export function groupStacksByLevel(stacks: Stack[]): { fundamentos: Stack[]; avancado: Stack[] } {
+  return {
+    fundamentos: stacks.filter(s => s.level === 'fundamentos'),
+    avancado: stacks.filter(s => s.level === 'avancado'),
+  }
+}
