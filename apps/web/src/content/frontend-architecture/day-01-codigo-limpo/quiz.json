@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Seguindo a ideia de nomes que revelam intenção, qual é o melhor nome para uma variável booleana que indica se o usuário tem uma assinatura ativa?",
+      "options": [
+        "sub",
+        "assinatura",
+        "temAssinaturaAtiva",
+        "statusUsuario"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Booleanos devem ler como perguntas de sim/não (is/has/tem/esta...). `temAssinaturaAtiva` diz exatamente o que `true` e `false` significam. `sub` é uma abreviação obscura, `assinatura` é genérico e não sugere um booleano, e `statusUsuario` insinua mais de dois valores possíveis."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é o sinal mais confiável de que uma função está fazendo coisas demais e deveria ser quebrada?",
+      "options": [
+        "Ela tem um nome curto",
+        "Você só consegue descrevê-la com 'e' (valida E formata E salva), ou precisa de comentários para separar as etapas",
+        "Ela recebe um único parâmetro",
+        "Ela retorna um valor"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma função deveria fazer uma coisa. Se você só consegue descrevê-la com 'e' (faz A e B e C), ou precisa de comentários do tipo '// agora faz X' para se achar dentro dela, são várias funções disfarçadas de uma. Nome curto, um parâmetro e retornar um valor são normais e não indicam problema."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é a principal vantagem de usar guard clauses (early return) no início de uma função?",
+      "options": [
+        "Deixa a função mais lenta, porém mais segura",
+        "Trata os casos de borda cedo e mantém o caminho principal reto, sem aninhamento profundo",
+        "Elimina a necessidade de nomear variáveis",
+        "Garante que a função nunca retorna undefined"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Guard clauses tratam as saídas e casos de borda logo no começo e retornam, deixando o caminho 'feliz' no nível mais externo de indentação, fácil de ler de cima para baixo. Não têm efeito de performance, nem relação com nomes ou com o tipo de retorno."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Trocar um número solto como `setTimeout(fn, 3000)` por uma constante nomeada `const ESPERA_RETRY_MS = 3000` melhora a legibilidade e cria uma única fonte da verdade para o valor.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. A constante nomeada explica o que o valor significa e, quando o mesmo valor é usado em vários lugares, centraliza a mudança num ponto só — em vez de você ter que caçar todos os `3000` espalhados pelo código."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Dois trechos de código hoje parecem idênticos. Quando é prudente NÃO juntá-los ainda numa única abstração?",
+      "options": [
+        "Nunca; toda duplicação deve ser eliminada imediatamente",
+        "Quando eles podem evoluir por motivos diferentes — a semelhança talvez seja coincidência",
+        "Quando os dois estão no mesmo arquivo",
+        "Quando ambos têm menos de cinco linhas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "DRY é sobre não duplicar conhecimento, não sobre código que por acaso se parece. Se dois trechos podem mudar por razões diferentes, juntá-los cedo cria um acoplamento que depois atrapalha — às vezes a duplicação é mais barata que a abstração errada. Estar no mesmo arquivo ou ter poucas linhas não é o critério."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual destes é um bom comentário?",
+      "options": [
+        "// soma 1 ao contador  (acima de `contador += 1`)",
+        "// percorre os itens  (acima de `for (const item of itens)`)",
+        "// a API externa retorna em centavos; dividindo por 100 para exibir em reais",
+        "// função que recebe um usuário  (acima de `function salvar(usuario)`)"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Bons comentários explicam o porquê e o contexto que o código não consegue mostrar — aqui, a razão de dividir por 100. Os outros apenas repetem o que o código já diz e viram ruído que envelhece mal quando o código muda."
+    }
+  ]
+}

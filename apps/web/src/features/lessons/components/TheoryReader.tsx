@@ -174,6 +174,11 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-02': () => import('@/content/git/day-02-branches-merge-rebase/theory.mdx'),
     'day-03': () => import('@/content/git/day-03-remotes-prs-conflitos/theory.mdx'),
   },
+  'frontend-architecture': {
+    'day-01': () => import('@/content/frontend-architecture/day-01-codigo-limpo/theory.mdx'),
+    'day-02': () => import('@/content/frontend-architecture/day-02-componentizacao-e-estado/theory.mdx'),
+    'day-03': () => import('@/content/frontend-architecture/day-03-arquitetura-por-feature/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content

@@ -1,0 +1,91 @@
+# Arquitetura por Feature & Quando Abstrair
+
+O Dia 1 foi o código de perto; o Dia 2 foram as unidades e o estado. Hoje afastamos a câmera de vez: como **organizar um projeto inteiro** em pastas e fronteiras que aguentam crescer — e a decisão mais traiçoeira de toda arquitetura: **quando abstrair** e quando deixar quieto. É o fechamento da trilha de Fundamentos. Tudo que você aprendeu precisa morar em algum lugar organizado.
+
+## Por feature, não por tipo
+
+Há duas formas clássicas de organizar pastas. **Por tipo** agrupa arquivos pela natureza técnica:
+
+```text
+src/
+  components/   Botao, Modal, CardProduto, FormLogin, ...
+  hooks/        useCarrinho, useAuth, useProduto, ...
+  utils/        formatarPreco, validarEmail, ...
+```
+
+**Por feature** agrupa pelo que o código *faz* — tudo de uma funcionalidade junto:
+
+```text
+src/
+  features/
+    carrinho/   componentes, lógica e dados do carrinho
+    auth/       componentes, lógica e dados de login
+    produto/    componentes, lógica e dados de produto
+```
+
+No começo, por tipo parece organizado. Mas mexer numa funcionalidade ("mudar o carrinho") espalha você por `components/`, `hooks/` e `utils/` ao mesmo tempo. **Por feature escala melhor**: o que muda junto fica junto, e você abre uma pasta só. (É exatamente assim que este projeto se organiza — `src/features/*`.)
+
+## Co-locação: o que muda junto, fica junto
+
+O princípio por trás disso é a **co-locação**: mantenha próximos os arquivos que mudam pelo mesmo motivo. O teste do carrinho perto do código do carrinho; o estilo perto do componente. Quando uma mudança te obriga a abrir cinco pastas distantes, a estrutura está lutando contra você.
+
+## Fronteiras entre features
+
+Separar em pastas só ajuda se as fronteiras forem respeitadas. Duas regras mantêm as features desacopladas:
+
+- **Cada feature expõe uma API pública** — em geral um `index` (barrel) que reexporta só o que é para fora. O resto é detalhe interno.
+- **Não fure a fronteira** com imports profundos no interior de outra feature.
+
+```js
+// ✓ usa a porta da frente da feature
+import { Carrinho } from '@/features/carrinho'
+
+// ✗ enfia a mão nas tripas de outra feature
+import { calcularFrete } from '@/features/carrinho/internals/frete'
+```
+
+Quando só a API pública é usada, você reorganiza o interior de uma feature sem quebrar o resto — a mesma ideia de fronteira do Dia 2, agora entre pastas. Idealmente as dependências apontam numa direção só: features dependem de coisas compartilhadas, não umas das outras em círculo.
+
+## Camadas dentro de uma feature
+
+Dentro de cada feature, vale separar responsabilidades em camadas:
+
+- **UI** — o que aparece na tela.
+- **Lógica** — regras de negócio, decisões.
+- **Dados** — acesso à API, armazenamento.
+
+Chamar `fetch` direto no meio do componente de tela funciona até a primeira vez que você precisa testar, reusar ou trocar a origem dos dados. Separar as camadas mantém cada uma simples e substituível.
+
+## A regra de três
+
+Agora a decisão difícil: **quando abstrair?** Um guia prático é a **regra de três**:
+
+1. Na **primeira** vez, escreva direto.
+2. Na **segunda** vez (duplicou), aguente a duplicação — ainda não dá para ver o padrão.
+3. Na **terceira** vez, o padrão real apareceu — aí sim, abstraia.
+
+Esperar até a terceira ocorrência te dá exemplos suficientes para criar a abstração *certa*, em vez de adivinhar cedo demais.
+
+## Abstração prematura
+
+Por que esperar? Porque **a abstração errada é mais cara que a duplicação**. Quando você junta cedo demais coisas que só pareciam iguais, ganha uma função cheia de `if` e parâmetros para dar conta das diferenças que foram surgindo — e desfazer isso depois dói mais do que conviver com um pouco de código repetido.
+
+```text
+duplicação        → custo conhecido e local (copiei; corrijo nos dois lugares)
+abstração errada  → custo escondido e espalhado (todo mundo já depende dela)
+```
+
+Daí o conselho clássico: *prefira a duplicação à abstração errada*. Abstraia quando o padrão for **claro e estável**, não quando dois trechos só forem parecidos por enquanto. (É o gancho que ficou lá no Dia 1.)
+
+## Juntando os fundamentos
+
+Esta trilha te deu as peças: **HTML semântico** dá estrutura acessível, **CSS** dá forma, **JS/TS** dá comportamento e segurança de tipos, **Git** versiona e os **gerenciadores de pacote** trazem o ferramental. Boas práticas e arquitetura são o que mantém tudo isso sustentável conforme o projeto cresce.
+
+Um checklist de bolso:
+
+- Nomes claros, funções pequenas, pouco aninhamento (Dia 1).
+- Unidades de responsabilidade única; estado com dono único (Dia 2).
+- Organização por feature, fronteiras respeitadas, camadas separadas (hoje).
+- Abstraia pelo padrão real, não pela pressa.
+
+> **Resumo:** Organize o projeto **por feature** (o que muda junto fica junto), não por tipo de arquivo — escala melhor e é como este repo se estrutura. Respeite as **fronteiras**: cada feature expõe uma **API pública** (barrel/`index`) e ninguém a fura com imports profundos; dentro dela, separe **UI, lógica e dados** em camadas. Para abstrair, siga a **regra de três** (só generalize na terceira ocorrência) e lembre que **a abstração errada custa mais que a duplicação** — abstraia pelo padrão claro e estável, nunca pela pressa. Assim os fundamentos da trilha (HTML, CSS, JS/TS, Git, tooling) se sustentam à medida que o projeto cresce.

@@ -173,6 +173,11 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-02': () => import('@/content/git/day-02-branches-merge-rebase/quiz.json'),
     'day-03': () => import('@/content/git/day-03-remotes-prs-conflitos/quiz.json'),
   },
+  'frontend-architecture': {
+    'day-01': () => import('@/content/frontend-architecture/day-01-codigo-limpo/quiz.json'),
+    'day-02': () => import('@/content/frontend-architecture/day-02-componentizacao-e-estado/quiz.json'),
+    'day-03': () => import('@/content/frontend-architecture/day-03-arquitetura-por-feature/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

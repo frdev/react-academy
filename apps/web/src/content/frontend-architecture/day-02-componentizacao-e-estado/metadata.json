@@ -1,0 +1,21 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Componentização & Estado",
+  "slug": "componentizacao-e-estado",
+  "topics": [
+    "componentizar: unidades pequenas e de responsabilidade única",
+    "como decidir o que vira uma unidade",
+    "entradas e saídas explícitas (dados descem, eventos sobem)",
+    "onde mora o estado: colocation e lifting",
+    "single source of truth e estado duplicado",
+    "composição vs configuração (flags booleanas)"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}
