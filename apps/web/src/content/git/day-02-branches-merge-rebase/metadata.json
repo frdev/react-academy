@@ -1,0 +1,21 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Branches, Merge e Rebase",
+  "slug": "branches-merge-rebase",
+  "topics": [
+    "branches como ponteiros baratos",
+    "criar e trocar branches (switch/checkout)",
+    "fast-forward vs merge commit",
+    "rebase: reescrita linear",
+    "merge vs rebase: quando usar cada um",
+    "golden rule do rebase"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

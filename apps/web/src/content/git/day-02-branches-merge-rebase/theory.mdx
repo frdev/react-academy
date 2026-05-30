@@ -1,0 +1,87 @@
+# Branches, Merge e Rebase
+
+Branches são o que torna o Git poderoso para trabalho em paralelo — e também onde mora a confusão entre `merge` e `rebase`. Hoje você vai entender o que uma branch realmente é (mais simples do que parece), como integrar o trabalho de duas branches de duas formas diferentes, e quando escolher cada uma.
+
+## Uma branch é só um ponteiro
+
+Não pense em branch como uma "cópia do projeto". Uma branch é apenas um **ponteiro leve para um commit**. Cada commit aponta para o seu pai, formando uma corrente; a branch é uma etiqueta que marca a ponta de uma dessas correntes.
+
+```text
+A───B───C   ← main
+```
+
+Aqui `main` aponta para `C`. Criar uma branch é criar outra etiqueta apontando para o mesmo commit — barato e instantâneo, não importa o tamanho do projeto:
+
+```bash
+git switch -c feature    # cria a branch 'feature' e muda para ela
+git switch main          # volta para a main
+git branch               # lista as branches
+```
+
+`git switch` é o comando moderno para criar e trocar de branch. Você talvez veja `git checkout -b feature` em tutoriais antigos — faz a mesma coisa, mas `checkout` é sobrecarregado (também restaura arquivos), então prefira `switch`.
+
+## Integrando branches: fast-forward vs merge commit
+
+Quando o trabalho na `feature` fica pronto, você o integra de volta na `main`. Há dois cenários.
+
+**Fast-forward** — se a `main` não recebeu nenhum commit novo desde que você criou a `feature`, o Git só **avança a etiqueta** `main` para frente. Nenhum commit novo é criado:
+
+```text
+antes:   A───B───C        ← main
+                  \
+                   D───E   ← feature
+
+depois:  A───B───C───D───E   ← main e feature  (main "andou" até E)
+```
+
+**Merge commit** — se a `main` recebeu commits próprios enquanto você trabalhava, as histórias **divergiram**. O Git cria um **commit de merge** (`M`), com dois pais, costurando as duas linhas:
+
+```text
+         A───B───C───F        ← main
+              \           \
+               D───E───────M   ← M tem dois pais: F e E
+```
+
+```bash
+git switch main
+git merge feature
+```
+
+O merge commit preserva exatamente o que aconteceu: duas linhas de trabalho que se encontraram. O histórico fica fiel, mas com bifurcações.
+
+## Rebase: reescrevendo em linha reta
+
+`rebase` resolve a mesma divergência de outro jeito: em vez de costurar com um merge commit, ele **reaplica os seus commits no topo da outra branch**, como se você tivesse começado a trabalhar a partir dali. O resultado é um histórico **linear**.
+
+```text
+antes:   A───B───C───F      ← main
+              \
+               D───E         ← feature
+
+depois (rebase de feature sobre main):
+         A───B───C───F───D'──E'   ← feature
+```
+
+Repare: `D` e `E` viraram `D'` e `E'`. São commits **novos** (mesmo conteúdo, pai diferente). O histórico original de `D`/`E` foi reescrito.
+
+```bash
+git switch feature
+git rebase main          # reaplica D e E sobre o topo da main
+```
+
+## Merge vs rebase: quando usar cada um
+
+Não existe "certo" universal — é uma escolha entre **fidelidade** e **limpeza**:
+
+- **Merge** preserva o histórico real, incluindo as bifurcações. Bom para integrar branches de longa duração e quando rastrear "o que aconteceu de verdade" importa.
+- **Rebase** produz um histórico linear, fácil de ler. Bom para limpar os seus commits locais antes de abrir um PR, ou para manter a sua branch atualizada com a `main` sem encher de merge commits.
+
+### A golden rule do rebase
+
+Como o rebase **reescreve commits** (cria novos no lugar dos antigos), há uma regra de ouro:
+
+> **Nunca faça rebase de commits que já foram compartilhados** (já estão no remoto e outras pessoas podem tê-los).
+
+Se você reescreve um histórico que outra pessoa já baixou, as duas cópias divergem e a sincronização vira um pesadelo. Faça rebase à vontade nos seus commits **locais**; use merge para integrar o que já é público.
+
+> **Resumo:** Uma branch é só um ponteiro barato para um commit. Integrar duas branches tem dois caminhos: `merge` faz fast-forward (só avança a etiqueta) quando não há divergência, ou cria um merge commit de dois pais quando há — preservando o histórico real; `rebase` reaplica os seus commits no topo da outra branch, gerando histórico linear ao custo de reescrevê-los. Escolha merge por fidelidade e rebase por limpeza, sempre respeitando a golden rule: nunca faça rebase de commits já compartilhados.
