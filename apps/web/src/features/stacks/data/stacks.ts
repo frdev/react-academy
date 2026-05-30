@@ -70,10 +70,10 @@ export const STACKS: Stack[] = [
   {
     id: 'frontend-architecture',
     name: 'Boas Práticas & Arquitetura Frontend',
-    tagline: '7 dias de código limpo e arquitetura',
+    tagline: '3 dias de código limpo e arquitetura',
     description: 'Clean code, componentização, organização por feature, estado e quando abstrair — síntese dos fundamentos.',
-    totalDays: 7,
-    status: 'coming-soon',
+    totalDays: 3,
+    status: 'available',
     level: 'fundamentos',
     color: 'emerald',
     weekThemes: ['Código Limpo & Arquitetura'],

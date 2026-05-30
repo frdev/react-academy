@@ -1,0 +1,142 @@
+# Código Limpo na Prática
+
+Você já sabe escrever código que funciona. Mas código é **lido muito mais vezes do que escrito** — por você daqui a três meses, por quem revisa seu Pull Request, por quem mantém o projeto depois que você sai. Código limpo não é enfeite nem regra de estilo arbitrária: é o que faz alguém entender e mudar o seu código *sem medo*. Hoje são seis hábitos que cabem em qualquer linguagem e em qualquer framework.
+
+## Nomes que revelam intenção
+
+É o hábito de maior retorno. Um bom nome responde sozinho: o que é isto, por que existe, como se usa.
+
+```js
+const d = 86400000
+const list = users.filter(u => u.a)
+```
+
+O que é `d`? Filtrar por qual `a`? Agora compare:
+
+```js
+const MS_POR_DIA = 86400000
+const usuariosAtivos = users.filter(usuario => usuario.ativo)
+```
+
+Três regrinhas resolvem a maioria dos casos:
+
+- **Funções são ações** → comece com um verbo: `calcularTotal`, `buscarUsuario`, `formatarData`.
+- **Booleanos são perguntas de sim/não** → `estaAtivo`, `temPermissao`, `estaVazio`.
+- **Fuja de nomes genéricos** (`data`, `info`, `temp`, `handle`, `obj`) e de abreviações que só você entende (`usr`, `calc`).
+
+O custo de digitar um nome maior é pago uma vez; o de decifrar um nome ruim, toda vez que alguém lê.
+
+## Funções pequenas que fazem uma coisa
+
+Uma função deveria fazer **uma única coisa** e fazê-la bem. O tamanho é um sintoma: se ela tem 60 linhas, ou você precisa de comentários como `// agora valida` / `// agora salva` para se achar dentro dela, são várias funções disfarçadas de uma.
+
+```js
+function processarPedido(pedido) {
+  validarPedido(pedido)
+  const total = calcularTotal(pedido)
+  const recibo = formatarRecibo(pedido, total)
+  return recibo
+}
+```
+
+Cada função extraída vira documentação. Ler `processarPedido` conta a história inteira sem você precisar abrir cada passo — e quando um passo dá problema, você sabe exatamente onde olhar.
+
+## Menos aninhamento: trate os casos de borda primeiro
+
+Código que desce em escada (`if` dentro de `if` dentro de `if`) é difícil de seguir: você precisa segurar todas as condições na cabeça ao mesmo tempo. Trate as saídas primeiro e retorne cedo — são as *guard clauses*:
+
+```js
+// aninhado: o caminho principal fica escondido lá no fundo
+function preco(usuario) {
+  if (usuario) {
+    if (usuario.ativo) {
+      return usuario.plano.preco
+    }
+  }
+  return 0
+}
+```
+
+```js
+// com guard clauses: casos de borda saem cedo, caminho principal reto
+function preco(usuario) {
+  if (!usuario) return 0
+  if (!usuario.ativo) return 0
+  return usuario.plano.preco
+}
+```
+
+O caminho "feliz" fica no nível mais externo, sem indentação extra. Você lê de cima para baixo, descartando os casos de borda um a um.
+
+## Magic numbers viram constantes nomeadas
+
+Um número ou texto solto no meio do código não explica o que significa — e quando o mesmo valor aparece em três lugares, mudá-lo vira caça ao tesouro.
+
+```js
+if (senha.length < 8) { /* ... */ }
+setTimeout(retry, 3000)
+```
+
+```js
+const TAMANHO_MINIMO_SENHA = 8
+const ESPERA_RETRY_MS = 3000
+
+if (senha.length < TAMANHO_MINIMO_SENHA) { /* ... */ }
+setTimeout(retry, ESPERA_RETRY_MS)
+```
+
+O nome explica a intenção, e o valor passa a ter uma **única fonte da verdade**.
+
+## DRY, com cuidado
+
+DRY (*Don't Repeat Yourself*) diz para não repetir **conhecimento**. A mesma regra de negócio copiada em vários lugares vira vários lugares para esquecer de corrigir:
+
+```js
+// a taxa de serviço (10%) espalhada pelo código —
+// mude a alíquota e você precisa caçar todos os pontos
+const precoCarrinho = subtotal + subtotal * 0.1
+const precoCheckout = total + total * 0.1
+const precoResumo = valor + valor * 0.1
+```
+
+Aqui o `0.1` é **um único conhecimento**; extraí-lo é claramente bom — passa a existir uma fonte da verdade:
+
+```js
+const TAXA_SERVICO = 0.1
+const comTaxa = (valor) => valor + valor * TAXA_SERVICO
+
+const precoCarrinho = comTaxa(subtotal)
+const precoCheckout = comTaxa(total)
+```
+
+Mas cuidado com o DRY apressado: nem todo código *parecido* é conhecimento repetido. Estas duas validações são idênticas **hoje** — tentador unir num `temTamanhoMinimo(texto, 8)`:
+
+```js
+function senhaValida(senha) { return senha.length >= 8 }
+function apelidoValido(apelido) { return apelido.length >= 8 }
+```
+
+Só que elas existem por motivos diferentes e logo **divergem** — uma por segurança, a outra por exibição:
+
+```js
+function senhaValida(senha) { return senha.length >= 8 && /[0-9]/.test(senha) }
+function apelidoValido(apelido) { return apelido.length >= 8 && !/\s/.test(apelido) }
+```
+
+Se você tivesse juntado as duas cedo, agora estaria *desmontando* a abstração para reintroduzir a diferença — mais caro do que a duplicação custava. A regra prática: espere a duplicação se repetir e a intenção ficar clara antes de abstrair. Voltamos a isso no Dia 3.
+
+## Comentários: o porquê, não o quê
+
+O código já diz *o que* faz. Um bom comentário explica o que o código não consegue: o *porquê*, o contexto, a decisão estranha que tem um motivo real.
+
+```js
+// incrementa i em 1   ← redundante: o código já diz isso
+i += 1
+
+// a API externa devolve valores em centavos; dividindo para exibir em reais
+const reais = resposta.valor / 100
+```
+
+Comentário que repete o código envelhece mal (o código muda, o comentário fica) e vira ruído. Se você sentiu que precisa de um comentário para explicar *o que* um trecho faz, tente primeiro um nome melhor ou extrair uma função — muitas vezes o comentário some sozinho.
+
+> **Resumo:** Código limpo é código legível, e legibilidade se constrói com hábitos simples: **nomes que revelam intenção** (verbos para funções, perguntas para booleanos, nada de `data`/`temp`), **funções pequenas** que fazem uma coisa só, **early return** para evitar aninhamento, **constantes nomeadas** no lugar de magic numbers, **DRY com cuidado** (sem abstrair cedo demais) e **comentários que explicam o porquê**, não o quê. Nenhum depende de linguagem ou framework — são a base que toda a arquitetura dos próximos dias pressupõe.

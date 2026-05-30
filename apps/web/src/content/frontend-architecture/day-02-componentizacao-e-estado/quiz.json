@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual destes é um bom motivo para extrair um trecho de código em uma unidade (função/componente) separada?",
+      "options": [
+        "O arquivo passou de 100 linhas, então é hora de quebrar qualquer coisa",
+        "O trecho tem uma responsabilidade única clara, se repete, ou ficou complexo o bastante para merecer um nome",
+        "Você quer aumentar o número de arquivos do projeto",
+        "Toda função deve ter no máximo 3 linhas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Extrai-se uma unidade quando ela tem responsabilidade única, será reusada, ou ficou complexa o bastante para valer um nome e uma fronteira. Quebrar só porque o arquivo é grande, ou por metas arbitrárias de tamanho/quantidade, gera fragmentos que só fazem sentido juntos."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que guardar o mesmo dado (ex.: o termo de busca) em duas unidades diferentes é considerado um anti-padrão?",
+      "options": [
+        "Porque ocupa o dobro de memória",
+        "Porque as duas cópias podem divergir e a tela passa a mostrar dados inconsistentes",
+        "Porque é proibido pela linguagem",
+        "Porque deixa o código mais rápido, o que esconde bugs"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com o dado em dois lugares, cedo ou tarde as cópias saem de sincronia e a UI mostra estados contraditórios. A solução é uma única fonte da verdade: um dono só para cada dado. O custo de memória é irrelevante aqui."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Duas unidades irmãs precisam ler e alterar o mesmo dado. Onde esse estado deveria ficar?",
+      "options": [
+        "Duplicado dentro de cada uma das duas",
+        "Numa variável global, para qualquer um acessar",
+        "Elevado (lifted) para o ancestral comum mais próximo, que o repassa para as duas",
+        "Dentro da primeira unidade que foi escrita"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Quando o estado é compartilhado, ele sobe (lifting state up) para o dono comum mais próximo, que passa o dado para baixo — mantendo uma única fonte da verdade. Duplicar gera divergência; global vira ação à distância difícil de rastrear; pôr na 'primeira que foi escrita' é arbitrário."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Numa árvore de unidades com fluxo de dados previsível, como a informação costuma circular?",
+      "options": [
+        "Dados sobem por parâmetros e eventos descem por retorno",
+        "Dados descem por parâmetros/props e eventos sobem por callbacks",
+        "Tudo trafega por variáveis globais",
+        "Cada unidade decide sozinha, sem padrão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O padrão previsível é dados descendo por parâmetros/props e eventos (ou resultados) subindo por callbacks. Esse fluxo unidirecional deixa claro de onde veio cada dado e para onde vai cada evento. Globais quebram a previsibilidade."
+    },
+    {
+      "id": "q5",
+      "type": "true-false",
+      "question": "Adicionar cada vez mais parâmetros booleanos (`primario`, `grande`, `comIcone`, `perigo`...) a uma única unidade é geralmente preferível a compor peças menores.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Cada flag booleana nova multiplica as combinações e os `if` internos, inchando a unidade. Compor peças pequenas (ou usar 'filhos'/children) costuma ser mais flexível e legível do que configurar uma unidade gigante por flags."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual destes é um sinal de que uma unidade ficou grande demais e pede para ser quebrada?",
+      "options": [
+        "Ela tem um nome curto e um único parâmetro",
+        "Ela mistura responsabilidades (busca dados E formata E desenha) e tem parâmetros demais",
+        "Ela é usada em apenas um lugar",
+        "Ela não guarda nenhum estado interno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Misturar responsabilidades e acumular muitos parâmetros são sinais clássicos de que há várias unidades disfarçadas de uma. Nome curto, um parâmetro, uso único e ausência de estado interno não são problemas — muitas vezes são até bons sinais."
+    }
+  ]
+}

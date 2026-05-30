@@ -1,0 +1,101 @@
+# Componentização & Estado
+
+No Dia 1 você limpou o código de perto — nomes, funções, comentários. Hoje subimos um nível: como **quebrar um sistema em pedaços** que se encaixam, e onde guardar os **dados que mudam** (o estado). Os dois assuntos andam juntos — a maioria dos bugs de "a tela mostra uma coisa, os dados dizem outra" nasce de estado no lugar errado.
+
+Aqui, *unidade* é qualquer pedaço com fronteira própria: uma função, um módulo ou um **componente** de um framework como React. Os princípios são os mesmos em qualquer um deles.
+
+## O que é componentizar
+
+Componentizar é quebrar um todo grande em **unidades pequenas, de responsabilidade única e reutilizáveis**. Em vez de uma função de 200 linhas que monta uma tela inteira, você tem várias unidades, cada uma com um nome e um trabalho.
+
+Os ganhos são concretos:
+
+- Você entende uma unidade sem ler o resto.
+- Você troca o interior dela sem quebrar quem a usa — desde que a fronteira seja clara.
+- Você testa e reusa cada pedaço isoladamente.
+
+Frameworks de UI levam isso ao extremo (a tela vira uma árvore de componentes), mas a ideia é a mesma que organizar funções e módulos.
+
+## Como decidir o que vira uma unidade
+
+Quebrar **de menos** é ruim, e quebrar **de mais** também — fragmentos que só fazem sentido juntos. Três perguntas ajudam a decidir:
+
+- **Responsabilidade única:** este pedaço tem *um* motivo claro para existir? Você consegue nomeá-lo sem usar "e"?
+- **Reuso:** isto aparece (ou vai aparecer) em mais de um lugar?
+- **Complexidade:** este trecho ficou grande ou difícil o bastante para merecer um nome e uma fronteira próprios?
+
+Se a resposta a alguma for "sim", provavelmente é uma boa unidade. Se você só está quebrando "porque o arquivo está grande", desconfie: quebrar sem critério gera ruído.
+
+## Entradas e saídas explícitas
+
+Uma boa unidade tem fronteira clara: **dados entram por parâmetros, resultados saem por retorno ou por callbacks**. Nada de mexer escondido em variáveis globais.
+
+```js
+// entrada: itens (dado) e aoRemover (callback de saída)
+function resumoCarrinho(itens, aoRemover) {
+  const total = itens.reduce((soma, item) => soma + item.preco, 0)
+  return { total, aoRemover }
+}
+```
+
+Em frameworks de componentes isso ganha nomes próprios: **dados descem** por *props*, **eventos sobem** por callbacks. O efeito é um fluxo previsível e numa direção só — você sempre sabe de onde um dado veio e para onde um evento vai. Uma unidade que lê e escreve em estado global por fora quebra essa previsibilidade: fica difícil saber quem mudou o quê.
+
+## Onde mora o estado
+
+*Estado* é todo dado que muda com o tempo: o que o usuário digitou, o que veio da API, o que está selecionado. A pergunta central é: **onde esse dado deveria morar?** Dois princípios guiam a resposta.
+
+- **Mantenha o estado perto de quem usa (colocation).** Se só uma unidade precisa de um dado, ele mora dentro dela. Estado que mora longe de quem o usa vira "ação à distância", difícil de seguir.
+- **Suba o estado compartilhado para um dono comum (lifting).** Quando duas unidades precisam do *mesmo* dado, ele sobe para o ancestral comum mais próximo, que o repassa para baixo. Assim existe **uma única fonte da verdade**.
+
+O anti-padrão é guardar o mesmo dado em dois lugares e sincronizá-los na mão:
+
+```text
+✗ campoBusca = "ana"   e   lista guarda "an"   → cedo ou tarde divergem
+✓ um único termoBusca no dono comum, lido pelos dois
+```
+
+Estado duplicado é uma das fontes de bug mais comuns do front. A regra: **cada dado tem um dono só**.
+
+## Composição em vez de configuração
+
+Há duas formas de fazer uma unidade atender a vários casos. A primeira é **configuração**: passar opções — muitas vezes booleanas — para uma unidade que tenta dar conta de tudo por dentro.
+
+```js
+// uma função que tenta cobrir todo caso por flags
+criarBotao({ primario: true, grande: false, comIcone: true, perigo: false, carregando: false })
+```
+
+Parece prático no começo, mas envelhece mal por três motivos:
+
+- **Cada caso novo vira uma flag nova**, e o corpo da função vira uma teia de `if` para combiná-las.
+- **As flags interagem entre si:** `primario` *e* `perigo` ao mesmo tempo faz sentido? A função precisa decidir — mais `if`.
+- **A chamada fica ilegível:** quem lê `{ primario: true, grande: false, comIcone: true, perigo: false }` não bate o olho e entende. É o chamado *boolean trap*.
+
+A segunda forma é **composição**: em vez de uma unidade gigante e configurável, você monta o caso específico **combinando peças pequenas**, cada uma com um trabalho só.
+
+```js
+// cada peça faz uma coisa; você arruma do jeito que precisa
+botao(
+  icone('lixeira'),
+  texto('Excluir'),
+)
+```
+
+A diferença é quem tem o controle. Na configuração, a unidade precisa **prever** todos os casos; na composição, ela só **organiza** o que recebe — quem chama decide o arranjo. Um caso novo não pede uma flag nem um `if` novo: é só combinar as peças de outro jeito.
+
+É isso que frameworks de componentes oferecem quando um componente aceita **filhos** (*children* ou *slots*): o componente externo dá a estrutura — a "moldura" — e quem chama preenche o conteúdo. Um `Card` não tenta adivinhar todo cabeçalho e rodapé possível; ele deixa espaços para você encaixar o que quiser.
+
+**E quando configurar ainda é ok?** Para uma escolha única e bem fechada — por exemplo `tipo: 'primario' | 'secundario'` — um parâmetro é mais simples que compor, e tudo bem. O sinal de alerta é o acúmulo de **vários booleanos independentes que se combinam**: aí a configuração explode e a composição quase sempre fica mais legível e flexível.
+
+## Sinais de que uma unidade está grande demais
+
+Você não precisa decidir tudo de antemão — dá para começar simples e quebrar quando os sinais aparecem:
+
+- Muitos parâmetros (mais de uns 3–4).
+- Você não consegue nomeá-la sem "e".
+- Ela mistura responsabilidades (busca dados *e* formata *e* desenha).
+- Estado demais lá dentro, com pedaços que não se conversam.
+
+Quando esses sinais surgem, extraia uma unidade menor — exatamente como você extraiu funções no Dia 1, agora num nível acima.
+
+> **Resumo:** Componentizar é quebrar o sistema em **unidades pequenas, de responsabilidade única e reutilizáveis** — funções, módulos ou componentes. Cada unidade tem fronteira explícita: **dados entram por parâmetros/props e eventos saem por callbacks**, num fluxo previsível e unidirecional. O estado deve morar **perto de quem o usa** (colocation) e **subir para um dono comum** quando compartilhado (lifting), sempre com **uma única fonte da verdade** — estado duplicado é fonte garantida de bug. Prefira **compor peças pequenas** a configurar uma unidade gigante cheia de flags, e quebre uma unidade quando os sinais (parâmetros demais, responsabilidades misturadas, nome com "e") aparecerem.

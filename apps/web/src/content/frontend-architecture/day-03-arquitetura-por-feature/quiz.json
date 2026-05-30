@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que organizar o código por feature (carrinho/, auth/, produto/) costuma escalar melhor do que por tipo (components/, hooks/, utils/)?",
+      "options": [
+        "Porque gera menos arquivos no total",
+        "Porque o que muda junto fica junto — mexer numa funcionalidade abre uma pasta só, em vez de espalhar por várias",
+        "Porque proíbe o uso de utilitários compartilhados",
+        "Porque é exigência das ferramentas de build"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Por feature, os arquivos que mudam pelo mesmo motivo ficam co-locados; alterar 'o carrinho' mexe numa pasta só, em vez de te espalhar por components/, hooks/ e utils/. Não tem a ver com número de arquivos, proibir utilitários compartilhados, nem exigência de build."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que significa uma feature expor uma 'API pública' por um arquivo index (barrel)?",
+      "options": [
+        "Que ela publica os dados num servidor",
+        "Que ela reexporta só o que é para uso externo, escondendo os detalhes internos",
+        "Que todos os arquivos dela ficam públicos na internet",
+        "Que qualquer parte de fora pode importar qualquer arquivo interno dela"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O barrel/index é a 'porta da frente' da feature: reexporta apenas o que é para ser usado de fora e mantém o resto como detalhe interno. Isso deixa você reorganizar as tripas sem quebrar quem consome. Não tem relação com servidor nem com expor tudo."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Segundo a regra de três, qual é o momento certo de transformar um trecho repetido numa abstração compartilhada?",
+      "options": [
+        "Logo na primeira vez que você escreve o trecho",
+        "Na segunda ocorrência, assim que aparece qualquer duplicação",
+        "Na terceira ocorrência, quando o padrão real já ficou visível",
+        "Nunca; duplicação deve sempre permanecer"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A regra de três sugere escrever direto na 1ª vez, tolerar a duplicação na 2ª e abstrair na 3ª — quando você já tem exemplos suficientes para criar a abstração certa, em vez de adivinhar cedo demais."
+    },
+    {
+      "id": "q4",
+      "type": "true-false",
+      "question": "Vale tolerar um pouco de duplicação para evitar uma abstração prematura, porque desfazer a abstração errada costuma ser mais caro do que conviver com código repetido.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. A duplicação tem custo conhecido e local; a abstração errada tem custo escondido e espalhado, porque todo mundo passa a depender dela. Por isso o conselho 'prefira a duplicação à abstração errada' — abstraia só quando o padrão for claro e estável."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que separar UI, lógica e acesso a dados em vez de chamar `fetch` direto no meio do componente de tela?",
+      "options": [
+        "Porque fetch é proibido em componentes",
+        "Porque misturar tudo dificulta testar, reusar e trocar a origem dos dados; camadas separadas mantêm cada parte simples e substituível",
+        "Porque deixa a aplicação visualmente mais bonita",
+        "Porque reduz o número de features"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Separar camadas mantém cada responsabilidade simples e substituível — dá para testar a lógica sem a UI, reusar o acesso a dados ou trocar a API sem mexer na tela. Misturar tudo acopla essas decisões. Não é proibição de fetch nem questão estética."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O princípio da co-locação recomenda que:",
+      "options": [
+        "Todos os testes fiquem numa única pasta /tests na raiz do projeto",
+        "Arquivos que mudam pelo mesmo motivo fiquem próximos uns dos outros",
+        "Cada arquivo tenha no máximo 100 linhas",
+        "Componentes e estilos fiquem sempre em repositórios separados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Co-locação é manter perto o que muda junto — o teste perto do código que ele cobre, o estilo perto do componente. Quando uma mudança te obriga a abrir várias pastas distantes, a estrutura está atrapalhando. Não é sobre uma pasta única de testes, limite de linhas ou separar repositórios."
+    }
+  ]
+}
