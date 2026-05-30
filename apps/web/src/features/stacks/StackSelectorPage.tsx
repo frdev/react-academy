@@ -17,6 +17,7 @@ const COLOR_MAP: Record<string, { ring: string; bg: string; text: string; icon: 
   sky:     { ring: 'ring-sky-500',     bg: 'bg-sky-600',     text: 'text-sky-400',     icon: 'bg-sky-500/10',     hoverBorder: 'hover:border-sky-500/50' },
   teal:    { ring: 'ring-teal-500',    bg: 'bg-teal-600',    text: 'text-teal-400',    icon: 'bg-teal-500/10',    hoverBorder: 'hover:border-teal-500/50' },
   emerald: { ring: 'ring-emerald-500', bg: 'bg-emerald-600', text: 'text-emerald-400', icon: 'bg-emerald-500/10', hoverBorder: 'hover:border-emerald-500/50' },
+  violet:  { ring: 'ring-violet-500',  bg: 'bg-violet-600',  text: 'text-violet-400',  icon: 'bg-violet-500/10',  hoverBorder: 'hover:border-violet-500/50' },
 }
 
 const STACK_ICONS: Record<string, string> = {
@@ -32,6 +33,7 @@ const STACK_ICONS: Record<string, string> = {
   'typescript-essentials': '🔷',
   git:                     '🌿',
   'frontend-architecture': '🏛️',
+  regex:                   '.*',
 }
 
 function StackCard({ stack }: { stack: Stack }) {

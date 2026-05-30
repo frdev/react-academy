@@ -1,0 +1,123 @@
+# Regex na Prática
+
+No Dia 1 você aprendeu a *descrever* um padrão. Hoje a regex vira ferramenta: vamos **agrupar**, **extrair pedaços nomeados**, **condicionar** sem consumir, ligar/desligar **flags** e, principalmente, rodar tudo isso com a API de JavaScript.
+
+## Grupos: capturar, agrupar, nomear
+
+Parênteses `()` criam um **grupo de captura**: além de agrupar, eles guardam o trecho que casou para você reusar.
+
+```js
+const m = '2026-05-30'.match(/(\d{4})-(\d{2})-(\d{2})/)
+m[0]  // "2026-05-30"  — o casamento inteiro
+m[1]  // "2026"        — primeiro grupo
+m[2]  // "05"          — segundo grupo
+m[3]  // "30"          — terceiro grupo
+```
+
+Às vezes você só quer **agrupar para quantificar**, sem pagar o custo de capturar. Use um **grupo sem captura** `(?:...)`:
+
+```js
+// agrupa "ab" para repetir, mas não cria um grupo numerado
+/(?:ab)+/.test('ababab')   // true
+```
+
+E para não depender de contar índices, **nomeie** o grupo com `(?<nome>...)`:
+
+```js
+const { groups } = '2026-05-30'.match(/(?<ano>\d{4})-(?<mes>\d{2})-(?<dia>\d{2})/)
+groups.ano   // "2026"
+groups.mes   // "05"
+groups.dia   // "30"
+```
+
+## Alternância
+
+A barra `|` é um "ou": casa o que está à esquerda **ou** à direita. Parênteses delimitam o alcance dela — sem eles, o `|` separa o padrão inteiro:
+
+```js
+/gato|cachorro/.test('tenho um cachorro')   // true
+/^(gato|cachorro)$/.test('gato')            // true — agrupado e ancorado
+/^gato|cachorro$/                            // CUIDADO: é "^gato" OU "cachorro$"
+```
+
+## Backreferences
+
+Uma **backreference** casa de novo o que um grupo já capturou. `\1` refere o grupo 1; `\k<nome>` refere um grupo nomeado. Útil para detectar repetição:
+
+```js
+/\b(\w+)\s+\1\b/.test('a casa casa amarela')  // true — "casa casa" repetida
+/(?<q>["']).*?\k<q>/.test('disse "oi"')        // true — abre e fecha com a MESMA aspa
+```
+
+## Lookarounds: condicionar sem consumir
+
+Lookarounds verificam o que vem **antes** ou **depois** sem incluir esse trecho no casamento:
+
+| Sintaxe | Nome | Significa |
+|---------|------|-----------|
+| `(?=...)` | lookahead positivo | seguido por |
+| `(?!...)` | lookahead negativo | **não** seguido por |
+| `(?<=...)` | lookbehind positivo | precedido por |
+| `(?<!...)` | lookbehind negativo | **não** precedido por |
+
+```js
+// pega o número, mas só se vier seguido de "px" (sem capturar o "px")
+'12px'.match(/\d+(?=px)/)[0]    // "12"
+
+// pega o valor depois de "R$ " (sem incluir o "R$ ")
+'R$ 50'.match(/(?<=R\$ )\d+/)[0]  // "50"
+
+// uma senha que tem ao menos um dígito (lookahead como "asserção")
+/^(?=.*\d).{8,}$/.test('abc12345')  // true
+```
+
+## Flags
+
+Flags ficam **depois** da barra final (`/padrão/flags`) e mudam como o motor opera:
+
+| Flag | Efeito |
+|------|--------|
+| `g` | global — encontra **todas** as ocorrências, não só a primeira |
+| `i` | ignora maiúsculas/minúsculas |
+| `m` | multilinha — `^` e `$` casam início/fim de **cada linha** |
+| `s` | dotall — `.` passa a casar também quebras de linha |
+| `u` | unicode — trata o padrão como pontos de código Unicode |
+
+```js
+/casa/gi.test('CASA, casa, Casa')   // true, e com 'g' acharia todas
+```
+
+## A API de JavaScript
+
+Saber a sintaxe não basta — você precisa rodá-la. Os métodos essenciais:
+
+**`regex.test(str)`** → boolean. O jeito mais direto de validar/buscar:
+
+```js
+/^\d{5}-?\d{3}$/.test('01310-100')   // true — valida CEP
+```
+
+**`str.match(regex)`** → sem `g`, devolve o primeiro casamento com os grupos; com `g`, devolve só o array de strings que casaram.
+
+**`str.matchAll(regex)`** (exige `g`) → um iterador com **todos** os casamentos, cada um com seus grupos. É o jeito moderno de extrair várias ocorrências:
+
+```js
+const texto = 'pedidos #12 e #345'
+for (const m of texto.matchAll(/#(?<id>\d+)/g)) {
+  console.log(m.groups.id)   // "12", depois "345"
+}
+```
+
+**`str.replace(regex, repl)`** → substitui. No texto de reposição, `$1`/`$<nome>` referenciam grupos; ou passe uma **função** para lógica:
+
+```js
+// reformatar data: 2026-05-30 -> 30/05/2026
+'2026-05-30'.replace(/(\d{4})-(\d{2})-(\d{2})/, '$3/$2/$1')   // "30/05/2026"
+
+// mascarar com função (precisa de 'g' para trocar todas)
+'cartao 4111 1111'.replace(/\d/g, '•')   // "cartao •••• ••••"
+```
+
+Repare no padrão: **`test`** para sim/não, **`match`/`matchAll`** para extrair, **`replace`** para reescrever — os mesmos quatro verbos do Dia 1, agora em código.
+
+> **Resumo:** Parênteses `()` **capturam** o trecho que casou (acessível por índice em `match`), `(?:...)` apenas **agrupa** sem capturar, e `(?<nome>...)` dá um **nome** ao grupo (lido em `.groups`). A **alternância** `|` é um "ou" cujo alcance os parênteses delimitam; **backreferences** (`\1`, `\k<nome>`) recasam o que um grupo já pegou. **Lookarounds** — `(?=)`, `(?!)`, `(?<=)`, `(?<!)` — verificam o contexto antes/depois **sem consumi-lo**. As **flags** `g i m s u` mudam o comportamento (global, case-insensitive, multilinha, dotall, unicode). E a API de JS materializa os quatro verbos: `test` (validar/buscar → boolean), `match`/`matchAll` (extrair, este com `g` para todas as ocorrências) e `replace` (reescrever, com `$1`/`$<nome>` ou uma função).

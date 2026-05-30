@@ -5,6 +5,7 @@ import { ALGORITHMS_LESSONS } from './algorithms-lessons'
 import { AI_LESSONS } from './ai-lessons'
 import { CSS_LESSONS } from './css-lessons'
 import { HTML_LESSONS } from './html-lessons'
+import { REGEX_LESSONS } from './regex-lessons'
 import type { LessonMetadata } from '@/features/curriculum/types'
 
 export function getLessonsForStack(stackId: string): LessonMetadata[] {
@@ -14,5 +15,6 @@ export function getLessonsForStack(stackId: string): LessonMetadata[] {
   if (stackId === 'ai') return AI_LESSONS
   if (stackId === 'css') return CSS_LESSONS
   if (stackId === 'html') return HTML_LESSONS
+  if (stackId === 'regex') return REGEX_LESSONS
   return LESSONS
 }

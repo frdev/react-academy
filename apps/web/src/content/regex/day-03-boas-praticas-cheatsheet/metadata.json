@@ -1,0 +1,14 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Boas Práticas, Armadilhas & Cheatsheet",
+  "slug": "boas-praticas-cheatsheet",
+  "topics": ["legibilidade", "quando não usar regex", "escapar input dinâmico", "ReDoS e catastrophic backtracking", "testar e depurar", "cheatsheet de referência"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

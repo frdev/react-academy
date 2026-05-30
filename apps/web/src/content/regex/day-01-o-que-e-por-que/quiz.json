@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que é, em essência, uma expressão regular?",
+      "options": [
+        "Uma função que formata strings automaticamente",
+        "Um padrão que descreve um conjunto de strings",
+        "Um tipo de dado para guardar texto",
+        "Uma linguagem de programação completa"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Uma regex é um padrão: em vez de listar as strings que te interessam, você descreve a forma delas (\"três letras, traço, quatro dígitos\") e o motor de regex aplica esse padrão a um texto para validar, buscar, extrair ou substituir."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "No padrão `/3\\.14/`, por que o ponto aparece como `\\.`?",
+      "options": [
+        "Para casar mais rápido",
+        "Porque `.` é um metacaractere (casa qualquer caractere); `\\.` o escapa para casar um ponto literal",
+        "Porque toda regex exige uma barra invertida antes de dígitos",
+        "Para tornar o ponto opcional"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`.` é metacaractere e casa qualquer caractere. Para casar um ponto de verdade você o escapa com `\\`. Sem o escape, `/3.14/` casaria também `3x14`, porque o `.` aceitaria o `x`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que a classe `[^0-9]` casa?",
+      "options": [
+        "Um dígito de 0 a 9",
+        "O caractere `^` seguido de um dígito",
+        "Qualquer caractere que NÃO seja um dígito",
+        "O início da linha seguido de um número"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Dentro de colchetes, um `^` logo no início nega o conjunto. Então `[^0-9]` casa qualquer caractere que não esteja no range 0–9. (Fora dos colchetes, `^` é a âncora de início.)"
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `\\d{4}` e `^\\d{4}$` ao testar a string `\"ano 2026 dC\"`?",
+      "options": [
+        "Nenhuma, ambos retornam o mesmo resultado",
+        "`\\d{4}` casa (achou 2026 no meio); `^\\d{4}$` não casa (a string inteira não é só 4 dígitos)",
+        "`\\d{4}` não casa; `^\\d{4}$` casa",
+        "Ambos falham porque há letras na string"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem âncoras, `\\d{4}` procura quatro dígitos em qualquer posição e encontra \"2026\". Com `^...$`, a string inteira precisa ser exatamente quatro dígitos — é assim que se faz validação (a string toda) em vez de busca (um trecho)."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que o `?` faz no padrão `/colou?r/`?",
+      "options": [
+        "Torna a regex preguiçosa",
+        "Torna o caractere anterior (`u`) opcional — casa zero ou uma vez",
+        "Casa qualquer caractere no lugar do `u`",
+        "Marca o fim do padrão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Como quantificador, `?` significa \"zero ou uma vez\", tornando o `u` opcional. Por isso `/colou?r/` casa tanto `color` quanto `colour`. (O `?` tem um segundo uso — tornar outro quantificador preguiçoso, como em `.*?` — mas aqui ele quantifica o `u`.)"
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que `'<b>oi</b>'.match(/<.+>/)` retorna `\"<b>oi</b>\"` inteiro, e como pegar só `\"<b>\"`?",
+      "options": [
+        "Porque `.+` é guloso e casa o máximo; use `<.+?>` (preguiçoso) para parar no primeiro `>`",
+        "Porque a regex está errada; não há como pegar só a primeira tag",
+        "Porque `match` sempre retorna a string toda",
+        "Porque falta a flag `g`"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Quantificadores são gulosos por padrão: `.+` engole até o último `>` possível. Acrescentar `?` (`.+?`) o torna preguiçoso, casando o mínimo e parando no primeiro `>`. Esse é o erro nº 1 de quem começa com regex."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "O atalho `\\w` casa apenas letras do alfabeto (a–z, A–Z).",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. `\\w` casa letras, dígitos E o underscore — equivale a `[A-Za-z0-9_]`. Se você quer só letras, use uma classe explícita como `[A-Za-z]`."
+    }
+  ]
+}

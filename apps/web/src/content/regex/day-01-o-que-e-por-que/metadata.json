@@ -1,0 +1,14 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "O que é e por que usar Regex",
+  "slug": "o-que-e-por-que",
+  "topics": ["o que é uma expressão regular", "casos de uso", "literais e metacaracteres", "classes de caracteres", "quantificadores", "âncoras", "ganância vs preguiça"],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

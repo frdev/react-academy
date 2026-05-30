@@ -1,0 +1,115 @@
+# O que é e por que usar Regex
+
+Você já precisou descobrir se um texto "parece" um e-mail, achar todos os números dentro de um log, ou trocar todo `2026-05-30` por `30/05/2026`? Dá para fazer isso na mão, com um monte de `if`, `split` e `indexOf` — ou dá para descrever **o padrão** que você procura e deixar o motor de busca fazer o trabalho. Essa descrição é uma **expressão regular** (regex).
+
+Uma regex é um **padrão que descreve um conjunto de strings**. Em vez de listar todas as strings que te interessam, você escreve uma fórmula que diz como elas são: "três letras, depois um traço, depois quatro dígitos". O motor de regex pega esse padrão e o aplica a um texto, respondendo: casa? onde? quantas vezes?
+
+## Para o que serve
+
+Regex resolve quatro tarefas recorrentes que aparecem em quase todo sistema:
+
+- **Validar** — "isto é um CEP válido? um e-mail? um telefone?" Você confere se a string *inteira* casa com o formato esperado.
+- **Buscar** — "este texto contém a palavra `erro`?" ou "tem algum número de cartão aqui?". Você descobre se (e onde) o padrão aparece.
+- **Extrair** — "me dê o ano e o mês desta data", "liste todas as hashtags". Você captura pedaços do que casou.
+- **Substituir** — "troque todo espaço duplo por um só", "mascare os dígitos do cartão". Você reescreve o que casou.
+
+Editores de código (busca com regex), validação de formulário, roteadores de URL, realce de sintaxe, parsing de logs, ferramentas de linha de comando (`grep`, `sed`) — todos são movidos a regex. É uma das ferramentas mais transversais que existem.
+
+## Literais e metacaracteres
+
+A regex mais simples é só **texto literal**: o padrão `gato` casa com a substring `gato` em `"meu gato dorme"`. Cada caractere casa consigo mesmo.
+
+O poder vem dos **metacaracteres** — caracteres com significado especial:
+
+```text
+.  *  +  ?  [  ]  (  )  ^  $  |  \  {  }
+```
+
+`.` casa qualquer caractere; `*` significa "zero ou mais"; e assim por diante. Quando você quer o caractere *literal* em vez do significado especial, você o **escapa** com `\`. Para casar um ponto de verdade, use `\.`:
+
+```js
+// em JavaScript, uma regex fica entre barras: /.../
+/gato/.test('meu gato dorme')   // true  — texto literal
+/c.t/.test('cat')               // true  — '.' casa o 'a'
+/3\.14/.test('pi = 3.14')       // true  — '\.' casa o ponto literal
+/3.14/.test('3x14')             // true! — '.' aqui casa qualquer char
+```
+
+## Classes de caracteres
+
+Colchetes `[...]` definem um **conjunto**: case **um** caractere que esteja na lista.
+
+```text
+[aeiou]     uma vogal
+[a-z]       uma letra minúscula (range)
+[A-Za-z0-9] letra ou dígito
+[^0-9]      qualquer coisa EXCETO dígito (^ no início nega)
+```
+
+Há atalhos prontos para as classes mais comuns:
+
+| Atalho | Casa | Equivale a |
+|--------|------|-----------|
+| `\d` | um dígito | `[0-9]` |
+| `\w` | letra, dígito ou `_` | `[A-Za-z0-9_]` |
+| `\s` | espaço em branco | espaço, tab, quebra de linha |
+| `\D` `\W` `\S` | o **negado** de cada um | — |
+
+```js
+/[aeiou]/.test('xyz')   // false — nenhuma vogal
+/\d\d:\d\d/.test('horário 14:30')   // true — dois dígitos, ':', dois dígitos
+```
+
+## Quantificadores
+
+Por padrão cada elemento casa **uma vez**. Quantificadores mudam quantas:
+
+| Quantificador | Significa |
+|---------------|-----------|
+| `*` | zero ou mais |
+| `+` | uma ou mais |
+| `?` | zero ou uma (opcional) |
+| `{3}` | exatamente 3 |
+| `{2,5}` | de 2 a 5 |
+| `{2,}` | 2 ou mais |
+
+```js
+/\d+/.test('abc123')        // true  — um ou mais dígitos
+/colou?r/.test('color')     // true  — o 'u' é opcional (color/colour)
+/^\d{4}$/.test('2026')      // true  — exatamente 4 dígitos
+```
+
+## Âncoras
+
+Âncoras não casam caracteres — elas casam **posições**:
+
+- `^` — início da string (ou da linha, com a flag `m`)
+- `$` — fim da string (ou da linha)
+- `\b` — borda de palavra (a transição entre `\w` e não-`\w`)
+
+A diferença entre "buscar" e "validar" mora aqui. Sem âncoras, `\d{4}` acha quatro dígitos *em qualquer lugar*. Com `^\d{4}$`, a string **inteira** precisa ser quatro dígitos:
+
+```js
+/\d{4}/.test('ano 2026 dC')    // true  — achou 2026 no meio
+/^\d{4}$/.test('ano 2026 dC')  // false — a string toda não é só 4 dígitos
+/\bgato\b/.test('meu gato')    // true
+/\bgato\b/.test('gatos')       // false — 'gato' não termina em borda aqui
+```
+
+## Ganância × preguiça: o erro nº 1
+
+Quantificadores são **gulosos** (greedy) por padrão: eles casam o **máximo** possível antes de devolver o que for preciso. Isso surpreende todo iniciante. Considere extrair o conteúdo de uma tag:
+
+```js
+'<b>oi</b>'.match(/<.+>/)[0]   // "<b>oi</b>"  — pegou TUDO!
+```
+
+O `.+` engoliu até o último `>`. Para torná-lo **preguiçoso** (lazy) — casar o **mínimo** — acrescente `?` ao quantificador:
+
+```js
+'<b>oi</b>'.match(/<.+?>/)[0]  // "<b>"  — parou no primeiro '>'
+```
+
+`*?`, `+?`, `??`, `{2,5}?` — o `?` extra inverte de "o máximo" para "o mínimo". Guarde isso: metade dos bugs de regex de iniciante é um `.*` guloso comendo mais do que devia.
+
+> **Resumo:** Uma regex é um **padrão** que descreve um conjunto de strings e serve para **validar**, **buscar**, **extrair** e **substituir** texto. Caracteres comuns são **literais** (casam consigo mesmos); **metacaracteres** (`. * + ? [ ] ( ) ^ $ | \`) têm poder especial e são neutralizados com `\` quando você quer o caractere literal. **Classes** `[...]` casam um caractere de um conjunto (com atalhos `\d \w \s` e seus negados `\D \W \S`); **quantificadores** (`* + ? {n,m}`) controlam quantas vezes; **âncoras** (`^ $ \b`) casam posições e são o que separa "buscar no meio" de "validar a string inteira". Por fim, quantificadores são **gulosos** por padrão — acrescente `?` (`.*?`) para torná-los **preguiçosos** e evitar que comam texto demais.

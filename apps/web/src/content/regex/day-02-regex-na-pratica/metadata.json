@@ -1,0 +1,14 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Regex na Prática",
+  "slug": "regex-na-pratica",
+  "topics": ["grupos de captura", "grupos sem captura", "named groups", "alternância", "backreferences", "lookahead e lookbehind", "flags", "API de JavaScript"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

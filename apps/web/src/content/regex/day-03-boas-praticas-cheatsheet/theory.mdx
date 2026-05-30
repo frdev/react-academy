@@ -1,0 +1,137 @@
+# Boas Práticas, Armadilhas & Cheatsheet
+
+Regex é poderosa e perigosa na mesma medida. Um padrão de uma linha pode substituir vinte linhas de código — ou virar uma bomba de performance ilegível que ninguém ousa tocar. Hoje fechamos o stack com as práticas que separam quem *usa* regex de quem *apanha* dela, e com um cheatsheet para consultar pelo resto da vida.
+
+## Legibilidade: regex não precisa ser write-only
+
+A fama de "ilegível" vem mais do descuido do que da ferramenta. Algumas práticas mudam tudo:
+
+- **Nomeie a constante.** `const EMAIL = /.../` diz o intuito; uma regex solta no meio de um `if` não diz nada.
+- **Comente o que ela faz**, não o que ela é. `// CEP: 5 dígitos, traço opcional, 3 dígitos` vale mais que repetir o padrão em português.
+- **Use grupos nomeados** (`(?<ano>...)`) em vez de contar `m[1]`, `m[2]`.
+- **Quebre padrões grandes.** Construa por partes e componha, ou (em linguagens com flag `x`/verbose) escreva o padrão em várias linhas com comentários.
+
+```js
+// legível: nome + intuito claro
+const CEP = /^\d{5}-?\d{3}$/   // 5 dígitos, traço opcional, 3 dígitos
+const isCep = (s) => CEP.test(s)
+```
+
+E a regra de ouro: **se um `if` simples for mais claro, use o `if`.** Regex é ferramenta, não troféu.
+
+## Quando NÃO usar regex
+
+Regex casa **padrões planos**. Ela é péssima para estruturas **aninhadas e recursivas**:
+
+- **HTML / XML** — o clássico "não parseie HTML com regex". Tags aninham arbitrariamente; use um parser de DOM.
+- **JSON** — use `JSON.parse`.
+- **Linguagens de programação** — use um parser/AST.
+- **CSV com aspas e vírgulas internas** — casos de borda demais; use uma lib.
+
+Regra prática: se o formato tem **balanceamento** (abre/fecha que aninha), regex é a ferramenta errada.
+
+## Segurança: escape o input dinâmico
+
+Se você monta uma regex a partir de texto do usuário, qualquer metacaractere nele vira código de padrão — quebrando a busca ou pior. **Escape** antes de interpolar:
+
+```js
+function escaparRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+// busca literal pelo que o usuário digitou
+const termo = 'preço (R$)'
+const re = new RegExp(escaparRegex(termo), 'g')
+```
+
+Sem o escape, `(R$)` seria interpretado como grupo + âncora e o resultado seria imprevisível.
+
+## A armadilha séria: ReDoS / catastrophic backtracking
+
+Alguns padrões têm custo **exponencial** em entradas maliciosas. O culpado é **quantificador sobre quantificador** com alternativas que se sobrepõem — o motor tenta um número astronômico de combinações ao falhar:
+
+```js
+// PERIGOSO: quantificador aninhado
+const ruim = /^(a+)+$/
+ruim.test('aaaaaaaaaaaaaaaaaaaaaaaa!')   // pode travar segundos/minutos
+```
+
+Para uma string que *quase* casa, o motor faz **backtracking** entre todas as formas de dividir os `a`s — explosão combinatória. Isso é o **ReDoS** (Regular expression Denial of Service): um input pequeno congela seu servidor.
+
+Como evitar:
+- Desconfie de `(algo+)+`, `(algo*)*`, `(a|a)*` e afins — quantificador externo sobre grupo já quantificado.
+- Reescreva para padrões **lineares**: `/^a+$/` em vez de `/^(a+)+$/`.
+- Ancore (`^...$`) e seja específico — quanto menos ambiguidade, menos backtracking.
+- Em entrada não confiável, considere um motor com timeout ou regex sem backtracking (RE2).
+
+## Teste e depure
+
+- **regex101.com** explica cada token e mostra o casamento ao vivo (escolha o sabor JavaScript).
+- Cubra **casos de borda**: string vazia, sem casamento, múltiplos casamentos, acentos/unicode, limites.
+- Escreva testes para suas regex de validação como escreveria para qualquer função.
+
+## Cheatsheet de Referência
+
+**Metacaracteres**
+
+| Token | Casa |
+|-------|------|
+| `.` | qualquer caractere (exceto `\n`, salvo flag `s`) |
+| `\` | escapa o próximo metacaractere |
+| `\|` | alternância (ou) |
+| `( )` | grupo de captura |
+| `(?: )` | grupo sem captura |
+| `(?<n> )` | grupo nomeado |
+
+**Classes de caracteres**
+
+| Token | Casa |
+|-------|------|
+| `[abc]` | a, b ou c |
+| `[a-z]` | range (a até z) |
+| `[^abc]` | qualquer um EXCETO a, b, c |
+| `\d` / `\D` | dígito / não-dígito |
+| `\w` / `\W` | palavra (`[A-Za-z0-9_]`) / não-palavra |
+| `\s` / `\S` | espaço / não-espaço |
+
+**Quantificadores** (acrescente `?` para versão preguiçosa)
+
+| Token | Casa |
+|-------|------|
+| `*` | 0 ou mais |
+| `+` | 1 ou mais |
+| `?` | 0 ou 1 |
+| `{n}` | exatamente n |
+| `{n,}` | n ou mais |
+| `{n,m}` | de n a m |
+
+**Âncoras e bordas**
+
+| Token | Casa |
+|-------|------|
+| `^` | início (da linha com `m`) |
+| `$` | fim (da linha com `m`) |
+| `\b` / `\B` | borda / não-borda de palavra |
+
+**Lookarounds**
+
+| Token | Significa |
+|-------|-----------|
+| `(?=x)` | seguido por x |
+| `(?!x)` | não seguido por x |
+| `(?<=x)` | precedido por x |
+| `(?<!x)` | não precedido por x |
+
+**Flags** (JS) — `g` global · `i` ignora caixa · `m` multilinha · `s` dotall · `u` unicode · `y` sticky
+
+**Receitas comuns**
+
+```text
+\d{5}-?\d{3}            CEP brasileiro
+^\S+@\S+\.\S+$          e-mail (simplificado — não valide e-mail rígido!)
+^(?=.*\d)(?=.*[a-z]).{8,}$   senha: 8+ chars, ao menos 1 dígito e 1 letra
+#(?<id>\d+)             ids tipo "#123" (captura nomeada)
+(\d{4})-(\d{2})-(\d{2}) data ISO em 3 grupos
+\s+                     sequências de espaço (para colapsar)
+```
+
+> **Resumo:** Regex fica legível quando você **nomeia a constante**, **comenta o intuito**, usa **grupos nomeados** e **quebra padrões grandes** — e quando opta por um `if` simples se ele for mais claro. **Não use regex** para estruturas aninhadas/balanceadas (HTML, JSON, código): use parsers. Sempre **escape input dinâmico** antes de montar uma `RegExp`. Fuja do **ReDoS / catastrophic backtracking** — quantificador sobre quantificador (`(a+)+`) explode em backtracking exponencial; prefira padrões lineares, ancore e seja específico. **Teste** no regex101 e cubra casos de borda. E mantenha o **cheatsheet** por perto: metacaracteres, classes, quantificadores (com a variante preguiçosa `?`), âncoras, lookarounds e flags são o vocabulário que resolve 95% dos casos do dia a dia.

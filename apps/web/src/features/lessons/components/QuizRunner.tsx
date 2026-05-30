@@ -158,6 +158,11 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-06': () => import('@/content/html/day-06-aria-quando-necessario/quiz.json'),
     'day-07': () => import('@/content/html/day-07-teclado-wcag/quiz.json'),
   },
+  regex: {
+    'day-01': () => import('@/content/regex/day-01-o-que-e-por-que/quiz.json'),
+    'day-02': () => import('@/content/regex/day-02-regex-na-pratica/quiz.json'),
+    'day-03': () => import('@/content/regex/day-03-boas-praticas-cheatsheet/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

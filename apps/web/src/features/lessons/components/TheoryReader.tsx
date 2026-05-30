@@ -159,6 +159,11 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-06': () => import('@/content/html/day-06-aria-quando-necessario/theory.mdx'),
     'day-07': () => import('@/content/html/day-07-teclado-wcag/theory.mdx'),
   },
+  regex: {
+    'day-01': () => import('@/content/regex/day-01-o-que-e-por-que/theory.mdx'),
+    'day-02': () => import('@/content/regex/day-02-regex-na-pratica/theory.mdx'),
+    'day-03': () => import('@/content/regex/day-03-boas-praticas-cheatsheet/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content
