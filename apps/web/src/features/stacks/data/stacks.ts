@@ -46,6 +46,17 @@ export const STACKS: Stack[] = [
     weekThemes: ['Tipos do Básico ao React'],
   },
   {
+    id: 'package-managers',
+    name: 'Gerenciador de Pacotes',
+    tagline: '3 dias do node_modules ao pnpm',
+    description: 'package.json, semver, lockfiles, node_modules e a diferença entre npm, yarn e pnpm — a base de tooling de todo projeto JS.',
+    totalDays: 3,
+    status: 'available',
+    level: 'fundamentos',
+    color: 'orange',
+    weekThemes: ['Tooling & Dependências'],
+  },
+  {
     id: 'git',
     name: 'Git & Fluxo de Trabalho',
     tagline: '7 dias de Git e colaboração de verdade',
