@@ -1,5 +1,97 @@
 {
   "lessonId": "day-13",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que testes tradicionais baseados em assertion de string (string match) não funcionam bem para avaliar agentes com LLMs?",
+      "options": [
+        "Porque LLMs são lentos demais para rodar em suítes de teste automatizadas",
+        "Porque a saída de LLMs é não-determinística — a mesma entrada pode produzir respostas corretas e semanticamente equivalentes com formulações diferentes a cada execução",
+        "Porque a API da Anthropic não expõe a saída bruta do modelo, apenas texto formatado",
+        "Porque assertions de string só funcionam com modelos open-source, não com APIs proprietárias"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Agentes com LLMs são não-determinísticos por design: temperatura, variações internas do modelo e até a ordem das mensagens fazem com que a mesma entrada produza saídas diferentes entre execuções — mas todas potencialmente corretas. Um assertion `output === 'Olá, mundo'` falharia em `'Olá mundo'` (vírgula ausente) mesmo que ambas sejam respostas corretas. Por isso evals substituem testes pontuais por métricas semânticas, como score de juiz (LLM-as-judge), que avaliam qualidade de conteúdo e não igualdade de string."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em um sistema de LLM-as-judge, qual é a vantagem de usar um modelo menor (como claude-haiku) em vez do modelo principal do agente para o papel de juiz?",
+      "options": [
+        "Modelos menores são mais rigorosos e imparciais na avaliação do que modelos maiores",
+        "Modelos menores têm context window maior, o que permite avaliar respostas mais longas",
+        "Reduz custo e latência do pipeline de evals — que pode rodar centenas ou milhares de casos — sem sacrificar a capacidade de avaliação semântica básica",
+        "A API da Anthropic exige que o juiz seja um modelo diferente do avaliado para evitar conflito de interesses"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Evals massivos podem rodar dezenas a milhares de casos por execução de CI. Usar o modelo mais caro (Opus, Sonnet) para cada julgamento tornaria o pipeline de evals proibitivamente caro e lento. Modelos menores como Haiku têm custo e latência significativamente menores e são capazes de avaliar critérios semânticos básicos com precisão suficiente para a maioria dos casos. A capacidade de distinguir 'resposta relevante e correta' de 'resposta incorreta ou fora do escopo' não exige o modelo mais poderoso disponível."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Você está implementando tracing para um agente que executa um loop de até 10 turns. Em qual granularidade os logs devem ser emitidos para máxima utilidade de debugging?",
+      "options": [
+        "Uma entrada de log por sessão completa, consolidando todos os turns ao final",
+        "Uma entrada de log por turn (iteração do loop), capturando tokens, latência, custo e tool calls de cada iteração individualmente",
+        "Uma entrada de log por ferramenta chamada, ignorando as iterações do modelo sem tool calls",
+        "Logs só devem ser emitidos quando o agente encontra um erro, para evitar volume excessivo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Logar por sessão completa oculta onde exatamente a falha ocorreu — um agente que erra no turn 3 de 10 e gera uma saída plausível mas errada no turn 10 seria invisível em logs de sessão. Logar por turn permite reconstruir o estado completo de cada iteração: quantos tokens foram usados, quanto custou, qual ferramenta foi chamada, quanto tempo levou e qual foi o stop_reason. Isso é essencial para diagnosticar loops infinitos (turns excessivos), gargalos de performance (latência por turn), drift de custo e para correlacionar uma falha de produção com o turn específico onde ela ocorreu."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual das seguintes abordagens representa a implementação correta do princípio do menor privilégio em um agente com ferramentas?",
+      "options": [
+        "Dar ao agente acesso a todas as ferramentas disponíveis, mas instruí-lo no system prompt a usar apenas as necessárias para cada tarefa",
+        "Usar uma whitelist explícita de ferramentas permitidas para cada tipo de tarefa, bloqueando todas as demais mesmo que estejam implementadas",
+        "Limitar o número de tool calls por sessão a um máximo fixo, independentemente de quais ferramentas são chamadas",
+        "Registrar todas as ferramentas chamadas em logs para auditoria posterior, permitindo qualquer chamada em tempo real"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O princípio do menor privilégio exige que o agente tenha acesso *apenas* às ferramentas necessárias para a tarefa — não ao conjunto completo disponível. Instruir o modelo via system prompt a 'usar apenas X' não é uma garantia técnica: o modelo pode ignorar a instrução ou ser manipulado por prompt injection a chamar ferramentas não autorizadas. Uma whitelist explícita verificada em código antes de qualquer execução de ferramenta é um controle técnico determinístico que não depende do comportamento do modelo. Isso limita o 'blast radius' de qualquer falha ou ataque."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Ao implementar guardrails em camadas para um agente, qual é a ordem correta de aplicação?",
+      "options": [
+        "Output → Input → Ação: valide o output primeiro para poupar processamento em caso de resposta inválida",
+        "Ação → Output → Input: verifique os limites de ação primeiro, depois sanitize o output, depois valide o input",
+        "Input → Output → Ação: valide a entrada antes de chamar o modelo, sanitize o output gerado antes de agir, verifique limites antes de executar a ação",
+        "As três camadas devem ser verificadas em paralelo e qualquer falha cancela a execução"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A ordem Input → Output → Ação segue o fluxo natural do dado pelo sistema: (1) Validar o input antes de passar ao modelo evita que entradas maliciosas (prompt injection, payloads muito grandes) nem cheguem ao LLM — economizando tokens e bloqueando ataques cedo. (2) Sanitizar o output do modelo antes de usá-lo evita que respostas malformadas, alucinações de formato ou injeções no conteúdo gerado causem dano. (3) Verificar limites antes de executar a ação (whitelist de ferramentas, limites de custo/turns) é a última barreira antes de efeitos reais no mundo. Cada camada é independente — uma falha em uma não deve silenciar as demais."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual das seguintes métricas de qualidade é MAIS útil para detectar que um agente está com comportamento evasivo — recusando tarefas legítimas com frequência excessiva?",
+      "options": [
+        "latencyP95Ms — respostas de recusa tendem a ser mais rápidas, o que sobe a latência P95",
+        "avgTurnsPerSession — agentes evasivos terminam sessões em menos turns",
+        "rateUnintendedRefusal — percentual de recusas detectadas como indevidas por feedback de usuário ou juiz de eval",
+        "evalScoreP50 — score mediano do juiz cobre todos os tipos de falha incluindo recusas"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A métrica `rateUnintendedRefusal` mede especificamente quantas vezes o agente recusou uma tarefa que era legítima e deveria ter sido executada. Esse comportamento — chamado de 'over-refusal' — é um problema real em agentes com guardrails excessivamente conservadores ou system prompts que confundem o modelo sobre o que é permitido. O `evalScoreP50` é um indicador geral que pode mascarar esse problema se outros aspectos forem bons. Latência não está relacionada a recusas. Turns por sessão pode variar por outros motivos. Monitorar `rateUnintendedRefusal` junto a `rateGuardrailTrigger` permite distinguir recusas legítimas (guardrail acionado corretamente) de recusas indevidas."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Você recebe um relatório de que o agente em produção começou a gerar respostas incorretas depois de uma atualização do modelo base (sem mudança de código). Qual é o primeiro passo correto no processo de melhoria?",
+      "options": [
+        "Reverter imediatamente para o modelo anterior sem investigar, pois mudanças de modelo sempre degradam qualidade",
+        "Rodar o dataset de evals de regressão com o novo modelo para quantificar e localizar quais casos falharam, antes de qualquer mudança",
+        "Aumentar a temperatura do modelo para dar mais flexibilidade ao novo modelo base se adaptar ao comportamento esperado",
+        "Adicionar mais exemplos few-shot ao system prompt para compensar as mudanças do novo modelo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O ciclo correto de melhoria começa com dados, não com ação. Rodar o dataset de evals de regressão com o novo modelo quantifica exatamente: quais casos falharam, qual foi o score antes vs. depois, e se a degradação é pontual (alguns casos específicos) ou sistêmica (score geral caiu). Só com esse diagnóstico você pode decidir se a correção é ajustar o prompt, adicionar exemplos, trocar o modelo ou alguma combinação. Reverter sem investigar esconde o problema e impede aprendizado. Aumentar temperatura em resposta a falhas de qualidade é o oposto do indicado — temperatura alta aumenta variabilidade, não corretude. Adicionar few-shot sem entender a falha pode não resolver nada ou criar novos problemas."
+    }
+  ]
 }

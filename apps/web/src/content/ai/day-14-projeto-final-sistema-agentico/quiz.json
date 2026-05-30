@@ -1,5 +1,97 @@
 {
   "lessonId": "day-14",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "No sistema agêntico do projeto final, por que o orquestrador usa `claude-opus-4-5` enquanto os workers usam `claude-haiku-4-5`?",
+      "options": [
+        "Opus é usado para raciocínio pesado (planejar e sintetizar) onde qualidade é crítica; Haiku é rápido e barato para tarefas paralelas de busca e extração, reduzindo custo total sem sacrificar a parte mais importante",
+        "Opus suporta tool use; Haiku não suporta — cada modelo tem capacidades diferentes de função calling",
+        "Haiku tem context window maior que Opus, então aguenta mais resultados de busca por chamada",
+        "A escolha é arbitrária — qualquer modelo pode fazer qualquer papel no sistema, sendo apenas uma questão de preferência"
+      ],
+      "correctAnswer": 0,
+      "explanation": "A divisão de modelos por papel é uma decisão arquitetural deliberada: o orquestrador executa o raciocínio mais complexo (decompor o tema em subperguntas, avaliar qualidade, sintetizar um relatório coeso) onde a capacidade do Opus justifica o custo maior. Os workers executam tarefas repetitivas e paralelas (buscar, ler documento, extrair informação relevante) onde Haiku entrega velocidade e custo menor sem comprometer o resultado final. O modelo não determina se tool use está disponível — todos os modelos Claude suportam function calling."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O projeto centraliza todo acesso a fontes externas no MCP server — os workers nunca fazem chamadas HTTP diretamente. Qual é a principal vantagem arquitetural dessa decisão?",
+      "options": [
+        "O MCP server é mais rápido que chamadas HTTP diretas porque usa o protocolo stdio que tem menor latência de rede",
+        "Centralizar no MCP server garante um único ponto para logging, rate limiting e guardrails de entrada, além de tornar o server reutilizável por qualquer host compatível com MCP sem mudança de código",
+        "Workers não têm permissão de fazer chamadas HTTP por limitação do Agent SDK — o MCP server é a única alternativa disponível",
+        "Facilita testes unitários pois os workers não precisam de mocks de rede; apenas o MCP server precisa ser mockado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Centralizar o acesso externo no MCP server resolve múltiplos problemas de uma vez: um único ponto de logging significa que toda chamada a fontes externas é registrada sem instrumentar cada worker; rate limiting é aplicado uma única vez no server; guardrails de entrada (ex.: filtrar URLs de domínios bloqueados) ficam centralizados. Além disso, o MCP server pode ser reusado em qualquer host compatível (Claude Desktop, Claude Code, outro agente) sem mudança de código. A performance via stdio não é necessariamente melhor que HTTP direto — a decisão é sobre controle e reutilização, não latência."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "No loop agêntico dos workers, após receber `stop_reason: 'tool_use'` do modelo, qual é o procedimento correto para continuar o ciclo?",
+      "options": [
+        "Iniciar uma nova conversa do zero com os resultados das tools no system prompt, descartando o histórico anterior",
+        "Adicionar apenas os blocos `tool_result` ao histórico como mensagem `assistant` e chamar o modelo novamente",
+        "Chamar o modelo novamente sem alterar o histórico — ele detecta automaticamente que precisa receber os resultados das tools",
+        "Executar as tool calls, adicionar o `content` completo da resposta do assistente ao histórico como mensagem `assistant`, depois adicionar os `tool_result` como mensagem `user`, e chamar o modelo novamente"
+      ],
+      "correctAnswer": 3,
+      "explanation": "O protocolo de tool use da Messages API exige que o histórico seja mantido íntegro. Após `stop_reason: 'tool_use'`, você deve: (1) executar as tools localmente; (2) adicionar a resposta completa do assistente (incluindo todos os blocos, não só o `tool_use`) como mensagem `assistant` no histórico; (3) adicionar uma mensagem `user` contendo os blocos `tool_result` referenciando cada `tool_use_id`. Descartar o histórico ou omitir o `content` completo da resposta do assistente viola o protocolo e causa erros de validação da API. Sem esse ciclo correto, o modelo não sabe quais tools foram chamadas nem com quais inputs."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O projeto usa dois níveis de memória: KV (curto prazo) e vetorial (longo prazo). Por que o orquestrador consulta `recallSimilar` antes de planejar uma nova pesquisa?",
+      "options": [
+        "Para verificar se o tema da pesquisa contém palavras proibidas armazenadas no banco vetorial de guardrails",
+        "O banco vetorial armazena o histórico de conversas comprimido — consultá-lo reconstrói a context window da sessão anterior",
+        "Para recuperar relatórios de pesquisas anteriores semanticamente similares, permitindo reutilizar conhecimento já gerado e evitar retrabalho em temas já explorados",
+        "Para checar se o modelo já foi chamado com esse exato prompt antes e retornar o resultado cacheado do banco, economizando tokens"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A consulta a `recallSimilar` antes de planejar implementa memória de longo prazo: se o assistente já pesquisou temas próximos em sessões anteriores, o relatório anterior pode servir como ponto de partida, enriquecendo o contexto inicial do orquestrador ou evitando que workers repitam buscas já realizadas. Isso é diferente de prompt caching (que opera sobre prefixos de tokens na API da Anthropic) e diferente de armazenar histórico de conversa — é RAG sobre o próprio conhecimento acumulado do sistema. A memória vetorial armazena o texto do relatório embedado, não mensagens de conversa ou prompts."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "A camada de guardrails do projeto combina LLM-as-judge com verificações determinísticas. Qual é a razão para usar os dois tipos juntos, em vez de apenas um?",
+      "options": [
+        "LLM-as-judge é obrigatório pela política da Anthropic; as verificações determinísticas são apenas para demonstrar o conceito no projeto",
+        "Os dois tipos avaliam as mesmas propriedades de formas diferentes — usar ambos é redundância proposital para aumentar a confiança no resultado",
+        "Verificações determinísticas são mais rápidas e baratas; o LLM-as-judge só é chamado quando as regras determinísticas passam, para evitar custo desnecessário",
+        "LLM-as-judge captura problemas semânticos subjetivos (qualidade, cobertura, factualidade) que regras fixas não conseguem avaliar; verificações determinísticas garantem critérios objetivos e imutáveis (presença de citações, comprimento mínimo) que um LLM poderia aprovar incorretamente"
+      ],
+      "correctAnswer": 3,
+      "explanation": "LLM-as-judge e verificações determinísticas são complementares, não redundantes: o juiz LLM avalia dimensões qualitativas e semânticas (o relatório cobre o tema? Os argumentos são factualmente plausíveis? A clareza está adequada?) que não podem ser capturadas por expressões regulares ou contadores. Já as verificações determinísticas garantem propriedades objetivas — um relatório pode ter alta pontuação do juiz mas não ter nenhuma citação de fonte, o que seria aprovado erroneamente por um LLM que interpreta intenção. Regras fixas são imunes a alucinações do avaliador. A combinação dos dois tipos cobre tanto critérios subjetivos quanto objetivos com garantias diferentes."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para executar os workers em paralelo, o código usa `Promise.all(tasks.map(executeWorker))`. Em que situação você NÃO deve usar `Promise.all` e deve executar os workers sequencialmente?",
+      "options": [
+        "Quando há mais de 3 workers — `Promise.all` com muitas Promises causa esgotamento de memória no Node.js",
+        "Quando os workers usam o modelo Haiku — este modelo não suporta chamadas paralelas à API da Anthropic",
+        "Quando as subperguntas têm dependências entre si (o resultado de uma subpergunta é necessário como input para outra) — nesse caso a paralelização produziria resultados incorretos ou incompletos",
+        "Quando o MCP server usa transporte stdio — o stdio não suporta múltiplas conexões simultâneas e as chamadas paralelas causariam erros de protocolo"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A paralelização com `Promise.all` é válida apenas quando as tarefas são independentes — nenhum worker precisa do resultado de outro para executar. Se a subpergunta B depende de um achado da subpergunta A (ex.: 'compare a abordagem X com a abordagem Y encontrada na busca anterior'), executar em paralelo faria B rodar sem acesso ao resultado de A, produzindo uma resposta incompleta ou inventada. Nesses casos, use execução sequencial passando o contexto acumulado explicitamente. Quanto ao MCP server via stdio: um único processo filho pode processar múltiplas requisições JSON-RPC de forma assíncrona, então isso não é um limitante real."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O projeto recomenda começar com deploy como CLI local antes de mover para API HTTP ou container. Qual é a justificativa principal para essa progressão?",
+      "options": [
+        "A API HTTP da Anthropic só está disponível para produção — durante desenvolvimento, o SDK roda apenas localmente via CLI",
+        "Containers têm restrições de rede que impedem o uso de MCP servers via stdio — é necessário validar o fluxo localmente antes de migrar para HTTP/SSE",
+        "Adicionar camadas de infraestrutura (rede, filas, containers) antes de estabilizar a lógica agêntica introduz debug duplo — você não sabe se o erro está na lógica do agente ou na infraestrutura; validar o loop completo localmente primeiro isola os problemas",
+        "CLI local não precisa de ANTHROPIC_API_KEY; API HTTP e containers precisam de configuração adicional de autenticação"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O princípio é separar as fontes de complexidade para facilitar o debug. Sistemas agênticos têm comportamento emergente — loops inesperados, tool calls em ordem errada, memória corrompida — e depurar isso já é difícil por si só. Se você introduzir infraestrutura de rede, filas e orquestração de containers antes de o fluxo agêntico estar estável, qualquer falha pode vir de múltiplas camadas simultaneamente: o agente invocou a tool errada? Ou a chamada HTTP falhou? Ou o container não tinha a env var certa? Começar com CLI local elimina toda a infraestrutura da equação — se o loop agêntico funciona corretamente na CLI, a migração para API HTTP é uma adição linear, não uma reescrita."
+    }
+  ]
 }

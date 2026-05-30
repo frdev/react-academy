@@ -1,3 +1,276 @@
 # Construindo um MCP server
 
-> Conteúdo em breve.
+No dia 6 você aprendeu o que é o Model Context Protocol e como ele padroniza a comunicação entre hosts e servers. Hoje você vai sair da teoria e construir um MCP server completo do zero, usando o SDK oficial TypeScript. Se no dia 4 você registrou tools diretamente no cliente Anthropic, agora vai empacotar essa mesma lógica num server reutilizável que qualquer host compatível com MCP — Claude Desktop, Claude Code, ou sua própria aplicação — pode consumir sem mudança de código.
+
+---
+
+## Estrutura de um MCP server
+
+Um MCP server é um processo que expõe capacidades (tools, resources, prompts) via um protocolo baseado em JSON-RPC 2.0. O SDK `@modelcontextprotocol/sdk` abstrai todo o transporte e serialização — você só precisa declarar o que o server oferece.
+
+Para começar, instale o SDK e o Zod (usado para schemas de validação):
+
+```bash
+npm install @modelcontextprotocol/sdk zod
+```
+
+A estrutura mínima de um server:
+
+```ts
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+const server = new McpServer({
+  name: "meu-server",
+  version: "1.0.0",
+});
+
+// ... registrar tools, resources e prompts aqui
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+`McpServer` é a classe central. Ela mantém o registro de todas as capacidades e gerencia o ciclo de vida das mensagens. `StdioServerTransport` conecta o server ao processo pai via `stdin`/`stdout` — o mecanismo padrão quando o host lança o server como subprocesso.
+
+**Regra prática:** mantenha o server stateless sempre que possível. Cada chamada de tool deve ser independente. Se precisar de estado (ex.: conexão a um banco), gerencie no nível do módulo, não dentro do handler.
+
+---
+
+## Expondo tools
+
+Tools são funções que o modelo pode invocar durante uma conversa. Cada tool tem um nome, uma descrição legível por humanos e um schema de inputs validado com Zod. O handler recebe os argumentos já validados e retorna um array de `content`.
+
+```ts
+import { z } from "zod";
+
+server.tool(
+  "buscar_cep",
+  "Retorna endereço completo a partir de um CEP brasileiro",
+  {
+    cep: z.string().length(8).describe("CEP sem hífen, ex: 01310100"),
+  },
+  async ({ cep }) => {
+    const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    if (!res.ok) {
+      return {
+        content: [{ type: "text", text: `Erro ao buscar CEP ${cep}` }],
+        isError: true,
+      };
+    }
+    const data = await res.json();
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(data, null, 2),
+        },
+      ],
+    };
+  }
+);
+```
+
+A assinatura de `server.tool` aceita quatro argumentos: nome, descrição, schema (objeto Zod), e handler async. O schema é automaticamente convertido para JSON Schema e enviado ao host durante o handshake — é o que o Claude usa para decidir quando e como chamar a tool.
+
+**Regra prática:** escreva a descrição como se estivesse explicando a ferramenta para um colega que nunca a viu. O Claude lê essa descrição para decidir se a tool é relevante para o pedido do usuário.
+
+Você pode registrar quantas tools quiser. Cada chamada a `server.tool()` adiciona uma entrada ao registro interno do server:
+
+```ts
+server.tool(
+  "calcular_frete",
+  "Calcula o custo de frete entre dois CEPs",
+  {
+    origem: z.string().length(8),
+    destino: z.string().length(8),
+    peso_kg: z.number().positive().describe("Peso do pacote em quilogramas"),
+  },
+  async ({ origem, destino, peso_kg }) => {
+    // lógica de cálculo
+    const custo = peso_kg * 3.5 + 10;
+    return {
+      content: [
+        { type: "text", text: `Frete de ${origem} para ${destino}: R$ ${custo.toFixed(2)}` },
+      ],
+    };
+  }
+);
+```
+
+---
+
+## Expondo resources
+
+Resources representam dados que o host pode ler e injetar no contexto do modelo — arquivos, registros de banco, configurações. Diferentemente das tools (invocadas pelo modelo), resources são lidos pelo host sob controle do usuário ou da aplicação.
+
+Um resource é identificado por uma URI. O SDK oferece dois padrões: URI estática (um recurso específico) e URI template (família de recursos parametrizados).
+
+```ts
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+// Resource estático
+server.resource(
+  "config-app",
+  "config://app/settings",
+  { mimeType: "application/json" },
+  async () => ({
+    contents: [
+      {
+        uri: "config://app/settings",
+        mimeType: "application/json",
+        text: JSON.stringify({ tema: "escuro", idioma: "pt-BR" }),
+      },
+    ],
+  })
+);
+
+// Resource parametrizado via template
+server.resource(
+  "usuario",
+  new ResourceTemplate("usuarios://{id}/perfil", { list: undefined }),
+  { mimeType: "application/json" },
+  async (uri, { id }) => {
+    const usuario = await buscarUsuario(id);
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "application/json",
+          text: JSON.stringify(usuario),
+        },
+      ],
+    };
+  }
+);
+```
+
+O `ResourceTemplate` usa a sintaxe RFC 6570 para definir variáveis na URI. Quando o host resolve `usuarios://42/perfil`, o SDK extrai `{ id: "42" }` e passa para o handler.
+
+**Regra prática:** use resources para dados somente-leitura que enriquecem o contexto. Use tools para ações com efeitos colaterais (escrita, chamadas externas mutáveis). Essa distinção ajuda o modelo a raciocinar sobre o que é seguro executar automaticamente.
+
+---
+
+## Expondo prompts
+
+Prompts são templates reutilizáveis que o host pode apresentar ao usuário como atalhos de conversa. Eles recebem argumentos, constroem uma lista de mensagens estruturadas e as devolvem prontas para serem enviadas ao modelo.
+
+```ts
+server.prompt(
+  "revisar_codigo",
+  "Revisa um trecho de código e sugere melhorias",
+  {
+    codigo: z.string().describe("Código a ser revisado"),
+    linguagem: z.string().default("typescript").describe("Linguagem de programação"),
+  },
+  ({ codigo, linguagem }) => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Revise o seguinte código ${linguagem} e aponte problemas de legibilidade, performance e possíveis bugs:\n\n\`\`\`${linguagem}\n${codigo}\n\`\`\``,
+        },
+      },
+    ],
+  })
+);
+```
+
+O handler de prompt é síncrono — recebe os argumentos e retorna imediatamente um objeto `{ messages }`. Não há `await` aqui porque prompts são templates, não execuções. O Claude Desktop, por exemplo, lista os prompts disponíveis numa interface slash-command; ao selecionar um, o host preenche os argumentos e envia as mensagens ao modelo.
+
+---
+
+## Testando e conectando o server a um host
+
+**Build e execução local**
+
+Com TypeScript, compile o projeto antes de executar:
+
+```json
+// tsconfig.json (mínimo)
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "./dist",
+    "strict": true
+  },
+  "include": ["src/**/*"]
+}
+```
+
+```bash
+npx tsc && node dist/server.js
+```
+
+O processo fica aguardando mensagens via stdin. Para testar manualmente, você pode usar o `@modelcontextprotocol/inspector`:
+
+```bash
+npx @modelcontextprotocol/inspector node dist/server.js
+```
+
+O inspector abre uma interface web que lista tools, resources e prompts, e permite invocá-los diretamente — sem precisar de um host completo.
+
+**Conectando ao Claude Desktop**
+
+Adicione o server ao arquivo de configuração do Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json` no macOS):
+
+```json
+{
+  "mcpServers": {
+    "meu-server": {
+      "command": "node",
+      "args": ["/caminho/absoluto/dist/server.js"]
+    }
+  }
+}
+```
+
+Reinicie o Claude Desktop. Um ícone de plug aparece na interface indicando que o server está conectado. O modelo agora tem acesso a todas as tools registradas.
+
+**Conectando ao Claude Code**
+
+No Claude Code, adicione o server com o comando:
+
+```bash
+claude mcp add meu-server -- node /caminho/absoluto/dist/server.js
+```
+
+Ou edite `.claude/settings.json` diretamente:
+
+```json
+{
+  "mcpServers": {
+    "meu-server": {
+      "command": "node",
+      "args": ["/caminho/absoluto/dist/server.js"]
+    }
+  }
+}
+```
+
+**Regra prática:** sempre use caminhos absolutos na configuração do host. Paths relativos falham silenciosamente porque o host não sabe qual é o diretório de trabalho correto ao iniciar o server.
+
+**Tratamento de erros**
+
+Erros lançados fora do handler causam crash do server. Prefira capturar dentro do handler e retornar `isError: true`:
+
+```ts
+server.tool("operacao_critica", "...", { id: z.string() }, async ({ id }) => {
+  try {
+    const resultado = await operacaoQuePodefAlhar(id);
+    return { content: [{ type: "text", text: resultado }] };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Erro: ${(err as Error).message}` }],
+      isError: true,
+    };
+  }
+});
+```
+
+---
+
+> **Resumo:** Um MCP server é criado com `new McpServer(...)`, expõe tools via `server.tool()` (com schema Zod e handler async), resources via `server.resource()` (dados somente-leitura com URI), e prompts via `server.prompt()` (templates de mensagens). A conexão ao host usa `StdioServerTransport` e `await server.connect(transport)`. Para testar sem um host, o `@modelcontextprotocol/inspector` cobre o ciclo completo de tool call e leitura de resource. Uma vez conectado ao Claude Desktop ou Claude Code, as tools ficam disponíveis automaticamente para o modelo usar em qualquer conversa.

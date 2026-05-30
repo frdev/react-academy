@@ -1,5 +1,97 @@
 {
   "lessonId": "day-07",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual classe do SDK `@modelcontextprotocol/sdk` é usada para criar um MCP server?",
+      "options": [
+        "MpcServer",
+        "McpServer",
+        "ModelContextServer",
+        "AnthropicServer"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`McpServer` (importada de `@modelcontextprotocol/sdk/server/mcp.js`) é a classe central que mantém o registro de tools, resources e prompts e gerencia o ciclo de vida das mensagens JSON-RPC 2.0. `AnthropicServer` e `ModelContextServer` não existem no SDK — são distratores comuns para quem confunde o protocolo MCP com o SDK da Anthropic."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Ao registrar uma tool com `server.tool()`, qual biblioteca é usada para declarar e validar o schema de inputs?",
+      "options": [
+        "Joi",
+        "Yup",
+        "Zod",
+        "JSON Schema diretamente"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O SDK MCP usa Zod para declarar os schemas de inputs das tools. Internamente, o SDK converte o schema Zod em JSON Schema e o envia ao host durante o handshake de capacidades. O Claude lê esse JSON Schema para saber os tipos e as restrições de cada parâmetro antes de invocar a tool."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença semântica entre uma tool e um resource num MCP server?",
+      "options": [
+        "Tools são assíncronas; resources são síncronos",
+        "Tools são invocadas pelo modelo para executar ações; resources são lidos pelo host para enriquecer contexto",
+        "Resources suportam inputs parametrizados; tools não",
+        "Tools retornam texto; resources retornam JSON"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A distinção fundamental é de agente e intenção: tools são invocadas pelo modelo durante o raciocínio quando ele decide executar uma ação (com possíveis efeitos colaterais). Resources são lidos pelo host sob controle do usuário ou da aplicação para injetar dados no contexto — são conceitualmente somente-leitura. Essa separação ajuda o modelo a raciocinar sobre segurança: resources são seguros de ler; tools podem modificar estado externo."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual transport é usado quando o host lança o MCP server como subprocesso e se comunica via stdin/stdout?",
+      "options": [
+        "HttpServerTransport",
+        "WebSocketTransport",
+        "StdioServerTransport",
+        "PipeTransport"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`StdioServerTransport` (importado de `@modelcontextprotocol/sdk/server/stdio.js`) conecta o server ao host via stdin/stdout. É o mecanismo padrão no MCP: o host (Claude Desktop, Claude Code) lança o server como subprocesso e se comunica por mensagens JSON-RPC nesse canal. Transports HTTP e WebSocket existem para cenários de server remoto, mas não são o padrão para servers locais."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Ao registrar um resource parametrizado — por exemplo, `usuarios://{id}/perfil` — qual utilitário do SDK é usado para definir a URI template?",
+      "options": [
+        "UriBuilder",
+        "ResourceTemplate",
+        "TemplateUri",
+        "PathPattern"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`ResourceTemplate` (importado de `@modelcontextprotocol/sdk/server/mcp.js`) usa a sintaxe RFC 6570 para definir variáveis na URI. Quando o host resolve uma URI concreta como `usuarios://42/perfil`, o SDK extrai automaticamente os parâmetros (`{ id: '42' }`) e os passa para o handler do resource — sem parsing manual de string."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O handler de um `server.prompt()` é síncrono ou assíncrono? Por quê?",
+      "options": [
+        "Assíncrono, porque precisa buscar dados externos para montar as mensagens",
+        "Síncrono, porque prompts são templates de mensagens e não executam operações com efeitos colaterais",
+        "Assíncrono, porque o SDK exige Promise em todos os handlers",
+        "Síncrono, porque o TypeScript não suporta async em callbacks de prompt"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O handler de `server.prompt()` é síncrono: recebe os argumentos preenchidos e retorna imediatamente um objeto `{ messages }` com a lista de mensagens prontas para envio ao modelo. Prompts são templates — sua responsabilidade é apenas estruturar o texto, não executar I/O. Se você precisar de dados externos, o padrão correto é usar uma tool que o próprio modelo possa invocar."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a forma recomendada de tratar erros dentro de um handler de tool para evitar crash do server?",
+      "options": [
+        "Deixar a exceção propagar — o SDK captura automaticamente e responde com erro ao host",
+        "Usar process.on('uncaughtException') para capturar globalmente",
+        "Capturar o erro dentro do handler e retornar `{ content: [...], isError: true }`",
+        "Restartar o server automaticamente com um process manager como PM2"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O padrão correto é capturar o erro dentro do próprio handler e retornar `{ content: [{ type: 'text', text: mensagem }], isError: true }`. Isso comunica o erro ao modelo de forma estruturada — o modelo pode então decidir tentar novamente, usar outra tool, ou informar o usuário. Exceções não capturadas que vazam para fora do handler podem causar crash do processo inteiro, derrubando todas as tools registradas."
+    }
+  ]
 }

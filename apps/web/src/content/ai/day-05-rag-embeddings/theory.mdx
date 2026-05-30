@@ -1,3 +1,209 @@
 # RAG & embeddings
 
-> Conteúdo em breve.
+Modelos de linguagem são treinados até uma data de corte e não têm acesso a documentos privados da sua empresa — RAG (Retrieval-Augmented Generation) existe exatamente para atacar esses dois problemas. Em vez de colocar tudo no contexto ou fazer fine-tuning, você recupera em tempo real apenas os trechos relevantes e os injeta na mensagem antes de gerar a resposta, ancorando o modelo em fontes verificáveis.
+
+---
+
+## O que é RAG e por que ele existe
+
+Sem RAG, um modelo só sabe o que viu no treino. Com RAG, você separa o conhecimento do modelo (suas capacidades de raciocínio e linguagem) do conhecimento da aplicação (seus dados atualizados). O pipeline é: indexar documentos → gerar embeddings → armazenar em banco vetorial → na query, embedar a pergunta → buscar os trechos mais similares → montar o contexto → gerar a resposta com a Messages API.
+
+```text
+[Indexação — feita offline]
+Documentos → Chunking → Embed cada chunk → Armazenar (vetor + texto) no VectorDB
+
+[Query — feita em runtime]
+Pergunta do usuário
+  → Embed da pergunta
+  → Busca top-k no VectorDB (similaridade de cosseno)
+  → Recupera k chunks mais relevantes
+  → Monta prompt: system + chunks + pergunta
+  → Claude gera resposta citando as fontes
+```
+
+**Regra prática:** RAG é ideal quando o corpus muda frequentemente (docs atualizados, e-mails, tickets) ou quando é grande demais para caber no contexto. Para dados estáticos e pequenos (< 50 páginas), muitas vezes é mais simples e eficaz colocar tudo direto no contexto.
+
+---
+
+## Embeddings — vetores semânticos
+
+Um embedding é uma representação numérica de texto em um espaço de alta dimensão (tipicamente 256 a 3072 dimensões). Textos semanticamente próximos ficam próximos nesse espaço — "cachorro" e "cão" estão mais perto entre si do que de "contabilidade".
+
+Você não precisa de um modelo Anthropic para isso: modelos de embedding (como `text-embedding-3-small` da OpenAI ou `embed-english-v3.0` da Cohere) são modelos separados e muito mais baratos do que modelos de geração.
+
+```ts
+// Pseudo-código — adaptável a qualquer SDK de embedding
+async function embedText(text: string): Promise<number[]> {
+  const response = await embeddingClient.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: text,
+  });
+  return response.data[0].embedding; // número[], ex: [0.021, -0.043, ...]
+}
+
+// Indexando um documento
+const chunks = splitIntoChunks(documentText);
+const indexedChunks = await Promise.all(
+  chunks.map(async (chunk, i) => ({
+    id: `doc-${docId}-chunk-${i}`,
+    text: chunk,
+    vector: await embedText(chunk),
+  }))
+);
+await vectorDb.upsert(indexedChunks);
+```
+
+O vetor resultante não tem significado humano por dimensão — é uma coordenada no espaço semântico aprendido pelo modelo. O que importa é a relação geométrica entre vetores.
+
+---
+
+## Vector search — similaridade, cosseno e top-k
+
+A busca vetorial mede o quanto dois vetores apontam na mesma direção. A métrica mais usada é a **similaridade de cosseno**, que ignora magnitude e foca no ângulo entre os vetores. Valor 1 = idênticos, 0 = perpendiculares (sem relação), -1 = opostos.
+
+```ts
+function cosineSimilarity(a: number[], b: number[]): number {
+  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
+  const magA = Math.sqrt(a.reduce((sum, val) => sum + val ** 2, 0));
+  const magB = Math.sqrt(b.reduce((sum, val) => sum + val ** 2, 0));
+  return dot / (magA * magB);
+}
+
+async function searchTopK(query: string, k = 5): Promise<Chunk[]> {
+  const queryVector = await embedText(query);
+
+  // Em produção, isso é feito pelo VectorDB (Pinecone, pgvector, Qdrant, etc.)
+  const results = allChunks
+    .map(chunk => ({
+      ...chunk,
+      score: cosineSimilarity(queryVector, chunk.vector),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, k);
+
+  return results;
+}
+```
+
+**Regra prática:** k entre 3 e 8 é um bom ponto de partida. k muito baixo arrisca perder contexto relevante; k muito alto enche o contexto com ruído e aumenta custo. Experimente com `score > 0.75` como threshold mínimo para filtrar chunks irrelevantes mesmo dentro do top-k.
+
+Bancos vetoriais como **Pinecone**, **Qdrant**, **Weaviate** e a extensão **pgvector** do PostgreSQL fazem essa busca com índices ANN (Approximate Nearest Neighbors), tornando a busca eficiente mesmo com milhões de vetores.
+
+---
+
+## Chunking — estratégias e trade-offs
+
+Chunking é o processo de dividir documentos em pedaços menores antes de embedar. O tamanho e a estratégia de chunking impactam diretamente a qualidade da recuperação.
+
+```ts
+// Chunking por tamanho fixo com overlap (simples, funciona bem em geral)
+function chunkBySize(
+  text: string,
+  chunkSize = 512,
+  overlap = 64
+): string[] {
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    chunks.push(text.slice(start, start + chunkSize));
+    start += chunkSize - overlap;
+  }
+  return chunks;
+}
+
+// Chunking semântico — divide em parágrafos ou seções com marcadores
+function chunkBySections(text: string): string[] {
+  return text
+    .split(/\n#{1,3} /)       // divide em cabeçalhos Markdown
+    .map(s => s.trim())
+    .filter(s => s.length > 50);
+}
+```
+
+| Estratégia | Prós | Contras |
+|---|---|---|
+| Tamanho fixo + overlap | Simples, previsível | Pode cortar no meio de uma ideia |
+| Por parágrafo/seção | Preserva unidades semânticas | Tamanhos muito variados |
+| Hierárquico (pequeno + grande) | Melhor recall com menos tokens | Mais complexidade |
+| Sliding window com overlap | Reduz perda por fronteiras | Duplica partes do texto |
+
+**Regra prática:** comece com chunks de 512 tokens e overlap de 10-15%. Ajuste conforme a natureza do seu corpus — documentação técnica fragmentada pede chunks maiores; conversas e tickets pedem chunks menores.
+
+---
+
+## Montando o contexto e gerando a resposta com a Messages API
+
+O passo final é injetar os chunks recuperados no prompt e chamar a Messages API da Anthropic. A chave é formatar os trechos de forma que o modelo saiba a origem de cada informação.
+
+```ts
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic();
+
+async function ragQuery(userQuestion: string): Promise<string> {
+  // 1. Recuperar trechos relevantes
+  const relevantChunks = await searchTopK(userQuestion, 5);
+
+  // 2. Montar o bloco de contexto
+  const contextBlock = relevantChunks
+    .map((chunk, i) => `[Fonte ${i + 1}] ${chunk.text}`)
+    .join('\n\n');
+
+  // 3. Chamar a Messages API injetando os trechos no contexto
+  const response = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 1024,
+    system: `Você é um assistente que responde perguntas baseado exclusivamente
+nos trechos de documentação fornecidos. Se a resposta não estiver
+nos trechos, diga que não encontrou a informação.
+Sempre cite a fonte ([Fonte N]) ao usar uma informação.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Documentação relevante:\n\n${contextBlock}\n\n---\n\nPergunta: ${userQuestion}`,
+      },
+    ],
+  });
+
+  return response.content[0].type === 'text' ? response.content[0].text : '';
+}
+```
+
+- Use **prompt caching** (`cache_control`) no bloco de contexto quando os mesmos chunks aparecem em múltiplas queries — reduz latência e custo em até 90% para leituras do cache.
+- Se você tiver IDs de fonte (URL, título, seção), inclua nos metadados do chunk e exponha-os na resposta para rastreabilidade.
+- Combine RAG com tool use: a ferramenta `search_documents` pode encapsular a busca vetorial inteira, permitindo que o modelo decida quando e quantas vezes buscar.
+
+---
+
+## RAG vs. contexto direto — quando usar cada um
+
+A decisão não é binária: cada abordagem tem um regime de uso claro.
+
+| Critério | Contexto direto | RAG |
+|---|---|---|
+| Tamanho do corpus | Pequeno (< 100 KB) | Grande (MBs a GBs) |
+| Frequência de atualização | Estático ou raramente muda | Atualizado continuamente |
+| Precisão necessária | Máxima (o modelo lê tudo) | Alta, mas depende do retrieval |
+| Latência | Maior (tokens extras) | Menor (só os chunks relevantes) |
+| Custo por query | Maior | Menor |
+| Complexidade de infra | Nenhuma | Banco vetorial + pipeline de indexação |
+
+```text
+Fluxo de decisão:
+
+O corpus cabe no context window do modelo?
+  ├─ Sim → Cabe no orçamento de tokens por query?
+  │          ├─ Sim → Use contexto direto (mais simples, sem retrieval errors)
+  │          └─ Não → Avalie RAG
+  └─ Não → Use RAG obrigatoriamente
+
+O corpus muda frequentemente?
+  ├─ Sim → RAG (re-indexar é mais barato que re-treinar)
+  └─ Não → Considere fine-tuning para conhecimento que raramente muda
+```
+
+**Regra prática:** para protótipos e corpora pequenos (documentação interna de 10-20 arquivos), comece com contexto direto e vá para RAG quando o custo ou latência se tornarem problema. RAG introduz uma fonte de erros nova — o retrieval — que você precisa avaliar e monitorar.
+
+---
+
+> **Resumo:** RAG desacopla conhecimento do modelo de capacidade do modelo, permitindo responder perguntas sobre dados privados e atualizados. O pipeline passa por chunking → embedding → armazenamento em banco vetorial → busca por similaridade de cosseno (top-k) → injeção dos trechos no contexto → geração com a Messages API da Anthropic. A qualidade do RAG depende tanto do retrieval (tamanho dos chunks, modelo de embedding, k) quanto do prompt que instrui o modelo a usar e citar as fontes recuperadas.

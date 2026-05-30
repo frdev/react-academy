@@ -1,3 +1,296 @@
 # Tool use (function calling)
 
-> Conteúdo em breve.
+Tools transformam o LLM de um gerador de texto em um agente capaz de agir no mundo: consultar bancos de dados, chamar APIs, escrever arquivos e executar qualquer lógica que você expor. Dominar o ciclo de tool use é o pré-requisito direto para construir agentes — tudo que vem nos dias seguintes (RAG, MCP, Agent SDK) depende desse mecanismo.
+
+## O loop tool_use → tool_result
+
+O protocolo da Messages API é síncrono do ponto de vista do servidor, mas stateful do ponto de vista da conversa: o modelo solicita a execução de uma ferramenta, você executa, e devolve o resultado numa nova chamada. O ciclo completo tem quatro etapas:
+
+1. Você envia a conversa com o array `tools` descrevendo as ferramentas disponíveis.
+2. O modelo responde com `stop_reason: "tool_use"` e um bloco `tool_use` no `content`.
+3. Você executa a função localmente e monta um bloco `tool_result`.
+4. Você reenvia a conversa — agora incluindo a resposta do assistente e o resultado da tool — e o modelo produz a resposta final.
+
+```ts
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic()
+
+// Definição da tool
+const tools: Anthropic.Tool[] = [
+  {
+    name: 'get_weather',
+    description: 'Retorna a temperatura atual e condição climática de uma cidade.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        city: {
+          type: 'string',
+          description: 'Nome da cidade, ex: "São Paulo"',
+        },
+        unit: {
+          type: 'string',
+          enum: ['celsius', 'fahrenheit'],
+          description: 'Unidade de temperatura. Padrão: celsius.',
+        },
+      },
+      required: ['city'],
+    },
+  },
+]
+
+// Turno 1 — usuário faz pergunta
+const messages: Anthropic.MessageParam[] = [
+  { role: 'user', content: 'Qual é o clima em São Paulo agora?' },
+]
+
+const response1 = await client.messages.create({
+  model: 'claude-opus-4-5',
+  max_tokens: 1024,
+  tools,
+  messages,
+})
+
+// O modelo quer chamar uma tool
+// response1.stop_reason === 'tool_use'
+console.log(response1.stop_reason) // "tool_use"
+
+// Extraindo o bloco tool_use
+const toolUseBlock = response1.content.find(
+  (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
+)!
+
+console.log(toolUseBlock)
+// {
+//   type: 'tool_use',
+//   id: 'toolu_01XYZ...',
+//   name: 'get_weather',
+//   input: { city: 'São Paulo', unit: 'celsius' }
+// }
+
+// Execução local da função (sua implementação real)
+function getWeather(city: string, unit = 'celsius') {
+  // Aqui viria a chamada a uma API meteorológica real
+  return { temperature: 24, condition: 'parcialmente nublado', unit }
+}
+
+const toolResult = getWeather(
+  toolUseBlock.input.city as string,
+  toolUseBlock.input.unit as string | undefined,
+)
+
+// Turno 2 — devolvendo o resultado ao modelo
+const response2 = await client.messages.create({
+  model: 'claude-opus-4-5',
+  max_tokens: 1024,
+  tools,
+  messages: [
+    ...messages,
+    { role: 'assistant', content: response1.content }, // resposta completa do modelo
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'tool_result',
+          tool_use_id: toolUseBlock.id, // vincula ao bloco original
+          content: JSON.stringify(toolResult),
+        },
+      ],
+    },
+  ],
+})
+
+// Agora stop_reason === 'end_turn' e o modelo responde ao usuário
+console.log(response2.content[0])
+// { type: 'text', text: 'Em São Paulo agora está 24°C com céu parcialmente nublado.' }
+```
+
+**Regra prática:** Sempre preserve o `content` completo da resposta do assistente (incluindo blocos de texto intercalados) ao montar o próximo turno. Descartar blocos não-tool causa erros de validação da API.
+
+## Design de boas tools
+
+Uma tool mal definida é uma ferramenta que o modelo vai usar de forma errada ou evitar usar. Siga estas diretrizes:
+
+- **Uma responsabilidade por tool.** `search_and_summarize` é duas tools disfarçadas de uma — separe-as.
+- **Nomes verbais + objeto:** `get_user`, `create_invoice`, `send_email`. Evite nomes genéricos como `execute` ou `process`.
+- **Descrição orientada ao modelo:** explique *quando* usar, não apenas o que faz. "Consulte esta tool quando o usuário perguntar sobre pedidos em aberto. Não use para histórico de pedidos."
+- **Idempotência sempre que possível.** Tools de leitura são trivialmente idempotentes; tools de escrita devem ter essa propriedade documentada (ou explicitamente negada).
+- **Granularidade:** prefira tools menores e composáveis. Um agente com 15 tools bem definidas supera um com 5 tools sobrecarregadas.
+
+```ts
+// Ruim: genérico demais, sem guia de uso
+const badTool: Anthropic.Tool = {
+  name: 'database_operation',
+  description: 'Faz operações no banco de dados.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string' },
+    },
+    required: ['query'],
+  },
+}
+
+// Bom: responsabilidade única, descrição orientada ao modelo
+const goodTool: Anthropic.Tool = {
+  name: 'get_order_status',
+  description:
+    'Retorna o status atual de um pedido pelo seu ID. ' +
+    'Use quando o usuário perguntar sobre o andamento, entrega ou situação de um pedido específico. ' +
+    'Não use para listar pedidos ou buscar por cliente.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      order_id: {
+        type: 'string',
+        description: 'ID do pedido no formato ORD-XXXXXXXX',
+        pattern: '^ORD-[0-9]{8}$',
+      },
+    },
+    required: ['order_id'],
+  },
+}
+```
+
+## JSON Schema de input: tipagem que o modelo lê
+
+O campo `input_schema` é um JSON Schema padrão (draft-07) e é a principal fonte de informação que o modelo usa para construir o input corretamente. Quanto mais preciso o schema, menos erros de input você vai tratar em runtime.
+
+```ts
+const toolComplexa: Anthropic.Tool = {
+  name: 'create_task',
+  description: 'Cria uma nova tarefa no sistema de gerenciamento de projetos.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      title: {
+        type: 'string',
+        minLength: 3,
+        maxLength: 120,
+        description: 'Título curto da tarefa.',
+      },
+      priority: {
+        type: 'string',
+        enum: ['low', 'medium', 'high', 'critical'],
+        description: 'Prioridade. Padrão: medium.',
+      },
+      due_date: {
+        type: 'string',
+        format: 'date',
+        description: 'Data de vencimento no formato YYYY-MM-DD. Opcional.',
+      },
+      tags: {
+        type: 'array',
+        items: { type: 'string' },
+        maxItems: 5,
+        description: 'Lista de tags para categorização. Máximo 5.',
+      },
+      assignee_ids: {
+        type: 'array',
+        items: { type: 'integer', minimum: 1 },
+        description: 'IDs dos usuários responsáveis. Opcional.',
+      },
+    },
+    required: ['title'],
+    additionalProperties: false,
+  },
+}
+```
+
+**Regra prática:** Use `additionalProperties: false` e liste todos os campos em `required` ou com defaults documentados. Isso evita que o modelo invente campos não previstos e facilita a validação em runtime com Zod ou ajv.
+
+## Tool choice: controlando quando o modelo usa tools
+
+O parâmetro `tool_choice` determina o comportamento padrão de uso de tools:
+
+```ts
+// auto (padrão) — modelo decide se usa alguma tool
+const autoChoice = await client.messages.create({
+  model: 'claude-opus-4-5',
+  max_tokens: 1024,
+  tools,
+  tool_choice: { type: 'auto' },
+  messages,
+})
+
+// any — modelo DEVE usar pelo menos uma tool
+const anyChoice = await client.messages.create({
+  model: 'claude-opus-4-5',
+  max_tokens: 1024,
+  tools,
+  tool_choice: { type: 'any' },
+  messages,
+})
+
+// tool — modelo DEVE usar a tool específica
+const forcedChoice = await client.messages.create({
+  model: 'claude-opus-4-5',
+  max_tokens: 1024,
+  tools,
+  tool_choice: { type: 'tool', name: 'get_weather' },
+  messages,
+})
+```
+
+| Modo | Quando usar |
+|------|-------------|
+| `auto` | Caso geral — deixa o modelo julgar |
+| `any` | Quando você sabe que uma tool será necessária, mas não qual |
+| `tool` | Quando quer garantir extração estruturada de dados (substitui JSON mode) |
+
+**Regra prática:** `tool_choice: { type: "tool" }` é a forma recomendada pela Anthropic para extração estruturada de dados — defina uma tool `extract_structured_data` e force sua chamada.
+
+## Tratamento de erros de tool
+
+Tools falham. Sua implementação deve lidar com isso de forma que o modelo possa se recuperar ou comunicar o problema ao usuário com clareza.
+
+```ts
+async function callToolSafely(
+  toolName: string,
+  input: Record<string, unknown>,
+): Promise<{ content: string; is_error?: boolean }> {
+  try {
+    switch (toolName) {
+      case 'get_weather': {
+        const result = await fetchWeatherFromAPI(input.city as string)
+        return { content: JSON.stringify(result) }
+      }
+      case 'get_order_status': {
+        const order = await db.orders.findById(input.order_id as string)
+        if (!order) {
+          return {
+            content: JSON.stringify({ error: 'Pedido não encontrado', order_id: input.order_id }),
+            is_error: true,
+          }
+        }
+        return { content: JSON.stringify(order) }
+      }
+      default:
+        return { content: JSON.stringify({ error: `Tool desconhecida: ${toolName}` }), is_error: true }
+    }
+  } catch (err) {
+    // Retorna erro estruturado — não lança exceção para o loop principal
+    return {
+      content: JSON.stringify({
+        error: err instanceof Error ? err.message : 'Erro interno',
+        tool: toolName,
+      }),
+      is_error: true,
+    }
+  }
+}
+
+// Montando o tool_result com sinalização de erro
+const toolResultBlock: Anthropic.ToolResultBlockParam = {
+  type: 'tool_result',
+  tool_use_id: toolUseBlock.id,
+  content: toolResult.content,
+  is_error: toolResult.is_error, // true → modelo sabe que houve falha
+}
+```
+
+O campo `is_error: true` instrui o modelo a tratar o conteúdo como mensagem de erro e, tipicamente, tentar uma estratégia alternativa ou comunicar o problema ao usuário — em vez de interpretar a string de erro como dado válido.
+
+**Regra prática:** Nunca deixe uma exceção não tratada abortar o loop de tool use. Capture erros, serialize-os em JSON, e retorne com `is_error: true`. O modelo é surpreendentemente bom em se recuperar quando recebe contexto de falha estruturado.
+
+> **Resumo:** O ciclo de tool use da Anthropic é um loop de conversa multi-turno: o modelo emite `tool_use` com `id` e `input`, você executa e devolve `tool_result` referenciando o mesmo `id`. Tools bem projetadas têm nome descritivo, responsabilidade única, `input_schema` preciso com `additionalProperties: false`, e erros retornados com `is_error: true`. `tool_choice` permite forçar o uso de uma tool específica — útil para extração estruturada de dados. Este mecanismo é a base de toda arquitetura agêntica.

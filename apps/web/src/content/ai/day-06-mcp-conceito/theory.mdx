@@ -1,3 +1,189 @@
 # MCP — conceito & arquitetura
 
-> Conteúdo em breve.
+O Model Context Protocol (MCP) é o padrão aberto da Anthropic que define como modelos de linguagem se conectam a ferramentas e fontes de dados externas — funciona como "o USB-C da AI": uma única interface para plugar qualquer coisa. Se no dia anterior você escreveu tools diretamente para o Claude, o MCP é exatamente a camada que padroniza como essas tools são empacotadas, publicadas e reutilizadas em qualquer host ou modelo compatível.
+
+## O problema M×N de integrações
+
+Antes do MCP, cada empresa construía integrações ponto a ponto: um assistente de IDE precisava de código específico para se comunicar com o GitHub, com o Jira, com o Notion — e quando a equipe trocava de modelo (de Claude para GPT, por exemplo), tudo precisava ser reescrito. O resultado era uma explosão M×N de conectores customizados.
+
+```text
+Sem MCP (M × N connectores):
+
+App A ──── código próprio ──── GitHub
+App A ──── código próprio ──── Postgres
+App A ──── código próprio ──── Slack
+
+App B ──── código próprio ──── GitHub
+App B ──── código próprio ──── Postgres
+App B ──── código próprio ──── Slack
+```
+
+O MCP colapsa esse problema para M+N:
+
+```text
+Com MCP (M + N):
+
+App A ──── MCP Client ────┐
+App B ──── MCP Client ────┤── MCP Server ── GitHub
+App C ──── MCP Client ────┤── MCP Server ── Postgres
+                          └── MCP Server ── Slack
+```
+
+Cada servidor MCP é desenvolvido uma única vez e funciona com qualquer host (aplicação, IDE, agente) que implemente o protocolo. Para você como desenvolvedor, isso significa: escreva um servidor MCP e seu contexto/ferramenta fica disponível no Claude.ai, no Claude Code, no Cursor, no VS Code Copilot e em qualquer cliente compatível.
+
+**Regra prática:** se você está construindo uma integração que mais de um modelo ou aplicação vai consumir, ela deve ser um MCP Server — não uma função hardcoded numa única app.
+
+## Arquitetura: host, client e server
+
+O MCP define três papéis com responsabilidades bem delimitadas:
+
+```text
+┌─────────────────────────────────────────────┐
+│                   HOST                       │
+│  (Claude.ai, Claude Code, IDE, app custom)   │
+│                                             │
+│  ┌──────────────┐   ┌──────────────┐        │
+│  │  MCP Client  │   │  MCP Client  │  ...   │
+│  │  (1:1 conn)  │   │  (1:1 conn)  │        │
+│  └──────┬───────┘   └──────┬───────┘        │
+└─────────┼─────────────────┼────────────────┘
+          │ protocolo MCP   │ protocolo MCP
+          ▼                 ▼
+   ┌─────────────┐   ┌─────────────┐
+   │ MCP Server  │   │ MCP Server  │
+   │  (GitHub)   │   │ (Postgres)  │
+   └─────────────┘   └─────────────┘
+```
+
+- **Host**: o processo que o usuário controla diretamente. Ele gerencia o ciclo de vida dos clients, recebe as respostas dos servers e as injeta no contexto do modelo. O host decide quais servers estão disponíveis e tem autoridade sobre permissões.
+- **Client**: vive dentro do host. Cada client mantém exatamente uma conexão persistente com um server. É ele que serializa/deserializa as mensagens JSON-RPC 2.0 e garante o handshake inicial de capabilities.
+- **Server**: processo separado (ou serviço remoto) que expõe um conjunto de capabilities — tools, resources e prompts. Pode ser um binário local, um script Python, ou um endpoint HTTP na nuvem.
+
+A relação é sempre **1 client : 1 server**. Um host pode ter múltiplos clients ativos simultaneamente, cada um conversando com seu respectivo server.
+
+## Transporte: stdio e HTTP/SSE
+
+O MCP é agnóstico de transporte — a camada de mensagens é sempre JSON-RPC 2.0, mas o canal físico pode ser:
+
+**stdio (padrão local)**
+O host inicia um processo filho e se comunica via stdin/stdout. É o modo mais simples: sem portas, sem networking, zero configuração de firewall.
+
+```text
+Host process
+  ├── spawns: npx @modelcontextprotocol/server-filesystem
+  │              stdin  ◄── mensagens JSON-RPC do client
+  │              stdout ──► respostas JSON-RPC para o client
+  └── spawns: python meu_server.py
+                 stdin  ◄── ...
+                 stdout ──► ...
+```
+
+**HTTP + SSE (padrão remoto)**
+Para servers remotos ou multi-client, o transporte usa HTTP com Server-Sent Events: o client envia requests HTTP POST e recebe notificações via SSE. Esse modelo permite que um único server atenda múltiplos hosts simultaneamente.
+
+```text
+Client ──── POST /message ──────► Server (HTTP)
+Client ◄─── SSE /events ◄──────── Server (notificações push)
+```
+
+**Regra prática:** use stdio para servers locais (scripts, binários, ferramentas de dev). Use HTTP/SSE quando o server precisa ser compartilhado, hospedado em nuvem, ou acessado por múltiplos usuários.
+
+## As três primitivas: tools, resources e prompts
+
+O MCP define exatamente três tipos de capability que um server pode expor. Entender a diferença é fundamental para modelar corretamente seu servidor.
+
+### Tools
+
+Tools são **ações executáveis** — o equivalente a functions no tool use tradicional, mas padronizadas. O modelo invoca uma tool com argumentos, o server executa e retorna um resultado. São side-effectful por design.
+
+```json
+{
+  "name": "create_issue",
+  "description": "Cria uma issue no GitHub",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "title": { "type": "string" },
+      "body": { "type": "string" },
+      "labels": { "type": "array", "items": { "type": "string" } }
+    },
+    "required": ["title"]
+  }
+}
+```
+
+### Resources
+
+Resources são **dados contextuais** — conteúdo que o host pode injetar no contexto do modelo sem executar uma ação. Cada resource tem uma URI única e pode ser texto, binário ou um template dinâmico.
+
+```json
+{
+  "uri": "file:///projeto/src/index.ts",
+  "name": "index.ts",
+  "mimeType": "text/plain",
+  "description": "Arquivo principal do projeto"
+}
+```
+
+Resources são análogos a "attachments" de contexto: o host decide quando e quais incluir na conversa, diferentemente de tools que o modelo invoca sob demanda.
+
+### Prompts
+
+Prompts são **templates reutilizáveis** — receitas prontas que combinam contexto + instrução + argumentos variáveis. Um server pode expor um prompt `code_review` que aceita um parâmetro `language` e injeta as instruções certas.
+
+```json
+{
+  "name": "code_review",
+  "description": "Realiza code review com foco em segurança",
+  "arguments": [
+    { "name": "language", "required": true },
+    { "name": "focus", "required": false }
+  ]
+}
+```
+
+**Regra prática:** se produz um efeito colateral (escrita, API call, mutação) → tool. Se é contexto/dados para leitura → resource. Se é uma instrução reutilizável com parâmetros → prompt.
+
+## O ecossistema MCP
+
+Desde que a Anthropic abriu o protocolo em novembro de 2024, o ecossistema cresceu rapidamente:
+
+**Servidores oficiais da Anthropic (referência)**
+- `@modelcontextprotocol/server-filesystem` — acesso ao sistema de arquivos local
+- `@modelcontextprotocol/server-github` — repositórios, issues, PRs via GitHub API
+- `@modelcontextprotocol/server-postgres` — queries SQL em bancos Postgres
+- `@modelcontextprotocol/server-puppeteer` — automação de browser
+- `@modelcontextprotocol/server-slack` — mensagens e canais do Slack
+
+**Hosts compatíveis**
+- Claude.ai (interface web) — gerencia servers via configuração
+- Claude Code — integração nativa, servidores definidos em `~/.claude.json`
+- Cursor, Windsurf, VS Code (extensão) — suporte via settings
+- SDKs: `@anthropic-ai/claude-code` (TS), `mcp` (Python), `mcp-go` (Go)
+
+**Construindo seu próprio server**
+O SDK TypeScript do MCP torna trivial criar um server customizado:
+
+```ts
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+const server = new Server(
+  { name: "meu-server", version: "1.0.0" },
+  { capabilities: { tools: {} } }
+);
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [{ name: "hello", description: "Diz olá", inputSchema: { type: "object" } }]
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (req) => ({
+  content: [{ type: "text", text: `Olá do MCP!` }]
+}));
+
+await server.connect(new StdioServerTransport());
+```
+
+**Regra prática:** ao publicar um MCP server, sempre documente as capabilities via `server/capabilities` e mantenha os `inputSchema` das tools com `description` detalhado — é o que o modelo usa para decidir quando e como chamar sua tool.
+
+> **Resumo:** MCP é o protocolo aberto da Anthropic que resolve o problema M×N de integrações AI, definindo uma camada padronizada entre hosts (apps/IDEs), clients (conexões 1:1) e servers (capabilities). O transporte pode ser stdio local ou HTTP/SSE remoto. Cada server expõe até três primitivas — tools (ações), resources (dados) e prompts (templates) — e a conexão sempre segue o handshake JSON-RPC 2.0. Com o ecossistema em rápido crescimento, dominar MCP é essencial para construir agentes e integrações reutilizáveis com Claude.

@@ -1,3 +1,191 @@
 # Anthropic API & SDK
 
-> Conteúdo em breve.
+Antes de construir qualquer agente, você precisa dominar a camada de fundação: a API que faz os modelos falarem. A Anthropic API é o ponto de entrada para o Claude — e compreender seu design, seus parâmetros e seus recursos de eficiência (como prompt caching) é o que separa código de produção de protótipos frágeis.
+
+## Messages API
+
+A Messages API é a interface principal para conversar com o Claude. Toda chamada produz uma mensagem de resposta estruturada com conteúdo, uso de tokens e motivo de parada. O SDK oficial TypeScript (`@anthropic-ai/sdk`) expõe isso de forma idiomática:
+
+```ts
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic() // usa ANTHROPIC_API_KEY do ambiente
+
+const msg = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 1024,
+  system: 'Você é um assistente técnico conciso.',
+  messages: [
+    { role: 'user', content: 'Explique o conceito de context window em uma frase.' },
+  ],
+})
+
+console.log(msg.content[0].type)       // 'text'
+console.log(msg.content[0].text)       // resposta do modelo
+console.log(msg.usage.input_tokens)    // tokens consumidos na entrada
+console.log(msg.stop_reason)           // 'end_turn' | 'max_tokens' | 'stop_sequence' | 'tool_use'
+```
+
+A resposta tem tipo `Message` com os campos mais importantes:
+
+- `content` — array de blocos (`TextBlock`, `ToolUseBlock`); para texto puro, acesse `content[0].text`
+- `usage` — `{ input_tokens, output_tokens, cache_read_input_tokens?, cache_creation_input_tokens? }`
+- `stop_reason` — por que o modelo parou de gerar
+- `model` — modelo que efetivamente respondeu
+
+**Regra prática:** sempre verifique `stop_reason`. Se for `max_tokens`, a resposta foi truncada — ajuste `max_tokens` ou divida o problema.
+
+## System Prompt
+
+O system prompt é a instrução de contexto enviada antes das mensagens do usuário. Ele define identidade, restrições, formato de saída e conhecimentos que o modelo deve assumir durante toda a conversa.
+
+```ts
+const msg = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 2048,
+  system: `Você é um revisor de código TypeScript sênior.
+Responda sempre em português.
+Use markdown para blocos de código.
+Seja direto: aponte o problema, explique por quê, ofereça a correção.`,
+  messages: [
+    { role: 'user', content: 'Revise: const x: any = getData()' },
+  ],
+})
+```
+
+O campo `system` aceita tanto uma string quanto um array de blocos de conteúdo (necessário para prompt caching, veja mais abaixo). Em conversas multi-turno, o system prompt é enviado a cada chamada — você é responsável por incluí-lo.
+
+**Regra prática:** mantenha o system prompt focado em comportamento e formato, não em conhecimento factual. Conhecimento que muda pertence ao contexto da mensagem ou a um RAG (dia 5).
+
+## Streaming
+
+Por padrão, `client.messages.create` aguarda a resposta completa antes de retornar. Para interfaces interativas ou respostas longas, use streaming — o modelo envia tokens conforme os gera:
+
+```ts
+const stream = client.messages.stream({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 2048,
+  system: 'Você é um assistente técnico.',
+  messages: [{ role: 'user', content: 'Escreva um tutorial sobre generics em TypeScript.' }],
+})
+
+// Processar tokens conforme chegam
+for await (const chunk of stream) {
+  if (
+    chunk.type === 'content_block_delta' &&
+    chunk.delta.type === 'text_delta'
+  ) {
+    process.stdout.write(chunk.delta.text)
+  }
+}
+
+// Aguardar a mensagem final com metadados
+const finalMessage = await stream.finalMessage()
+console.log('\nTokens usados:', finalMessage.usage)
+```
+
+A API de stream do SDK também expõe helpers convenientes:
+
+```ts
+// Coletar o texto completo ao final do stream
+const text = await stream.finalText()
+
+// Ouvir eventos específicos
+stream.on('text', (text) => process.stdout.write(text))
+const finalMsg = await stream.finalMessage()
+```
+
+**Regra prática:** use streaming em qualquer interface que mostre texto ao usuário em tempo real — UX percebida como muito mais rápida, mesmo que o tempo total seja igual.
+
+## Parâmetros Principais
+
+Além de `model`, `max_tokens` e `messages`, você vai controlar o comportamento do modelo com:
+
+```ts
+const msg = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 512,
+  temperature: 0.3,           // 0.0–1.0; padrão ~1.0
+  top_p: 0.9,                 // alternativa ao temperature
+  stop_sequences: ['```', '\n\n---'],  // para ao encontrar qualquer uma
+  system: 'Responda apenas com JSON válido, sem texto extra.',
+  messages: [{ role: 'user', content: 'Liste 3 linguagens de programação.' }],
+})
+```
+
+Referência rápida dos parâmetros mais usados:
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `temperature` | `0.0–1.0` | Criatividade vs. determinismo. Próximo de 0 = respostas mais previsíveis; próximo de 1 = mais variação. |
+| `top_p` | `0.0–1.0` | Nucleus sampling. Alternativo ao temperature — use um ou o outro, não ambos. |
+| `max_tokens` | `number` | Limite de tokens gerados. Obrigatório. Não afeta qualidade — só trunca se atingido. |
+| `stop_sequences` | `string[]` | O modelo para ao gerar qualquer uma dessas strings. Útil para extrair formatos estruturados. |
+| `top_k` | `number` | Limita o vocabulário a K tokens mais prováveis. Pouco usado na prática. |
+
+- Para tarefas de extração, classificação ou geração de código: `temperature` entre `0.0` e `0.3`
+- Para redação criativa ou brainstorming: `temperature` entre `0.7` e `1.0`
+- Para RAG e respostas factuais: mantenha baixo (`0.0–0.2`) para reduzir alucinação
+
+**Regra prática:** não ajuste `temperature` e `top_p` ao mesmo tempo. Escolha um eixo de controle e mantenha o outro no padrão.
+
+## Prompt Caching
+
+Prompt caching é um mecanismo que reutiliza prefixos computados de prompts entre chamadas consecutivas, reduzindo latência e custo. Quando um bloco de conteúdo é marcado com `cache_control: { type: 'ephemeral' }`, a Anthropic armazena o estado interno do modelo para aquele prefixo por até 5 minutos.
+
+```ts
+const systemInstructions = `Você é um assistente especializado em análise de contratos jurídicos.
+[... 10 000 tokens de instruções e exemplos detalhados ...]`
+
+const msg = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 1024,
+  system: [
+    {
+      type: 'text',
+      text: systemInstructions,
+      cache_control: { type: 'ephemeral' }, // cacheia este bloco
+    },
+  ],
+  messages: [
+    { role: 'user', content: 'Analise a cláusula 7 do contrato anexo.' },
+  ],
+})
+
+// Na resposta, verifique os tokens cacheados vs. não-cacheados
+console.log(msg.usage.cache_creation_input_tokens)  // tokens gravados no cache
+console.log(msg.usage.cache_read_input_tokens)      // tokens lidos do cache (custo menor)
+console.log(msg.usage.input_tokens)                 // tokens que não vieram do cache
+```
+
+Você pode cachear tanto o system prompt quanto mensagens do histórico de conversa (documentos, exemplos few-shot longos):
+
+```ts
+const msg = await client.messages.create({
+  model: 'claude-sonnet-4-5',
+  max_tokens: 1024,
+  system: [{ type: 'text', text: longSystemPrompt, cache_control: { type: 'ephemeral' } }],
+  messages: [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: bigDocument,
+          cache_control: { type: 'ephemeral' }, // cacheia o documento também
+        },
+        { type: 'text', text: 'Resuma os pontos principais.' },
+      ],
+    },
+  ],
+})
+```
+
+- Cache hit: tokens lidos do cache custam ~10% do preço normal de input
+- Cache miss / criação: tokens escritos no cache custam ~25% a mais que input normal
+- Threshold mínimo: ~1 024 tokens para ativar o cache (blocos menores são ignorados)
+- TTL: 5 minutos por padrão; cada hit renova o prazo
+
+**Regra prática:** use prompt caching sempre que você reusar um system prompt longo ou um documento grande em múltiplas chamadas consecutivas (chat, análise de arquivos grandes, agentes com contexto compartilhado). O ROI aparece a partir da segunda chamada no mesmo ciclo.
+
+> **Resumo:** a Messages API é o núcleo de toda interação com o Claude — entenda a estrutura da resposta (`content`, `usage`, `stop_reason`). O system prompt define o comportamento persistente da sessão. Streaming melhora a UX em interfaces de texto. `temperature` e `stop_sequences` são os parâmetros de controle mais úteis no dia a dia. Prompt caching reduz latência e custo quando o mesmo prefixo longo é reutilizado — e é transparente para o caller: basta adicionar `cache_control` nos blocos que você quer cachear.

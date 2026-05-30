@@ -1,5 +1,97 @@
 {
   "lessonId": "day-12",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a principal motivação para usar arquitetura multi-agentes em vez de um único agente para tarefas complexas?",
+      "options": [
+        "Multi-agentes sempre consomem menos tokens no total",
+        "Um único agente não consegue usar tools de nenhum tipo",
+        "Isolamento de contexto e separação de responsabilidade evitam que o agente acumule informações irrelevantes que degradam o raciocínio",
+        "O SDK da Anthropic só suporta arquiteturas multi-agentes"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O benefício central de multi-agentes é que cada worker recebe apenas o contexto necessário para sua subtarefa — sem instruções conflitantes, sem tools irrelevantes, sem histórico de fases anteriores poluindo o raciocínio. Um único agente que acumula todas as responsabilidades satura a janela de contexto e piora a qualidade das respostas. Multi-agentes também pode consumir mais tokens no total (devido a plano + síntese), então a justificativa é qualidade e manutenibilidade, não necessariamente custo absoluto."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "No padrão orchestrator-worker, qual é a responsabilidade correta do orquestrador?",
+      "options": [
+        "Executar diretamente as buscas na web e gerar o código final",
+        "Planejar, decompor em subtarefas, delegar para workers e agregar os resultados",
+        "Manter o histórico de conversa de todos os workers em memória compartilhada",
+        "Escolher aleatoriamente qual worker executar cada tarefa"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O orquestrador tem papel exclusivo de coordenação: recebe o objetivo global, raciocina sobre como decompô-lo em subtarefas, decide dependências e ordem de execução, delega cada subtarefa ao worker adequado e sintetiza os resultados no final. Se o orquestrador começa a executar tarefas de domínio (buscar, gerar código, etc.) diretamente, o design está errado — ele perde foco e acumula contexto desnecessário."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Você precisa pesquisar regulamentações de IA em 5 países diferentes de forma independente. Qual abordagem reduz a latência total?",
+      "options": [
+        "Chamar os 5 workers em sequência com await encadeado",
+        "Usar um único agente com contexto acumulado para todos os países",
+        "Disparar os 5 workers em paralelo com Promise.all ou Promise.allSettled",
+        "Reutilizar o mesmo worker em loop sem paralelismo para economizar tokens"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Quando as subtarefas são independentes entre si (sem dependência de dados), executá-las em paralelo com Promise.all faz todas rodarem ao mesmo tempo — a latência total passa a ser a do worker mais lento, não a soma de todos. Promise.allSettled é preferível em produção porque uma falha de um worker não cancela os demais; o orquestrador recebe resultados parciais e decide como lidar com as falhas. Execução sequencial é necessária apenas quando os resultados de uma fase alimentam a próxima."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Ao usar o Anthropic Agent SDK, o que acontece com o histórico de conversa interno de um subagente quando ele termina sua execução?",
+      "options": [
+        "É automaticamente mesclado ao contexto do orquestrador para referência futura",
+        "É salvo em banco de dados para auditoria obrigatória",
+        "Permanece privado ao subagente — apenas o resultado final é devolvido ao orquestrador",
+        "É descartado imediatamente após a primeira chamada à API"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O isolamento de contexto é uma propriedade fundamental do padrão orchestrator-worker no Agent SDK. Quando o orquestrador chama um subagente via agent.asTool(), o SDK inicia uma thread de contexto separada para aquele subagente, executa o loop agentico completo (incluindo eventuais tool calls internos), e devolve apenas o artefato final ao orquestrador. O histórico interno — todas as mensagens intermediárias, tool calls e resultados — não vaza para o contexto do orquestrador. Isso mantém o contexto do orquestrador limpo e focado."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual combinação de modelos reflete a estratégia de custo-eficiência recomendada em uma arquitetura multi-agentes?",
+      "options": [
+        "Claude Opus para todos os agentes para garantir máxima qualidade em todas as etapas",
+        "Claude Haiku para o orquestrador e Claude Opus para os workers de domínio",
+        "Claude Opus para o orquestrador, Claude Sonnet para workers de análise/código, Claude Haiku para workers de busca",
+        "O mesmo modelo para todos os agentes para simplificar o código de orquestração"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A estratégia de modelos reflete o peso de cada papel: o orquestrador usa o modelo mais capaz (Opus) porque um plano de decomposição ruim contamina todos os workers — é onde a qualidade de raciocínio tem maior impacto. Workers de análise ou geração de código usam um modelo intermediário (Sonnet) que equilibra custo e qualidade. Workers de busca e extração de texto usam o modelo mais barato e rápido (Haiku) porque a tarefa é simples e o volume de chamadas pode ser alto. Usar Opus para tudo eleva o custo desnecessariamente; usar Haiku para o orquestrador compromete a qualidade do plano."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual é a forma correta de passar contexto de uma fase anterior para um worker no padrão orchestrator-worker?",
+      "options": [
+        "Compartilhar a variável de estado global entre todos os agentes via closure",
+        "Passar o histórico completo de conversa do orquestrador como system prompt do worker",
+        "Serializar apenas o artefato produzido pela fase anterior e incluí-lo no input do worker, não o histórico",
+        "Fazer o worker reler os logs do orquestrador diretamente do sistema de arquivos"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O contrato de comunicação entre agentes deve ser explícito e mínimo: o orquestrador extrai apenas o artefato relevante da fase anterior (texto de pesquisa, código gerado, análise de review) e o inclui como contexto no input do próximo worker. Passar o histórico completo viola o princípio de isolamento de contexto — o worker receberia informações irrelevantes que podem distrair seu raciocínio e aumentam o custo de tokens desnecessariamente. Memória compartilhada via variáveis globais cria acoplamento frágil e não funciona em execução distribuída."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Um sistema multi-agentes tem 4 workers que processam dados em paralelo. Em produção, qual é a consequência de usar Promise.all em vez de Promise.allSettled se um dos workers falhar?",
+      "options": [
+        "Nenhuma diferença — ambos os métodos se comportam da mesma forma em caso de rejeição",
+        "Promise.all rejeita imediatamente e descarta os resultados dos outros 3 workers que podem ter tido sucesso",
+        "Promise.all aguarda todos os workers terminarem antes de lançar o erro",
+        "Promise.allSettled cancela os workers ainda em execução quando um falha"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Promise.all tem semântica de 'falha rápida': assim que qualquer uma das Promises é rejeitada, a Promise retornada por Promise.all é rejeitada imediatamente — e os resultados dos outros workers que já completaram com sucesso são descartados. Em orquestrações de produção isso é perigoso: você perderia resultados válidos e potencialmente custosos (em tokens e latência) por uma falha parcial. Promise.allSettled aguarda todas as Promises terminarem (com sucesso ou falha) e retorna um array com o status de cada uma, permitindo que o orquestrador processe os resultados parciais e decida como tratar as falhas individualmente."
+    }
+  ]
 }

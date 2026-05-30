@@ -119,6 +119,19 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
   },
   ai: {
     'day-01': () => import('@/content/ai/day-01-intro-ai-moderna/quiz.json'),
+    'day-02': () => import('@/content/ai/day-02-anthropic-api-sdk/quiz.json'),
+    'day-03': () => import('@/content/ai/day-03-prompt-context-engineering/quiz.json'),
+    'day-04': () => import('@/content/ai/day-04-tool-use/quiz.json'),
+    'day-05': () => import('@/content/ai/day-05-rag-embeddings/quiz.json'),
+    'day-06': () => import('@/content/ai/day-06-mcp-conceito/quiz.json'),
+    'day-07': () => import('@/content/ai/day-07-mcp-server/quiz.json'),
+    'day-08': () => import('@/content/ai/day-08-skills/quiz.json'),
+    'day-09': () => import('@/content/ai/day-09-agents-loop/quiz.json'),
+    'day-10': () => import('@/content/ai/day-10-memoria-estado/quiz.json'),
+    'day-11': () => import('@/content/ai/day-11-agent-sdk/quiz.json'),
+    'day-12': () => import('@/content/ai/day-12-multi-agentes/quiz.json'),
+    'day-13': () => import('@/content/ai/day-13-eval-observabilidade-guardrails/quiz.json'),
+    'day-14': () => import('@/content/ai/day-14-projeto-final-sistema-agentico/quiz.json'),
   },
 }
 

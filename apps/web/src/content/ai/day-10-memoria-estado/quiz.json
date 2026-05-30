@@ -1,5 +1,97 @@
 {
   "lessonId": "day-10",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que LLMs são descritos como 'stateless' em relação à memória?",
+      "options": [
+        "Porque o modelo não consegue armazenar variáveis durante a geração de tokens",
+        "Porque cada chamada à API começa do zero, sem lembrança automática de interações anteriores",
+        "Porque o model context não persiste entre diferentes usuários do mesmo tenant",
+        "Porque a API não aceita mais de uma mensagem por chamada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "LLMs são stateless porque cada chamada à Messages API é independente: o modelo não retém nenhuma informação de chamadas anteriores por conta própria. Toda 'memória' que o modelo demonstra em uma conversa existe porque a aplicação reenviou o histórico no array `messages`. A camada de memória — decidir o que persiste e o que é reenviado — é responsabilidade do desenvolvedor, não do modelo."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença entre memória short-term e long-term em um agente?",
+      "options": [
+        "Short-term usa arquivos em disco; long-term usa variáveis em memória RAM",
+        "Short-term é mais cara de implementar; long-term é gratuita na API",
+        "Short-term vive na janela de contexto e é perdida ao encerrar o processo; long-term é persistida fora do modelo e recuperada sob demanda",
+        "Short-term armazena código; long-term armazena texto"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Memória short-term é a janela de contexto ativa: tudo que está no array `messages` da chamada atual. É perfeita para uma sessão, mas desaparece quando o processo termina ou a janela é limpa. Memória long-term é qualquer dado persistido fora do modelo — banco relacional, chave-valor, store vetorial — que pode ser recuperado e reinjetado no contexto em sessões futuras. A distinção determina quais estratégias de persistência e recuperação você precisa implementar."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual é o objetivo principal do context compaction?",
+      "options": [
+        "Substituir mensagens antigas por um resumo conciso, liberando espaço na janela de contexto",
+        "Reduzir o tamanho do system prompt para caber em menos tokens",
+        "Comprimir o JSON da resposta da API para economizar banda de rede",
+        "Dividir uma tarefa longa em subtarefas menores para o agente executar em paralelo"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Context compaction substitui os turnos mais antigos de uma conversa longa por um resumo gerado por um modelo auxiliar (geralmente mais barato, como o Claude Haiku), descartando as mensagens originais. O objetivo é liberar espaço na janela de contexto para os turnos recentes e para o raciocínio atual — sem perder completamente as informações já trocadas. A técnica é disparada quando o uso de tokens atinge um limiar (ex.: 70% da janela máxima)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Durante context compaction, por que é importante preservar os últimos N turnos sem comprimir?",
+      "options": [
+        "Porque a API da Anthropic exige pelo menos 5 mensagens no array antes de aceitar a requisição",
+        "Porque o modelo precisa do contexto imediato para manter coerência com o que está sendo discutido agora",
+        "Porque comprimir os turnos recentes aumenta o custo de embedding",
+        "Porque os últimos turnos contêm os resultados de tool use e esses não podem ser resumidos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O modelo usa os turnos mais recentes para manter coerência com a tarefa atual: qual pergunta foi feita, qual resposta foi dada, qual é o próximo passo. Comprimir esses turnos faria com que o modelo perdesse o fio da conversa imediata, prejudicando a qualidade da próxima resposta. A boa prática é sempre preservar as últimas N trocas intactas (ex.: os 10 turnos mais recentes) e comprimir apenas o histórico mais antigo."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como o RAG (visto no dia 5) se relaciona com estratégias de memória long-term?",
+      "options": [
+        "RAG é uma técnica exclusiva para recuperar código de repositórios Git; não se aplica a memória de agentes",
+        "RAG pode ser usado como mecanismo de recuperação de memória long-term: fatos e resumos são indexados como vetores e recuperados por similaridade semântica com a mensagem atual",
+        "RAG substitui completamente a necessidade de memória short-term em agentes avançados",
+        "RAG e memória long-term são conceitos opostos: um usa banco vetorial, o outro usa banco relacional"
+      ],
+      "correctAnswer": 1,
+      "explanation": "RAG (Retrieval-Augmented Generation) é fundamentalmente uma estratégia de recuperação de informação por relevância semântica — e essa mesma técnica se aplica à memória long-term de agentes. Fatos destilados, resumos de sessão e decisões passadas podem ser indexados como embeddings em um vector store. Quando o usuário faz uma nova pergunta, o agente busca as memórias semanticamente mais relevantes e as injeta no contexto. Isso torna o RAG o mecanismo de recuperação ideal para bases de memória grandes e variadas."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual dos seguintes é um risco real de injetar memória irrelevante no contexto de um agente?",
+      "options": [
+        "O modelo pode recusar a responder por receber tokens desnecessários",
+        "A API lança erro de validação quando detecta memórias duplicadas no array messages",
+        "Memória irrelevante dilui a atenção do modelo, prejudicando a qualidade da resposta sobre o que realmente importa",
+        "O custo de embedding aumenta proporcionalmente à quantidade de memória injetada"
+      ],
+      "correctAnswer": 2,
+      "explanation": "LLMs têm atenção limitada e distribuída ao longo de toda a janela de contexto. O fenômeno 'lost in the middle' mostra que informação no meio de uma janela longa recebe menos atenção do que informação no início ou no final. Injetar memórias irrelevantes aumenta o ruído, pode introduzir contradições e desvia a atenção do modelo do que é realmente importante para a tarefa atual. A regra de ouro é: contexto deve ser necessário e suficiente — menos é mais quando a relevância é baixa."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que é uma boa prática incluir um campo `updatedAt` em entradas de memória persistida?",
+      "options": [
+        "Porque a API da Anthropic rejeita mensagens sem timestamp no campo content",
+        "Porque o modelo usa o timestamp para calibrar a confiança nas informações fornecidas",
+        "Para facilitar a geração de embeddings com informação temporal embutida",
+        "Para permitir ordenação cronológica e detectar entradas desatualizadas (staleness), já que fatos persistidos podem mudar ao longo do tempo"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Fatos persistidos em memória long-term podem ficar desatualizados: a stack do projeto muda, o usuário muda de preferências, uma decisão tomada em uma sessão anterior é revertida. Incluir `updatedAt` (e opcionalmente `ttlDays` para expiração automática) permite filtrar entradas velhas antes de injetá-las no contexto, evitando que o modelo receba informações contraditas por fatos mais recentes. Implementar isso desde o início é muito mais fácil do que adicionar retroativamente em produção."
+    }
+  ]
 }

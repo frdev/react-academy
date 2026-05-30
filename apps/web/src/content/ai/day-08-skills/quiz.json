@@ -1,5 +1,97 @@
 {
   "lessonId": "day-08",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o principal problema que Skills resolvem no desenvolvimento com agentes?",
+      "options": [
+        "Permitem que o modelo execute código arbitrário sem ferramentas externas",
+        "Reduzem o custo de tokens ao carregar conhecimento especializado apenas quando relevante",
+        "Substituem completamente o system prompt, tornando-o desnecessário",
+        "Garantem que o modelo nunca cometa erros em tarefas repetitivas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Skills resolvem o problema de context window inflada e context dilution: ao invés de injetar todas as instruções no system prompt permanentemente, apenas o índice (name + description de cada skill) fica no contexto. O conteúdo completo da skill é carregado sob demanda quando a situação exige. Isso economiza tokens e aumenta a atenção efetiva do modelo às instruções relevantes."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Quais são os campos obrigatórios no frontmatter YAML de um `SKILL.md`?",
+      "options": [
+        "name, description e version",
+        "name e description",
+        "id, title e trigger",
+        "name, instructions e examples"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O frontmatter de um SKILL.md requer exatamente dois campos: `name` (identificador único da skill, em kebab-case) e `description` (texto que descreve quando a skill deve ser usada, funcionando como gatilho de disparo). Campos como version, id ou examples não fazem parte da especificação canônica de skills no ecossistema Claude Code/Anthropic."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como o mecanismo de progressive disclosure de skills funciona na prática?",
+      "options": [
+        "O conteúdo completo de todas as skills é carregado no início de cada sessão",
+        "Apenas o name e description de cada skill ficam no contexto; o conteúdo completo é carregado sob demanda",
+        "Skills são carregadas aleatoriamente dependendo do tamanho do contexto disponível",
+        "O modelo escolhe entre skills e tools dependendo do custo de tokens"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O harness mantém um índice enxuto com apenas name e description de cada skill disponível. Quando o modelo recebe uma mensagem, avalia quais skills são relevantes para aquela tarefa específica e solicita o carregamento completo somente delas. Skills não selecionadas ficam completamente fora do contexto. Isso é progressive disclosure: revelar informação progressivamente conforme a necessidade, não toda de uma vez."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual das seguintes descriptions está mais bem escrita para disparar corretamente uma skill de deploy?",
+      "options": [
+        "\"Contém informações sobre o processo de deploy do projeto.\"",
+        "\"Use quando precisar fazer alguma coisa relacionada a infraestrutura.\"",
+        "\"Pre-deployment verification checklist. Use when about to ship a release, deploying a change with database migrations, or verifying CI status before going to production.\"",
+        "\"Deploy instructions — read this skill before any task.\""
+      ],
+      "correctAnswer": 2,
+      "explanation": "A opção correta usa o padrão `Use when <condição>` com condições concretas e específicas (ship a release, database migrations, verifying CI). Isso permite ao modelo fazer matching semântico preciso entre a intenção do usuário e o trigger da skill. Descriptions vagas ('relacionada a infraestrutura') disparam em excesso; descriptions como 'read before any task' eliminam a seletividade que torna skills úteis."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença fundamental entre uma tool e uma skill no design de agentes?",
+      "options": [
+        "Tools são escritas em Python; skills são escritas em Markdown",
+        "Tools executam ações no mundo (função com input/output); skills carregam conhecimento/procedimento situacional",
+        "Skills são mais rápidas que tools porque não fazem I/O",
+        "Tools e skills são intercambiáveis — a escolha é apenas de preferência"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A distinção é conceitual: tools expõem capacidade de agir (bash, read_file, call_api — o modelo decide quando chamar e com quais argumentos). Skills expõem conhecimento de como proceder em uma situação — o modelo carrega e segue o procedimento. Uma tool pode executar testes; uma skill sabe o ritual de como verificar qualidade antes de um deploy neste projeto específico. Combiná-los é o que produz agentes úteis em contextos reais."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Onde devem ficar as skills que se aplicam a todos os projetos de um usuário (preferências pessoais, workflows genéricos)?",
+      "options": [
+        ".claude/skills/ na raiz de cada projeto",
+        "~/.claude/skills/ no diretório home do usuário",
+        "/usr/local/claude/skills/ para instalação global do sistema",
+        "Diretamente no CLAUDE.md do projeto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Skills globais do usuário ficam em ~/.claude/skills/ e se aplicam automaticamente a todos os projetos. Skills específicas de projeto ficam em .claude/skills/ na raiz do repositório. Quando há conflito de `name` entre uma skill global e uma skill de projeto, a skill de projeto tem precedência — o que permite que projetos sobrescrevam comportamentos globais quando necessário."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Quando faz sentido manter uma instrução no system prompt em vez de convertê-la em skill?",
+      "options": [
+        "Quando a instrução tem mais de 50 linhas — skills só suportam instruções curtas",
+        "Quando a instrução define persona, restrições globais ou contexto invariante que deve estar sempre presente",
+        "Quando a instrução envolve uso de ferramentas externas como bash ou APIs",
+        "Quando o projeto tem mais de 10 skills — o harness não suporta mais do que isso"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O system prompt é para o que o modelo é e sempre sabe: persona ('você é um engenheiro sênior'), restrições globais ('nunca exponha dados sensíveis'), contexto invariante do projeto. Instruções condicionais ('se o usuário pedir review, então...') são candidatas a skill. A regra prática: se você está usando if/então no system prompt, provavelmente deveria ser uma skill. Não há limite documentado de skills; o tamanho do SKILL.md é irrelevante para a decisão."
+    }
+  ]
 }

@@ -1,5 +1,97 @@
 {
   "lessonId": "day-06",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual problema central o MCP resolve nas integrações de AI?",
+      "options": [
+        "Lentidão de inferência dos modelos de linguagem",
+        "A explosão M×N de conectores — cada app precisando de código próprio para cada serviço",
+        "Falta de suporte a streaming nas APIs de LLMs",
+        "Incompatibilidade de formatos de arquivo entre IDEs"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O problema M×N acontece quando M aplicações precisam se integrar com N serviços externos — sem um padrão, você tem M×N combinações de código customizado. O MCP colapsa isso para M+N: cada app implementa o protocolo MCP uma vez (M clientes), e cada serviço expõe um MCP server uma vez (N servers). Isso elimina a necessidade de reescrever integrações quando se troca de modelo ou de host."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Na arquitetura MCP, qual é a relação entre client e server?",
+      "options": [
+        "Um client pode se conectar a múltiplos servers simultaneamente",
+        "Cada client mantém exatamente uma conexão com um único server",
+        "Um server pode enviar mensagens diretamente para o modelo sem passar pelo client",
+        "O server é sempre um processo filho do client"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A especificação MCP define que cada client mantém exatamente uma conexão persistente com um único server — é uma relação 1:1. É o host que pode ter múltiplos clients ativos ao mesmo tempo, cada um conectado a um server diferente. Isso simplifica o gerenciamento de estado e capabilities de cada conexão."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando você deve preferir o transporte stdio em vez de HTTP/SSE no MCP?",
+      "options": [
+        "Quando o server precisa ser acessado por múltiplos usuários na nuvem",
+        "Quando o server expõe mais de 10 tools diferentes",
+        "Para servers locais — scripts e binários executados na mesma máquina que o host",
+        "Quando o modelo precisa receber notificações push em tempo real"
+      ],
+      "correctAnswer": 2,
+      "explanation": "stdio é o modo mais simples de transporte: o host inicia o server como processo filho e se comunica via stdin/stdout — sem portas abertas, sem configuração de rede, sem firewall. É ideal para servers locais como ferramentas de dev, scripts Python ou binários empacotados. HTTP/SSE é preferível quando o server precisa ser hospedado remotamente, compartilhado entre múltiplos usuários, ou acessado de redes diferentes."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre uma `tool` e um `resource` no MCP?",
+      "options": [
+        "Tools são escritas em TypeScript; resources podem ser em qualquer linguagem",
+        "Tools produzem efeitos colaterais (ações); resources são dados contextuais para leitura",
+        "Resources exigem aprovação do usuário; tools executam automaticamente",
+        "Tools retornam JSON; resources retornam apenas texto plano"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A distinção é semântica e importante: tools representam ações executáveis com possíveis side-effects (criar uma issue, enviar um e-mail, executar uma query SQL). Resources são dados contextuais — conteúdo que o host injeta no contexto do modelo para leitura, como o conteúdo de um arquivo ou documentação. O modelo invoca tools sob demanda; resources são incluídos pelo host como contexto de background."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que são `prompts` como primitiva MCP?",
+      "options": [
+        "As mensagens system que o host envia para o modelo a cada turno",
+        "Arquivos de configuração que definem o comportamento do server",
+        "Templates reutilizáveis com parâmetros variáveis que o server expõe",
+        "Histórico de conversas armazenado pelo server para contexto futuro"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Prompts MCP são receitas prontas que combinam instrução + contexto + argumentos dinâmicos. Um server pode expor um prompt chamado `code_review` que aceita parâmetros como `language` e `focus`, e retorna a estrutura de mensagem ideal para essa tarefa. Isso permite que times de engenharia padronizem e reutilizem fluxos de interação complexos sem que cada app precise reimplementá-los."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual camada da arquitetura MCP tem autoridade sobre permissões e decide quais servers estão disponíveis?",
+      "options": [
+        "O MCP Server, que define suas próprias permissões de acesso",
+        "O MCP Client, por ser o intermediador das mensagens",
+        "O Host, que gerencia o ciclo de vida dos clients e controla o contexto do modelo",
+        "O modelo de linguagem, que negocia capabilities diretamente com os servers"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O host é o processo que o usuário controla diretamente (Claude.ai, Claude Code, um IDE). É ele quem decide quais servers são iniciados, quais capabilities ficam disponíveis ao modelo, e tem autoridade sobre permissões de segurança. O model nunca se comunica diretamente com os servers — tudo passa pelo client dentro do host, que filtra e roteia as mensagens."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual protocolo de mensagens o MCP usa como base para a comunicação entre client e server?",
+      "options": [
+        "GraphQL sobre WebSocket",
+        "REST com JSON:API",
+        "gRPC com Protocol Buffers",
+        "JSON-RPC 2.0"
+      ],
+      "correctAnswer": 3,
+      "explanation": "O MCP usa JSON-RPC 2.0 como protocolo de mensagens, independente do transporte físico (stdio ou HTTP/SSE). JSON-RPC 2.0 define um formato simples de requisição/resposta com campos `jsonrpc`, `method`, `params` e `id`, além de suporte a notificações (mensagens sem resposta esperada). Essa escolha torna o MCP leve, legível e fácil de implementar em qualquer linguagem."
+    }
+  ]
 }

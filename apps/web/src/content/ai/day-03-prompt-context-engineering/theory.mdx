@@ -1,3 +1,175 @@
 # Prompt & context engineering
 
-> Conteúdo em breve.
+Prompt engineering é a arte de formular instruções precisas para um modelo de linguagem; context engineering é a disciplina mais ampla de decidir *o que* entra na janela de contexto — e em qual ordem. Em sistemas agênticos, onde o modelo lê ferramentas, memórias, histórico de conversas e resultados de execução, context engineering determina se o agente raciocina bem ou se perde em ruído. Este dia cobre os dois lados com foco na API da Anthropic.
+
+## Estruturação de prompts
+
+Um prompt eficaz comunica quatro coisas com clareza: **papel**, **tarefa**, **restrições** e **formato de saída**. Quanto mais específico cada elemento, menos o modelo precisa adivinhar.
+
+A Anthropic Messages API distingue dois vetores de instrução:
+
+```ts
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic();
+
+const response = await client.messages.create({
+  model: "claude-opus-4-5",
+  max_tokens: 1024,
+  // system: instrução persistente — papel, restrições, formato
+  system: `Você é um revisor sênior de código TypeScript.
+Responda sempre em português do Brasil.
+Formato: lista de problemas em Markdown, cada item com severidade [alta/média/baixa].
+Não sugira refatorações fora do escopo solicitado.`,
+  messages: [
+    {
+      role: "user",
+      content: "Revise a função abaixo:\n\n```ts\nfunction fetchUser(id) {\n  return fetch('/users/' + id).then(r => r.json())\n}\n```",
+    },
+  ],
+});
+
+console.log(response.content[0].text);
+```
+
+**Regras práticas:**
+- Coloque identidade, tom e formato no `system`. Coloque a tarefa específica no `user`.
+- Use verbos imperativos diretos: "Liste", "Classifique", "Retorne JSON com os campos X e Y".
+- Especifique o que *não* fazer quando o modelo tende a extrapolar ("não inclua explicações fora do JSON").
+- Declare o formato de saída antes de pedir o conteúdo — o modelo escreve para frente, não revisa para trás.
+
+## Few-shot examples
+
+Few-shot examples são demonstrações de input→output embutidas na conversa. Elas calibram estilo, formato e raciocínio muito melhor do que descrever tudo em prosa. Na Messages API, você os insere como pares `user`/`assistant` alternados antes da mensagem real do usuário.
+
+```ts
+const response = await client.messages.create({
+  model: "claude-opus-4-5",
+  max_tokens: 512,
+  system: "Você extrai entidades de textos em JSON. Retorne apenas o JSON, sem explicações.",
+  messages: [
+    // — exemplo 1
+    {
+      role: "user",
+      content: "Felipe Ristow apresentou o produto na conferência em São Paulo.",
+    },
+    {
+      role: "assistant",
+      content: `{"pessoas": ["Felipe Ristow"], "lugares": ["São Paulo"], "eventos": ["conferência"]}`,
+    },
+    // — exemplo 2
+    {
+      role: "user",
+      content: "A startup Vercel lançou o Next.js 15 em outubro de 2024.",
+    },
+    {
+      role: "assistant",
+      content: `{"organizações": ["Vercel"], "produtos": ["Next.js 15"], "datas": ["outubro de 2024"]}`,
+    },
+    // — pergunta real
+    {
+      role: "user",
+      content: "Anthropic anunciou o Claude 4 em San Francisco durante o AI Summit.",
+    },
+  ],
+});
+```
+
+**Regras práticas:**
+- 2-3 exemplos geralmente superam 1; acima de 5 o retorno marginal cai e você desperdiça tokens.
+- Escolha exemplos que cubram casos *diferentes* entre si — variedade calibra melhor do que repetição.
+- Se o formato de saída for complexo (JSON aninhado, tabelas), prefira few-shot a descrever o schema em prosa.
+- Em fluxos agênticos, examples também demonstram *raciocínio*: mostre o modelo pensando passo a passo antes de responder.
+
+## Gestão da context window
+
+A context window do Claude (200k tokens no Opus/Sonnet 4) é grande, mas não infinita — e custo, latência e qualidade de atenção escalam com o tamanho. Em agentes de longa duração, a janela enche com histórico de mensagens, resultados de ferramentas e documentos recuperados.
+
+Estratégias para controlar o crescimento:
+
+```text
+Prioridade (ordem decrescente de importância):
+1. system prompt        — sempre presente, ~500-2000 tokens
+2. mensagem atual       — a requisição do usuário/task
+3. memória seletiva     — fatos destilados de turnos anteriores
+4. histórico recente    — últimas N trocas completas
+5. documentos/RAG       — recuperados por relevância semântica
+6. histórico antigo     — comprimido ou descartado
+```
+
+**Compressão de histórico:** ao atingir ~70% da janela, sumarize os turnos mais antigos em um bloco conciso e descarte as mensagens originais. Você pode fazer isso com uma chamada auxiliar:
+
+```ts
+async function compressHistory(turns: { role: string; content: string }[]) {
+  const summary = await client.messages.create({
+    model: "claude-haiku-4-5", // modelo mais barato para tarefa interna
+    max_tokens: 512,
+    system: "Sumarize a conversa abaixo em bullet points concisos, preservando decisões e fatos importantes.",
+    messages: [
+      {
+        role: "user",
+        content: turns.map((t) => `${t.role}: ${t.content}`).join("\n"),
+      },
+    ],
+  });
+  return summary.content[0].text;
+}
+```
+
+**Regras práticas:**
+- Meça tokens antes de cada chamada — `anthropic.messages.countTokens()` (beta) ou estime por `chars / 4`.
+- Nunca deixe resultados de ferramentas brutos crescerem indefinidamente; extraia apenas o que o próximo passo precisa.
+- Documentos longos: traga só as seções relevantes, não o arquivo inteiro.
+
+## Quando dar mais contexto — e quando dar menos
+
+Mais contexto não é sempre melhor. O modelo presta atenção ao *início* e ao *fim* da janela (fenômeno "lost in the middle"). Material irrelevante no meio dilui a atenção e pode introduzir contradições.
+
+**Dê mais contexto quando:**
+- A tarefa exige consistência com decisões anteriores (histórico real de um projeto).
+- Você quer que o modelo siga um estilo muito específico (inclua exemplos de referência).
+- A tarefa envolve múltiplos passos interdependentes em uma só chamada.
+
+**Dê menos contexto quando:**
+- A tarefa é bem definida e autossuficiente ("traduza este parágrafo").
+- O histórico antigo é ruído — conversas sobre outro assunto no mesmo thread.
+- Você está em produção com latência crítica: cada token extra aumenta o time-to-first-token.
+
+```text
+Regra de ouro: contexto deve ser necessário E suficiente.
+Pergunte-se: "o modelo precisa desse trecho para responder corretamente?"
+Se não, remova.
+```
+
+## Anti-padrões comuns
+
+Erros recorrentes que degradam qualidade silenciosamente:
+
+**1. System prompt como dump de documentação**
+Jogar 50 páginas de especificação no `system` não garante que o modelo "sabe tudo". Prefira recuperação dinâmica (RAG) de trechos relevantes por chamada.
+
+**2. Instrução ambígua de formato**
+`"Retorne um JSON"` sem schema leva a estruturas inconsistentes entre chamadas. Defina campos, tipos e exemplos.
+
+```json
+// Ruim
+"Retorne um JSON com os dados do usuário"
+
+// Bom
+"Retorne exatamente este schema JSON (sem texto adicional):
+{\"name\": string, \"age\": number, \"active\": boolean}"
+```
+
+**3. Few-shot com exemplos homogêneos**
+Três exemplos idênticos em estrutura ensinam o modelo a copiar, não a generalizar. Varie os inputs.
+
+**4. Concatenar turnos sem limpeza**
+Em agentes que executam ferramentas, os resultados de `tool_result` podem conter stacktraces, HTML bruto ou JSON com milhares de linhas. Filtre antes de adicionar à janela.
+
+**5. Instruction drift em multi-turn**
+Instruções críticas mencionadas apenas no primeiro turno são esquecidas em conversas longas. Repita constraints importantes no `system` — ele persiste em toda chamada — não apenas como mensagem `user`.
+
+**6. Ignorar a posição na janela**
+Coloque o material mais importante no começo (`system`) ou no final (última mensagem `user`). Informação enterrada no meio de um histórico longo tem menor peso na atenção do modelo.
+
+> **Resumo:** Separe *instruções* (system prompt) de *dados* (context window). Calibre few-shot com exemplos variados e concisos. Gerencie ativamente o crescimento da janela — comprima histórico antes de estourar. Dê ao modelo exatamente o contexto necessário e suficiente: mais tokens não é mais inteligência, é mais ruído. Evite os anti-padrões clássicos de formato ambíguo, dumps de documentação e instruction drift.

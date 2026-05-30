@@ -1,3 +1,296 @@
 # Multi-agentes
 
-> Conteúdo em breve.
+Um único agente acumula responsabilidades e contexto até o ponto em que o raciocínio fica comprometido: janela de contexto saturada, instruções conflitantes, dificuldade de manter foco em subtarefas independentes. A arquitetura multi-agente resolve isso decompondo o problema — um **orquestrador** planeja e delega, e **workers** especializados executam com contexto isolado e conjunto de tools restrito ao seu domínio. O resultado é menor custo médio por chamada, melhor qualidade por subtarefa e execução paralela onde os dados permitem.
+
+## Por que múltiplos agentes
+
+O modelo tem um limite físico de contexto (~200 k tokens no Claude 3.7 Sonnet) e um limite prático de atenção — quanto mais informação irrelevante no contexto, pior o raciocínio sobre o que importa. Além do limite de tokens, há o problema de responsabilidade misturada: um único agente que pesquisa, valida, gera código e escreve e-mail precisa carregar todas as tools, todos os exemplos few-shot e todo o estado intermediário ao mesmo tempo.
+
+Multi-agentes resolve os dois vetores:
+
+- **Isolamento de contexto:** cada worker recebe apenas o que precisa — um agente de busca não precisa saber nada sobre formatação de relatório.
+- **Separação de responsabilidade:** as fronteiras de delegação forçam um design explícito de tarefas, que é mais fácil de testar, depurar e substituir.
+- **Execução paralela:** tarefas independentes rodam em paralelo, reduzindo latência total.
+- **Especialização de tools:** um worker de código recebe tools de execução de shell; um worker de escrita não recebe nenhuma — reduz superfície de ataque e tokens de descrição de tool.
+
+**Regra prática:** considere multi-agentes quando uma tarefa tem mais de duas fases claramente distintas, quando qualquer fase sozinha consumiria mais de ~30 k tokens de contexto, ou quando duas ou mais fases podem rodar em paralelo.
+
+## O padrão Orchestrator-Worker
+
+O padrão central do Anthropic Agent SDK é o **orchestrator-worker**: um agente raiz que não executa tarefas diretamente, mas planeja, decompõe e delega para subagentes que têm contexto e tools próprios.
+
+```text
+Usuário
+  │
+  ▼
+┌─────────────────────────────────┐
+│         ORCHESTRATOR            │
+│  - recebe o objetivo            │
+│  - decompõe em subtarefas       │
+│  - decide sequência/paralelismo │
+│  - agrega resultados            │
+└──────┬──────────┬───────────────┘
+       │          │
+       ▼          ▼
+┌──────────┐  ┌──────────┐
+│ Worker A │  │ Worker B │
+│ (busca)  │  │ (código) │
+│ tools:   │  │ tools:   │
+│ search,  │  │ bash,    │
+│ fetch    │  │ write_fs │
+└──────────┘  └──────────┘
+```
+
+O orquestrador conhece o objetivo global e o estado da orquestração. Cada worker conhece apenas sua subtarefa. Essa assimetria de informação é intencional — ela mantém os workers focados e previsíveis.
+
+```ts
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic()
+
+// Worker especializado: só pesquisa e sumariza fontes
+async function researchWorker(query: string): Promise<string> {
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5',  // modelo menor para tarefa focada
+    max_tokens: 2048,
+    system: `Você é um agente de pesquisa. Sua única função é buscar
+informações relevantes sobre o tópico recebido e retornar um resumo
+estruturado. Não gere recomendações nem código.`,
+    tools: [
+      {
+        name: 'web_search',
+        description: 'Busca informações atuais na web.',
+        input_schema: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
+          required: ['query'],
+          additionalProperties: false,
+        },
+      },
+    ],
+    messages: [{ role: 'user', content: `Pesquise: ${query}` }],
+  })
+  // ... loop de tool_use omitido para brevidade
+  return extractText(response)
+}
+
+// Worker especializado: só gera código TypeScript
+async function codeWorker(spec: string): Promise<string> {
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-5',  // modelo maior para tarefa de código
+    max_tokens: 4096,
+    system: `Você é um engenheiro TypeScript sênior. Receba uma especificação
+e retorne apenas o código, sem explicação. Use tipos estritos.`,
+    messages: [{ role: 'user', content: spec }],
+  })
+  return extractText(response)
+}
+
+// Orquestrador: planeja, delega, agrega
+async function orchestrator(goal: string): Promise<string> {
+  // Fase 1: planejamento (o orquestrador raciocina sobre o objetivo)
+  const plan = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 1024,
+    system: `Você é um orquestrador de agentes. Decomponha o objetivo em
+subtarefas atômicas. Retorne JSON: { "tasks": [{ "id": string, "type": "research"|"code", "input": string, "dependsOn": string[] }] }`,
+    messages: [{ role: 'user', content: goal }],
+  })
+
+  const { tasks } = JSON.parse(extractText(plan)) as {
+    tasks: Array<{ id: string; type: 'research' | 'code'; input: string; dependsOn: string[] }>
+  }
+
+  // Fase 2: execução (workers em sequência ou paralelo conforme dependências)
+  const results: Record<string, string> = {}
+
+  for (const task of tasks) {
+    // Aguarda dependências resolverem antes de disparar
+    const deps = task.dependsOn.map((d) => results[d] ?? '').join('\n')
+    const input = deps ? `${task.input}\n\nContexto anterior:\n${deps}` : task.input
+
+    results[task.id] =
+      task.type === 'research'
+        ? await researchWorker(input)
+        : await codeWorker(input)
+  }
+
+  // Fase 3: síntese
+  const synthesis = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 2048,
+    system: 'Sintetize os resultados dos workers em uma resposta coesa para o usuário.',
+    messages: [{ role: 'user', content: JSON.stringify(results) }],
+  })
+
+  return extractText(synthesis)
+}
+```
+
+**Regra prática:** o orquestrador não deve executar nenhuma tarefa de domínio — apenas planejar, delegar e agregar. Se o orquestrador começar a fazer buscas ou gerar código diretamente, o design está errado.
+
+## Execução paralela (fan-out)
+
+Quando as subtarefas não têm dependência entre si, dispará-las em paralelo com `Promise.all` reduz a latência total do tempo somado para o tempo da mais lenta.
+
+```text
+ORCHESTRATOR
+    │
+    ├──────────────┬──────────────┐
+    ▼              ▼              ▼
+Worker A       Worker B       Worker C
+(país 1)       (país 2)       (país 3)
+    │              │              │
+    └──────────────┴──────────────┘
+                   │
+                   ▼
+             ORCHESTRATOR
+             (agrega 3 resultados)
+```
+
+```ts
+// Fan-out paralelo: os workers não dependem uns dos outros
+async function parallelOrchestrator(countries: string[]): Promise<Record<string, string>> {
+  const workerPromises = countries.map((country) =>
+    researchWorker(`Regulamentação de IA em ${country}`)
+      .then((result) => [country, result] as const)
+  )
+
+  // Todos os workers rodam simultaneamente
+  const entries = await Promise.all(workerPromises)
+  return Object.fromEntries(entries)
+}
+
+// Com Promise.allSettled para tolerar falhas parciais
+async function resilientFanOut(tasks: string[]): Promise<string[]> {
+  const results = await Promise.allSettled(
+    tasks.map((t) => researchWorker(t))
+  )
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+    .map((r) => r.value)
+}
+```
+
+**Regra prática:** use `Promise.allSettled` em vez de `Promise.all` em fan-outs de produção — uma falha de worker não deve derrubar toda a orquestração. O orquestrador decide o que fazer com resultados parciais.
+
+## Comunicação entre agentes
+
+Agentes se comunicam por **mensagem estruturada** — não há canal de memória compartilhado. O contrato de comunicação é explícito e tipado: o orquestrador serializa o input do worker e deserializa o output.
+
+```ts
+// Contrato de mensagem entre orquestrador e worker
+interface WorkerInput {
+  taskId: string
+  type: 'research' | 'code' | 'review'
+  payload: string
+  context?: string   // resultados de tarefas anteriores, se necessário
+}
+
+interface WorkerOutput {
+  taskId: string
+  status: 'success' | 'failure'
+  result: string
+  tokensUsed: number
+}
+
+async function dispatchWorker(input: WorkerInput): Promise<WorkerOutput> {
+  const start = Date.now()
+  try {
+    const result =
+      input.type === 'research' ? await researchWorker(input.payload) :
+      input.type === 'code'     ? await codeWorker(input.payload) :
+      await reviewWorker(input.payload)
+
+    return {
+      taskId: input.taskId,
+      status: 'success',
+      result,
+      tokensUsed: 0, // populado com usage real na implementação completa
+    }
+  } catch (err) {
+    return {
+      taskId: input.taskId,
+      status: 'failure',
+      result: err instanceof Error ? err.message : 'Erro desconhecido',
+      tokensUsed: 0,
+    }
+  }
+}
+```
+
+Além da comunicação direta via retorno de função, você pode usar filas de mensagens (SQS, Redis Streams, BullMQ) quando os workers precisam de retry automático, persistência ou execução distribuída em múltiplas máquinas. O contrato de mensagem permanece o mesmo — a infraestrutura muda.
+
+**Regra prática:** nunca passe o histórico de conversa inteiro de um agente para outro. Extraia apenas o artefato produzido (texto, JSON, código). Histórico é privado ao agente que o gerou.
+
+## Trade-offs: custo, latência e coordenação
+
+Multi-agentes não é gratuito. Antes de adotar o padrão, entenda os custos:
+
+| Dimensão | Agente único | Multi-agentes |
+|---|---|---|
+| Tokens por tarefa | Alto (contexto acumulado) | Menor por worker, maior no total |
+| Latência sequencial | Menor (1 chamada) | Maior (N chamadas encadeadas) |
+| Latência paralela | N/A | Potencialmente menor que sequencial |
+| Debugabilidade | Difícil (tudo num contexto) | Melhor (worker isolado) |
+| Custo de coordenação | Zero | Plano + síntese = tokens extras |
+| Tolerância a falhas | Falha total se o agente falha | Falha parcial possível |
+
+Escolhas de modelo por função:
+
+- **Orquestrador:** Claude Opus 4 (raciocínio complexo sobre dependências e plano)
+- **Workers de código/análise:** Claude Sonnet 4.5 (equilíbrio custo-qualidade)
+- **Workers de busca/sumarização:** Claude Haiku 4.5 (barato, rápido, tarefa simples)
+
+```ts
+// Configuração típica de modelos por papel
+const MODELS = {
+  orchestrator: 'claude-opus-4-5',     // plano e síntese
+  analyst:      'claude-sonnet-4-5',   // análise e código
+  retriever:    'claude-haiku-4-5',    // busca e extração
+} as const
+```
+
+**Regra prática:** o orquestrador usa o modelo mais capaz porque é ele que define a qualidade do plano — uma decomposição ruim contamina todos os workers. Workers usam o modelo mais barato que ainda entrega a qualidade necessária para aquela subtarefa específica.
+
+## Subagentes no Anthropic Agent SDK
+
+O Anthropic Agent SDK (dias 11–14) formaliza o padrão orchestrator-worker com `Agent` como primitiva. Cada `Agent` encapsula sistema, tools e modelo; o orquestrador os instancia e delega via tool calls (cada subagente é exposto como uma tool para o agente pai).
+
+```ts
+// Pseudo-código representando o padrão do Agent SDK
+import { Agent, run } from '@anthropic-ai/agent-sdk'
+
+const researchAgent = new Agent({
+  name: 'ResearchAgent',
+  model: 'claude-haiku-4-5',
+  instructions: 'Pesquise e sumarize informações sobre o tópico recebido.',
+  tools: [webSearchTool, fetchPageTool],
+})
+
+const codeAgent = new Agent({
+  name: 'CodeAgent',
+  model: 'claude-sonnet-4-5',
+  instructions: 'Gere código TypeScript a partir de uma especificação.',
+  tools: [bashTool, writeFileTool],
+})
+
+const orchestratorAgent = new Agent({
+  name: 'OrchestratorAgent',
+  model: 'claude-opus-4-5',
+  instructions: `Você orquestra tarefas complexas. Use ResearchAgent para pesquisa
+e CodeAgent para geração de código. Sintetize os resultados no final.`,
+  // Subagentes são expostos como tools para o orquestrador
+  tools: [researchAgent.asTool(), codeAgent.asTool()],
+})
+
+// O SDK gerencia o loop agentico, incluindo handoffs
+const result = await run(orchestratorAgent, 'Crie um cliente HTTP tipado para a API do GitHub')
+```
+
+Cada `Agent` mantém seu próprio contexto de conversa. Quando o orquestrador chama `ResearchAgent.asTool()`, o SDK inicia uma nova thread de contexto para esse subagente, executa o loop completo (incluindo eventuais tool calls internos), e devolve apenas o resultado final ao orquestrador — o histórico interno do worker não vaza.
+
+**Regra prática:** prefira `agent.asTool()` a coordenação manual via chamadas à API quando usar o Agent SDK. O SDK gerencia context isolation, retry e observabilidade automaticamente.
+
+> **Resumo:** a arquitetura multi-agentes decompõe problemas complexos em workers especializados com contexto isolado, coordenados por um orquestrador que planeja e sintetiza. O padrão orchestrator-worker é a espinha dorsal do Anthropic Agent SDK: cada `Agent` é uma unidade de contexto independente, exposta como tool para o agente pai. Execução paralela com `Promise.all`/`Promise.allSettled` reduz latência onde não há dependências. Os principais trade-offs são custo total de tokens (maior que agente único) e latência de coordenação (plano + síntese). Mitigue escolhendo modelos menores para workers e o modelo mais capaz apenas para o orquestrador.

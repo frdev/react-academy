@@ -1,5 +1,97 @@
 {
   "lessonId": "day-03",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a principal diferença entre prompt engineering e context engineering?",
+      "options": [
+        "Prompt engineering usa system prompts; context engineering usa mensagens user",
+        "Prompt engineering foca em formular instruções; context engineering decide o que entra na janela de contexto e em qual ordem",
+        "Context engineering é apenas para modelos com janela maior que 100k tokens",
+        "São sinônimos — ambos descrevem a mesma prática"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Prompt engineering é a prática de formular instruções precisas (verbos, restrições, formato). Context engineering é a disciplina mais ampla: decidir quais informações incluir na janela, em qual ordem e em qual quantidade. Em sistemas agênticos, context engineering determina se o agente raciocina bem ou se perde em ruído, pois a janela contém ferramentas, memórias, histórico e resultados de execução além do prompt."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Na Anthropic Messages API, onde devem ficar instruções de papel, tom e formato de saída?",
+      "options": [
+        "No primeiro item do array `messages` com role `user`",
+        "No campo `system`, que persiste em toda a chamada",
+        "No último item do array `messages` com role `assistant`",
+        "Em um campo `instructions` separado da API"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O campo `system` da Messages API é o lugar correto para instrução persistente — papel, identidade, restrições e formato de saída. Ele está presente em toda a chamada independentemente do histórico. Mensagens `user` devem conter a tarefa específica do turno atual. Misturar instruções estruturais em mensagens `user` causa instruction drift: em conversas longas, elas perdem peso à medida que o histórico cresce."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quantos few-shot examples geralmente oferecem o melhor custo-benefício?",
+      "options": [
+        "Sempre 1 — qualquer exemplo já calibra o modelo",
+        "2 a 3 — retorno marginal cai significativamente acima de 5",
+        "No mínimo 10 — mais exemplos sempre melhoram a qualidade",
+        "0 — few-shot piora performance em modelos modernos como Claude"
+      ],
+      "correctAnswer": 1,
+      "explanation": "2 a 3 exemplos costumam ser o ponto ótimo. Um único exemplo pode ser insuficiente para demonstrar variação; 2-3 cobrem casos diferentes e calibram estilo e formato com precisão. Acima de 5 exemplos o retorno marginal cai e você desperdiça tokens da janela de contexto, aumentando custo e latência sem ganho proporcional de qualidade."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Em few-shot examples na Messages API, como os exemplos são inseridos na conversa?",
+      "options": [
+        "Como um campo `examples` separado no body da requisição",
+        "Todos no campo `system`, separados por `---`",
+        "Como pares de mensagens `user`/`assistant` alternados antes da mensagem real",
+        "Em um array `shots` dentro de cada mensagem `user`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Few-shot examples são inseridos como pares de mensagens user/assistant alternados no array `messages`, antes da mensagem real do usuário. O modelo interpreta esse histórico como demonstrações de como deve responder. Essa abordagem é idiomática na Messages API e funciona com qualquer modelo Claude — não existe campo especial `examples` ou `shots` na API."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que é o fenômeno 'lost in the middle' em janelas de contexto longas?",
+      "options": [
+        "O modelo perde a thread de raciocínio quando há mais de 3 trocas na conversa",
+        "O modelo presta menos atenção ao material localizado no meio da janela, privilegiando início e fim",
+        "Tokens no meio da janela são truncados automaticamente pela API",
+        "Few-shot examples no meio do contexto são ignorados pelo tokenizer"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O fenômeno 'lost in the middle' é bem documentado em modelos de linguagem: informações posicionadas no meio de janelas longas recebem menos atenção do mecanismo de atenção do que informações no início ou no final. Por isso, instruções críticas devem ficar no system prompt (início) ou na última mensagem user (fim), e material importante não deve ser 'enterrado' no meio de um histórico extenso."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual das estratégias abaixo é a mais adequada para lidar com resultados de ferramentas brutos (ex: HTML ou JSON com milhares de linhas) em agentes?",
+      "options": [
+        "Incluir todo o resultado para que o modelo tenha acesso completo às informações",
+        "Descartar o resultado e pedir ao usuário que reformule a pergunta",
+        "Filtrar e extrair apenas as informações relevantes para o próximo passo antes de adicionar à janela",
+        "Converter o resultado para base64 para reduzir o uso de tokens"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Resultados brutos de ferramentas (HTML de página web, JSON com centenas de campos, stacktraces) podem consumir dezenas de milhares de tokens e introduzir ruído que prejudica o raciocínio do modelo. A prática correta é filtrar e extrair apenas as informações necessárias para o próximo passo antes de inserir na janela. Isso reduz custo, latência e melhora a qualidade da atenção do modelo sobre o que realmente importa."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual anti-padrão descreve a prática de jogar toda a documentação do projeto no system prompt?",
+      "options": [
+        "Instruction drift — as instruções mudam de significado ao longo da conversa",
+        "System prompt como dump de documentação — prejudica a qualidade pois excede a capacidade de atenção do modelo",
+        "Few-shot homogêneo — exemplos repetitivos que limitam a generalização",
+        "Context starvation — contexto insuficiente para tarefas complexas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O anti-padrão de 'system prompt como dump de documentação' consiste em colocar dezenas de páginas de specs no system prompt na expectativa de que o modelo 'saiba tudo'. Isso não funciona por dois motivos: (1) fenômeno 'lost in the middle' — material no meio recebe menos atenção; (2) documentação irrelevante introduz ruído e pode criar contradições. A alternativa correta é RAG (Retrieval-Augmented Generation): recuperar dinamicamente apenas os trechos relevantes para cada chamada."
+    }
+  ]
 }

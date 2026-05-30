@@ -1,5 +1,97 @@
 {
   "lessonId": "day-04",
   "passingScore": 70,
-  "questions": []
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o valor de `stop_reason` na resposta da API quando o modelo quer executar uma tool?",
+      "options": [
+        "\"end_turn\"",
+        "\"tool_use\"",
+        "\"function_call\"",
+        "\"tool_request\""
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando o modelo decide chamar uma ou mais tools, a API retorna a mensagem com `stop_reason: \"tool_use\"`. O bloco de conteúdo do tipo `tool_use` estará presente em `response.content`. O valor `\"end_turn\"` indica que o modelo finalizou a resposta normalmente, sem solicitar tools."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que você deve incluir no campo `content` da mensagem do assistente ao montar o segundo turno (após executar a tool)?",
+      "options": [
+        "Apenas os blocos do tipo `tool_use`, descartando blocos de texto",
+        "Apenas o texto que o modelo gerou antes de solicitar a tool",
+        "O array `response.content` completo, incluindo todos os blocos",
+        "Uma string vazia — o conteúdo do assistente não é necessário"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Você deve preservar o `response.content` completo (o array inteiro) como conteúdo do turno do assistente. A API valida que todos os `tool_use_id` presentes na resposta do assistente tenham um `tool_result` correspondente na mensagem seguinte do usuário. Descartar qualquer bloco — mesmo blocos de texto gerados antes da chamada da tool — causa erros de validação."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual campo do bloco `tool_result` vincula o resultado à chamada original da tool?",
+      "options": [
+        "\"tool_use_id\"",
+        "\"tool_name\"",
+        "\"request_id\"",
+        "\"call_id\""
+      ],
+      "correctAnswer": 0,
+      "explanation": "O campo `tool_use_id` no bloco `tool_result` deve conter exatamente o mesmo valor do campo `id` presente no bloco `tool_use` emitido pelo modelo. Este vínculo é obrigatório: a API usa esse ID para correlacionar qual resultado corresponde a qual chamada, especialmente quando o modelo solicita múltiplas tools em paralelo."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual configuração de `tool_choice` força o modelo a usar uma tool específica, sendo ideal para extração estruturada de dados?",
+      "options": [
+        "{ type: \"auto\" }",
+        "{ type: \"any\" }",
+        "{ type: \"tool\", name: \"nome_da_tool\" }",
+        "{ type: \"required\", tool: \"nome_da_tool\" }"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A configuração `{ type: \"tool\", name: \"nome_da_tool\" }` força o modelo a chamar exatamente aquela tool, independente do conteúdo da mensagem. A Anthropic recomenda esse padrão como substituto de JSON mode: você define uma tool `extract_X` com o schema do objeto desejado e força sua chamada — o `input` gerado pelo modelo será sempre o objeto tipado conforme o schema. `{ type: \"any\" }` força uma tool, mas qualquer uma das disponíveis."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual das opções descreve uma tool BEM projetada segundo as boas práticas da aula?",
+      "options": [
+        "`execute_query` — executa qualquer query SQL no banco de dados",
+        "`process_data` — processa e transforma dados de entrada",
+        "`handle_request` — lida com qualquer requisição do usuário",
+        "`get_invoice_by_id` — busca uma nota fiscal pelo ID; usar quando o usuário quiser ver detalhes de uma NF específica"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Uma tool bem projetada tem nome descritivo com verbo + objeto (`get_invoice_by_id`), responsabilidade única (busca por ID, não lista nem cria), e uma descrição que orienta o modelo sobre *quando* usar — incluindo o contexto de uso e, opcionalmente, quando NÃO usar. As outras opções são genéricas demais: o modelo não saberia discernir quando usar `execute_query` vs `process_data`, levando a chamadas incorretas ou ausência de chamada quando necessário."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "No JSON Schema do `input_schema`, qual propriedade é recomendada para evitar que o modelo invente campos não previstos?",
+      "options": [
+        "\"strictMode\": true",
+        "\"additionalProperties\": false",
+        "\"allowUnknown\": false",
+        "\"sealed\": true"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A propriedade `\"additionalProperties\": false` é um constraint padrão do JSON Schema que proíbe qualquer campo além dos declarados em `properties`. Quando presente no `input_schema`, instrui o modelo a não incluir campos extras no `input` da chamada. Isso também facilita a validação em runtime com bibliotecas como Zod ou ajv, pois o schema é idêntico ao que você usaria para validar qualquer payload de API."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Quando uma tool falha (lança exceção ou retorna dados inválidos), qual é a abordagem correta para o bloco `tool_result`?",
+      "options": [
+        "Lançar a exceção para o loop principal abortar a conversa",
+        "Retornar um `tool_result` vazio e deixar o modelo inferir que houve erro",
+        "Retornar `tool_result` com o erro serializado em JSON e `is_error: true`",
+        "Omitir o `tool_result` e reenviar a conversa sem ele"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A prática correta é capturar qualquer exceção, serializar o erro como JSON no campo `content` do `tool_result`, e sinalizar `is_error: true`. Com essa sinalização, o modelo entende que a execução falhou e pode adotar uma estratégia alternativa (tentar com parâmetros diferentes, usar outra tool, ou comunicar o problema ao usuário) em vez de interpretar a mensagem de erro como dado válido. Omitir o `tool_result` faria a API rejeitar a mensagem, pois todo `tool_use_id` precisa ter um resultado correspondente."
+    }
+  ]
 }
