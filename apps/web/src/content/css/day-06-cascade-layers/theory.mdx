@@ -1,0 +1,89 @@
+# Cascade Layers & Especificidade
+
+Toda equipe grande de CSS vive a mesma guerra: alguém escreve `.btn`, outro precisa sobrescrever e usa `.sidebar .btn`, aí vem `#app .sidebar .btn`, e logo todo mundo apela para `!important`. Isso é a **especificidade** virando arma. As **cascade layers** (`@layer`) cortam o problema pela raiz: elas adicionam uma camada de prioridade **acima** da especificidade, deixando você ordenar blocos inteiros de CSS de forma explícita.
+
+## Recapitulando a especificidade
+
+A especificidade é uma contagem por tipo de seletor — inline, depois IDs, depois classes/atributos/pseudo-classes, depois elementos:
+
+```text
+#header .nav a.active   →  (0 IDs já contados: 1) (classes: 2) (elementos: 1)  = 1,2,1
+.btn                    →  0,1,0
+a                       →  0,0,1
+```
+
+Maior vence. Empate? O **último** declarado ganha. O problema: para sobrescrever algo muito específico, você precisa ser **ainda mais** específico — e a base de código incha em seletores barrocos e `!important`.
+
+## A ordem real da cascata (versão útil)
+
+Quando dois estilos disputam a mesma propriedade, o navegador decide nesta ordem:
+
+```text
+1. origem & importância  (user-agent < autor; !important inverte)
+2. CAMADAS (@layer)      ← entram aqui, ANTES da especificidade
+3. especificidade
+4. ordem de aparição
+```
+
+A sacada é o passo 2: **camadas são avaliadas antes da especificidade**. Uma regra numa camada posterior vence uma regra de camada anterior **mesmo que a anterior seja mais específica**. A guerra de seletores acaba.
+
+## Declarando e ordenando camadas
+
+Declare a ordem **uma vez**, no topo — é ela que define a prioridade:
+
+```css
+@layer reset, base, components, utilities; /* utilities é a mais forte; reset, a mais fraca */
+
+@layer reset {
+  * { margin: 0; box-sizing: border-box; }
+}
+@layer components {
+  #app .card .btn { background: gray; } /* super específico... */
+}
+@layer utilities {
+  .bg-brand { background: var(--brand); } /* ...mas isto VENCE, por estar numa camada acima */
+}
+```
+
+Mesmo o seletor `.bg-brand` (especificidade 0,1,0) derrotando `#app .card .btn` (1,2,0): a camada `utilities` vem depois de `components` na ordem declarada, e camada manda mais que especificidade.
+
+## A regra de ouro: CSS sem camada vence camadas
+
+Estilos **fora** de qualquer `@layer` têm prioridade **maior** que qualquer camada:
+
+```text
+prioridade:  reset < base < components < utilities < (CSS SEM camada)
+```
+
+Isso é deliberado e às vezes pega de surpresa: se você mistura CSS "solto" com CSS em camadas, o solto ganha. Por isso, em sistemas baseados em layers, a recomendação é colocar **quase tudo** em camadas, reservando o espaço sem-camada para sobrescritas pontuais de último recurso.
+
+## O caso matador: domar CSS de terceiros
+
+Frameworks e bibliotecas costumam ter seletores agressivos. Em vez de lutar com `!important`, **importe-os numa camada baixa**:
+
+```css
+@layer vendor, app;                          /* app vence vendor */
+@import url("bootstrap.css") layer(vendor);  /* o framework inteiro vai para a camada fraca */
+
+@layer app {
+  .btn { background: var(--brand); }         /* sua regra simples vence a do framework, sem !important */
+}
+```
+
+Qualquer regra sua em `app` ganha das do framework em `vendor`, por mais específica que a do framework seja. Sem `!important`, sem seletores inflados.
+
+## `:is()` e `:where()` para domar a especificidade dentro da camada
+
+Duas pseudo-classes ajudam a manter a especificidade baixa e previsível:
+
+- **`:where(...)`** tem especificidade **zero**, sempre. Ótimo para defaults que você quer que sejam fáceis de sobrescrever.
+- **`:is(...)`** assume a especificidade do **argumento mais específico** — agrupa seletores sem repetir, mas conta para a especificidade.
+
+```css
+:where(.prose) a { color: var(--link); }       /* especificidade 0 — qualquer regra depois sobrescreve */
+:is(h1, h2, h3) { line-height: 1.1; }            /* agrupa sem repetir; especificidade de um elemento */
+```
+
+Combinar `@layer` (ordem explícita) com `:where()` (especificidade baixa) é a receita do CSS moderno: previsível, sem escaladas, fácil de sobrescrever de propósito.
+
+> **Resumo:** Especificidade conta seletores (IDs > classes > elementos) e empates vão para o último declarado — sobrescrever exige ser ainda mais específico, o que leva a `!important`. **Cascade layers** resolvem isso porque a cascata avalia **camadas antes da especificidade**: uma regra em camada posterior vence uma anterior, mesmo menos específica. Declare a ordem uma vez (`@layer reset, base, components, utilities;`); o mais forte é o último. Atenção: CSS **sem camada vence qualquer camada**. O caso matador é importar terceiros numa camada baixa (`@import … layer(vendor)`) e sobrescrever numa alta, sem `!important`. Por fim, `:where()` tem especificidade zero (defaults sobrescrevíveis) e `:is()` herda a do argumento mais específico.

@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que o seletor `.card:has(img)` casa?",
+      "options": [
+        "A imagem dentro de qualquer .card",
+        "Um elemento .card que contém uma <img> (em qualquer profundidade)",
+        "O elemento imediatamente antes de um .card",
+        "Apenas .card que NÃO tem imagem"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`:has()` é um seletor relacional: `.card:has(img)` casa o próprio `.card`, desde que exista uma `<img>` descendente. O elemento estilizado é o `.card` (o 'pai'), não a imagem — algo impossível antes sem JavaScript. Para limitar a filho direto, use `:has(> img)`; para o caso oposto, `.card:not(:has(img))`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `:is()` e `:where()`?",
+      "options": [
+        "`:is()` é forgiving e `:where()` não é",
+        "Ambos agrupam seletores, mas `:is()` assume a especificidade do argumento mais específico, enquanto `:where()` tem especificidade sempre zero",
+        "`:where()` só funciona dentro de `@layer`",
+        "`:is()` seleciona o pai e `:where()` o filho"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os dois recebem uma lista de seletores, casam se qualquer um casar e são forgiving (ignoram seletores inválidos). A diferença está na especificidade: `:is()` herda a do argumento mais específico da lista, enquanto `:where()` é sempre zero. Por isso `:where()` é ideal para defaults que devem ser fáceis de sobrescrever."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Além de descendentes, `:has()` consegue olhar para irmãos. O que `h2:has(+ p)` casa?",
+      "options": [
+        "O <p> que vem depois de um <h2>",
+        "Um <h2> que é imediatamente seguido por um <p>",
+        "Qualquer <h2> e qualquer <p> da página",
+        "Um <h2> dentro de um <p>"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O argumento de `:has()` é um seletor relativo, então pode usar combinadores de irmão. `h2:has(+ p)` casa o `<h2>` quando o próximo irmão imediato é um `<p>`. Isso permite reagir ao contexto de irmãos (estilizar um elemento conforme o que vem depois dele), antes impossível em CSS puro."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual o 'superpoder' central de `:has()` em formulários e componentes interativos?",
+      "options": [
+        "Carregar dados do servidor sem fetch",
+        "Estilizar um elemento ancestral a partir do estado de um descendente (ex.: `.field:has(input:invalid)`), sem JavaScript",
+        "Validar formulários no backend",
+        "Substituir o atributo `required` do HTML"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`:has()` permite reagir ao estado interno: `.field:has(input:invalid)` estiliza o campo inteiro quando o input está inválido; `.card:has(:checked)` reage a um item marcado. Antes, cada caso exigia um listener de JS adicionando uma classe no ancestral. Agora é CSS declarativo, sempre em sincronia com o DOM."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como fazer uma 'quantity query' — aplicar estilos só quando uma lista tem 5 itens ou mais?",
+      "options": [
+        "`.list:has(> :nth-child(5))`",
+        "`.list:count(5)`",
+        "`.list:min-children(5)`",
+        "`.list:has(5)`"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`.list:has(> :nth-child(5))` é verdadeiro apenas quando existe um 5º filho direto — ou seja, há pelo menos 5 itens. Combinar `:has()` com `:nth-child()` cria as 'quantity queries' que sempre quisemos, permitindo, por exemplo, mudar o layout conforme a contagem de elementos. Não existem pseudo-classes como `:count()` ou `:min-children()`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `:nth-child(2 of .featured)` e `.featured:nth-child(2)`?",
+      "options": [
+        "São idênticos",
+        "`:nth-child(2 of .featured)` conta apenas elementos `.featured` (o 2º featured); `.featured:nth-child(2)` casa o 2º filho no geral, e só se ele for `.featured`",
+        "`.featured:nth-child(2)` conta apenas os featured",
+        "`of` não é sintaxe válida em CSS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em `:nth-child(2 of .featured)`, a contagem ignora tudo que não é `.featured` — pega o segundo featured, esteja onde estiver. Já `.featured:nth-child(2)` conta todos os filhos, pega o segundo, e só casa se esse segundo filho por acaso for `.featured`. A microssintaxe `of S` resolve casos como zebra striping que deve ignorar itens escondidos: `:nth-child(odd of :not([hidden]))`."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a recomendação de performance ao usar `:has()`?",
+      "options": [
+        "Nunca usar `:has()` em produção — é sempre lento",
+        "Ancorar o seletor à esquerda (ex.: `.card:has(...)`) para limitar o escopo da busca, em vez de seletores muito amplos que varrem a página toda",
+        "Sempre adicionar `!important` junto",
+        "Usar `:has()` apenas dentro de media queries"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os navegadores modernos otimizam `:has()` bem, mas seletores muito amplos (como um `:has(.x)` sem âncora à esquerda) podem custar caro por varrer uma área grande do DOM. Ancorar à esquerda — `.card:has(...)` — restringe a busca ao escopo dos cards, mantendo o desempenho. Não é caso de evitar `:has()`, e sim de escopá-lo."
+    }
+  ]
+}

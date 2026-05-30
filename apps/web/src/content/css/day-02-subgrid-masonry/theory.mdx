@@ -1,0 +1,71 @@
+# Subgrid & Masonry
+
+Grid resolveu o layout bidimensional, mas deixou um buraco: grids **aninhados** não conversam entre si. Cada card que é, por dentro, um grid, alinhava suas próprias linhas isoladamente — então títulos e rodapés de cards vizinhos não se alinham. `subgrid` fecha esse buraco. E `masonry` ataca o layout "estilo Pinterest" que sempre precisou de JavaScript.
+
+## O problema que o `subgrid` resolve
+
+Imagine uma grade de cards, cada um com título, corpo e rodapé. Você quer que **todos os títulos terminem na mesma linha** e **todos os rodapés comecem na mesma altura**, independente do tamanho do corpo. Com grids independentes isso é impossível: cada card calcula suas linhas sozinho.
+
+```css
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.card  { display: grid; } /* grid INDEPENDENTE — não sabe nada das linhas dos vizinhos */
+```
+
+## `subgrid`: herdar os tracks do pai
+
+`subgrid` faz um item de grid que é, ele mesmo, um grid **adotar as tracks do grid pai** em um eixo. O item precisa (1) **abranger** as linhas/colunas do pai que quer herdar e (2) declarar `subgrid` naquele eixo:
+
+```css
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto 1fr auto; /* título | corpo | rodapé — definidos NO PAI */
+  gap: 1rem;
+}
+.card {
+  display: grid;
+  grid-row: span 3;            /* abrange as 3 linhas do pai */
+  grid-template-rows: subgrid; /* e as adota como suas próprias */
+}
+```
+
+Agora os três pedaços de cada card se alinham aos dos vizinhos, porque todos compartilham as **mesmas** três linhas. O `subgrid` herda também o `gap` do pai (você pode sobrescrever) e até os **nomes de linha** definidos no pai passam a valer dentro do filho. Funciona igual em colunas (`grid-template-columns: subgrid`), útil para formulários onde rótulos e campos de várias linhas precisam alinhar em colunas comuns.
+
+## Quando usar subgrid
+
+- **Cards uniformes:** alinhar header/body/footer entre cards de alturas diferentes.
+- **Formulários:** rótulo e input alinhados em colunas compartilhadas, linha após linha.
+- **Tabelas-como-grid:** células que precisam respeitar as mesmas colunas do "cabeçalho".
+
+A regra mental: sempre que um filho precisa se alinhar à grade do **avô**, e não criar uma grade nova, é caso de `subgrid`. Hoje ele tem suporte amplo nos navegadores estáveis.
+
+## Masonry: o layout que sempre precisou de JS
+
+No layout **masonry** (alvenaria), os itens têm alturas diferentes e se encaixam na **coluna mais curta** disponível, como tijolos — o visual "Pinterest". Diferente do Grid normal, não há linhas alinhadas: cada coluna flui independente.
+
+Historicamente, as opções eram ruins:
+
+```css
+/* Alternativa de HOJE: CSS multicolunas. Funciona, mas... */
+.masonry { columns: 3; gap: 1rem; }
+.item    { break-inside: avoid; }
+```
+
+O problema do `columns`: a ordem de leitura fica **vertical** (preenche a 1ª coluna inteira, depois a 2ª), o que costuma estar errado para feeds cronológicos. Por isso, durante anos, a solução real era JavaScript (Masonry.js, ou cálculo manual de posições).
+
+## Masonry nativo (emergente)
+
+A plataforma está padronizando masonry diretamente no Grid. A sintaxe líder usa `masonry` como valor de um dos eixos:
+
+```css
+.masonry {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-rows: masonry; /* o eixo de blocos empacota como alvenaria */
+  gap: 1rem;
+}
+```
+
+Os itens passam a se acomodar na trilha mais curta, mantendo a **ordem do documento** (resolvendo o defeito do `columns`). Importante: isto ainda é **experimental** — disponível atrás de flags em alguns navegadores, e a própria sintaxe esteve em debate (`grid-template-rows: masonry` do Grid Level 3 vs. uma proposta separada `display: masonry` / `item-pack`). Na prática de produção hoje, trate masonry nativo como progressive enhancement: use `columns` ou JS como base e adote a versão CSS quando o suporte estabilizar.
+
+> **Resumo:** Grids aninhados são independentes — por isso pedaços internos de cards vizinhos não se alinham. `subgrid` resolve: o filho **abrange** as tracks do pai (`grid-row: span N`) e as **adota** com `grid-template-rows: subgrid` (ou `columns`), herdando inclusive `gap` e nomes de linha; ideal para cards uniformes e formulários. **Masonry** (empacotar na coluna mais curta, estilo Pinterest) sempre exigiu JS ou `columns` (que erra a ordem de leitura). O masonry **nativo** (`grid-template-rows: masonry`) preserva a ordem do documento, mas ainda é experimental e com sintaxe em padronização — use como enhancement, com fallback.

@@ -1,0 +1,85 @@
+# Propriedades Lógicas & Writing Modes
+
+`margin-left`, `top`, `width` — essas propriedades **físicas** embutem uma suposição: o texto corre da esquerda para a direita, de cima para baixo. Quebre essa suposição (árabe da direita para a esquerda, japonês vertical) e seu layout desmonta. As **propriedades lógicas** descrevem o layout em termos de **fluxo** (inline e block), não de direções fixas — e o mesmo CSS passa a funcionar em qualquer idioma e orientação.
+
+## Os dois eixos: inline e block
+
+Esqueça esquerda/direita/topo/base por um momento. Pense em dois eixos relativos ao texto:
+
+- **Eixo inline** — a direção em que os caracteres fluem. No português (horizontal, LTR), é da esquerda para a direita.
+- **Eixo block** — a direção em que as linhas se empilham. No português, de cima para baixo.
+
+```text
+horizontal-tb (português, inglês):     vertical-rl (japonês):
+  inline →  (esquerda p/ direita)        inline ↓  (cima p/ baixo)
+  block  ↓  (cima p/ baixo)              block  ←  (direita p/ esquerda)
+```
+
+Propriedades lógicas falam nesses eixos. Quando o `writing-mode` ou `direction` muda, elas **se reorientam sozinhas**.
+
+## O mapa físico → lógico
+
+```css
+/* dimensões */
+width  → inline-size
+height → block-size
+
+/* margin (idem para padding e border) */
+margin-top    → margin-block-start
+margin-bottom → margin-block-end
+margin-left   → margin-inline-start
+margin-right  → margin-inline-end
+
+/* posicionamento */
+top/right/bottom/left → inset-block-start / inset-inline-end / inset-block-end / inset-inline-start
+
+/* cantos */
+border-top-left-radius → border-start-start-radius  /* block-start, inline-start */
+```
+
+Repare no padrão: `start`/`end` substituem direções absolutas. `inline-start` é "onde o texto começa" — esquerda em LTR, **direita** em RTL.
+
+## Atalhos que economizam código
+
+Os pares de eixo têm atalhos próprios:
+
+```css
+.box {
+  margin-inline: 1rem;        /* esquerda e direita (em LTR) de uma vez */
+  margin-block: 2rem;         /* topo e base */
+  padding-inline: 1rem 2rem;  /* start = 1rem, end = 2rem */
+  inset-inline: 0;            /* "gruda" nas duas bordas inline */
+}
+
+.centered { margin-inline: auto; } /* o clássico "centralizar" — agora lógico */
+```
+
+E o alinhamento de texto acompanha:
+
+```css
+.title { text-align: start; } /* esquerda em LTR, direita em RTL — sem reescrever nada */
+```
+
+## Writing modes e `direction`
+
+`writing-mode` muda como blocos e linhas se orientam; `direction` muda o sentido do eixo inline (normalmente você o controla pelo atributo `dir` no HTML, não no CSS):
+
+```css
+.vertical-text { writing-mode: vertical-rl; } /* títulos verticais, lombadas, CJK */
+```
+
+```html
+<html dir="rtl" lang="ar"> <!-- inverte o eixo inline para árabe/hebraico --> </html>
+```
+
+O ponto-chave: com propriedades lógicas, **você não escreve um CSS para LTR e outro para RTL**. O mesmo `padding-inline-start` que afasta o conteúdo da borda inicial funciona dos dois lados, porque "inicial" é relativo ao idioma.
+
+## Por que adotar por padrão
+
+- **i18n sem retrabalho:** um único stylesheet serve LTR, RTL e vertical. Trocar `margin-left` espalhado por `margin-inline-start` evita um arquivo `rtl.css` paralelo.
+- **Componentes honestos:** um card descreve "espaço antes do conteúdo", não "espaço à esquerda" — semântica mais fiel ao que você quer.
+- **Consistência com o resto do moderno:** Flexbox e Grid já pensam em `start`/`end` (ex.: `justify-content: flex-start`, `gap`); propriedades lógicas alinham o resto do CSS a esse modelo.
+
+A migração é incremental: comece pelos novos componentes e pelos espaçamentos (`margin`/`padding`), que são onde o RTL mais quebra. Físico e lógico convivem sem conflito — apenas evite misturar os dois no mesmo lado do mesmo elemento.
+
+> **Resumo:** Propriedades físicas (`left`, `top`, `width`) assumem texto LTR horizontal e quebram em RTL/vertical. Propriedades **lógicas** descrevem o layout pelos eixos de fluxo: **inline** (sentido dos caracteres) e **block** (empilhamento das linhas). `width`→`inline-size`, `margin-left`→`margin-inline-start`, `top`→`inset-block-start`, com `start`/`end` no lugar de direções fixas. Atalhos como `margin-inline`, `padding-block` e `margin-inline: auto` enxugam o código, e `text-align: start` acompanha o idioma. Quando `writing-mode`/`direction` mudam, tudo se reorienta sozinho — um único CSS serve qualquer idioma, sem `rtl.css` paralelo.

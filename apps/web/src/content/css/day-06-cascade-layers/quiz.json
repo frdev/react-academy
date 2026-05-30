@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-06",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Na cascata, em que ordem `@layer` (camadas) e a especificidade são avaliadas?",
+      "options": [
+        "A especificidade é avaliada primeiro; as camadas só desempatam no fim",
+        "As camadas são avaliadas ANTES da especificidade — uma regra em camada posterior vence uma anterior, mesmo que a anterior seja mais específica",
+        "Camadas e especificidade têm o mesmo peso e se somam",
+        "Camadas só funcionam com `!important`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A ordem da cascata coloca as camadas acima da especificidade: primeiro origem/importância, depois a ordem das camadas, e só então a especificidade. Por isso uma regra numa camada posterior vence uma de camada anterior independentemente de quão específica a anterior seja. É exatamente isso que encerra as guerras de especificidade."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Dado `@layer reset, base, components, utilities;`, qual camada tem MAIOR prioridade?",
+      "options": [
+        "reset, por vir primeiro",
+        "utilities, por ser a última na ordem declarada",
+        "base, por ser a fundação",
+        "Todas têm a mesma prioridade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A ordem em que as camadas são declaradas define a prioridade, e a última declarada é a mais forte. Em `reset, base, components, utilities`, a camada `utilities` vence as demais — útil para que classes utilitárias sempre sobrescrevam estilos de componentes. `reset` é a mais fraca, ficando na base."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Uma regra `.bg-brand` (especificidade 0,1,0) na camada `utilities` disputa com `#app .card .btn` (1,2,0) na camada `components`, dada a ordem `@layer components, utilities`. Quem vence?",
+      "options": [
+        "#app .card .btn, por ter especificidade muito maior",
+        ".bg-brand, porque `utilities` vem depois de `components` e camada manda mais que especificidade",
+        "Nenhuma; o navegador ignora ambas por conflito",
+        "Depende da ordem no arquivo HTML"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Como `utilities` está depois de `components` na ordem das camadas, qualquer regra em `utilities` vence qualquer regra em `components` — a especificidade nem é consultada nesse desempate. Então `.bg-brand`, apesar de muito menos específica, ganha de `#app .card .btn`. Esse é o ponto central das cascade layers."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como se comporta um CSS escrito FORA de qualquer `@layer` em relação às camadas?",
+      "options": [
+        "Tem prioridade menor que todas as camadas",
+        "Tem prioridade MAIOR que qualquer camada — CSS sem camada vence o CSS em camadas",
+        "É ignorado se existir alguma `@layer` no documento",
+        "Entra automaticamente na primeira camada declarada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Estilos sem camada têm prioridade maior que qualquer camada — é como se viessem 'depois' de todas elas na cascata. Isso pega gente de surpresa ao misturar CSS solto com CSS em camadas. Em sistemas baseados em layers, coloque quase tudo em camadas e reserve o espaço sem-camada para sobrescritas pontuais de último recurso."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a forma idiomática de sobrescrever o CSS agressivo de um framework de terceiros usando camadas?",
+      "options": [
+        "Adicionar `!important` em todas as suas regras",
+        "Importar o framework numa camada baixa (ex.: `@import url(...) layer(vendor)`) e escrever suas regras numa camada mais alta",
+        "Aumentar a especificidade dos seus seletores com vários IDs",
+        "Carregar o framework por último no HTML"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Colocando o framework numa camada baixa (via `@import ... layer(vendor)` ou envolvendo-o em `@layer vendor`), e suas regras numa camada superior (ex.: `app`), qualquer regra sua vence as do framework — por mais específicas que sejam — sem `!important` nem seletores inflados. É o caso de uso matador das cascade layers."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a especificidade de um seletor que usa `:where(...)`?",
+      "options": [
+        "A especificidade do argumento mais específico dentro do `:where()`",
+        "Zero, sempre — independentemente do que estiver dentro",
+        "A soma das especificidades de todos os argumentos",
+        "Igual a um seletor de ID"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`:where()` tem especificidade zero, sempre, não importa o que contenha. Isso a torna ideal para defaults que você quer que sejam fáceis de sobrescrever depois. Já `:is()` agrupa seletores da mesma forma, mas assume a especificidade do argumento mais específico — então conta para a disputa."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que combinar `@layer` com `:where()` é considerado a receita do CSS escalável moderno?",
+      "options": [
+        "Porque juntos eles eliminam a necessidade de classes",
+        "Porque `@layer` dá ordem de prioridade explícita entre blocos e `:where()` mantém a especificidade baixa — o resultado é previsível e fácil de sobrescrever de propósito",
+        "Porque `:where()` desativa a cascata e `@layer` a reativa",
+        "Porque essa combinação reduz o tamanho do bundle pela metade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`@layer` define a prioridade entre grandes blocos de CSS de forma explícita (sem depender de especificidade), e `:where()` mantém a especificidade dos seletores em zero, evitando escaladas. Juntos produzem um sistema onde sobrescrever é intencional e previsível — em vez da bagunça de seletores cada vez mais específicos e `!important`."
+    }
+  ]
+}

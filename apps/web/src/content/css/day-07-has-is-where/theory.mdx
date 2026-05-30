@@ -1,0 +1,88 @@
+# Seletores Modernos: :has(), :is(), :where()
+
+Por anos, "selecionar o pai de um elemento" foi o pedido nº 1 do CSS — e a resposta era sempre "use JavaScript". Isso acabou. `:has()` é o seletor **relacional** que enxerga para dentro e para os lados, e junto com `:is()` e `:where()` ele transforma o que antes exigia classes manuais e JS em CSS declarativo puro.
+
+## `:is()` e `:where()`: agrupar com elegância
+
+Ambos recebem uma **lista de seletores** e casam se qualquer um casar. Servem para não repetir:
+
+```css
+/* sem :is() — verboso */
+.prose h1, .prose h2, .prose h3 { line-height: 1.1; }
+
+/* com :is() — enxuto */
+.prose :is(h1, h2, h3) { line-height: 1.1; }
+```
+
+Duas propriedades importantes:
+
+- **São "forgiving":** um seletor inválido na lista é ignorado sem derrubar os outros. Em `:is(h1, :inexistente, h3)`, `h1` e `h3` continuam funcionando.
+- **Diferem na especificidade:** `:is()` assume a especificidade do **argumento mais específico**; `:where()` é **sempre zero**. Use `:where()` para defaults sobrescrevíveis e `:is()` quando quiser que o agrupamento conte.
+
+## `:has()`: o seletor relacional (o "pai", e muito mais)
+
+`A:has(B)` casa o elemento `A` **se** o seletor relativo `B` casar a partir dele. A leitura é "um A que **tem** B":
+
+```css
+.card:has(img)        { /* card que CONTÉM uma imagem (em qualquer profundidade) */ }
+.card:has(> img)      { /* card cujo FILHO DIRETO é uma imagem */ }
+.card:not(:has(img))  { /* card SEM nenhuma imagem */ }
+```
+
+Como o argumento é relativo, `:has()` não olha só para baixo — olha para os **irmãos** também:
+
+```css
+h2:has(+ p)  { margin-block-end: 0; }  /* h2 seguido imediatamente por um <p> */
+label:has(+ input:focus) { color: var(--brand); } /* label cujo input irmão está focado */
+```
+
+## Estilizar o pai a partir do filho
+
+Esse é o superpoder. Reagir ao **estado interno** sem tocar em JavaScript:
+
+```css
+/* destacar o campo inteiro quando o input está inválido */
+.field:has(input:invalid) { border-color: var(--danger); }
+
+/* tema do card muda quando há um item marcado dentro */
+.card:has(:checked) { outline: 2px solid var(--brand); }
+
+/* layout do formulário se adapta quando existe um <textarea> */
+form:has(textarea) { grid-template-columns: 1fr; }
+```
+
+Antes, cada um desses casos exigia um listener de JS adicionando uma classe no ancestral. Agora é uma linha de CSS, sempre em sincronia com o DOM.
+
+## Quantity queries: reagir à quantidade de filhos
+
+Combinando `:has()` com `:nth-child()`, o CSS passa a contar:
+
+```css
+/* quando a lista tiver 5 itens OU MAIS, vira grid de 2 colunas */
+.list:has(> :nth-child(5)) { grid-template-columns: 1fr 1fr; }
+
+/* um único filho ocupa tudo; vários dividem */
+.gallery:has(> :only-child) > * { grid-column: 1 / -1; }
+```
+
+`:has(> :nth-child(5))` é verdadeiro só quando existe um 5º filho — ou seja, há ao menos 5. É a "quantity query" que sempre quisemos.
+
+## `:nth-child(... of S)`: contar só o que importa
+
+Uma microssintaxe poderosa e pouco conhecida: `:nth-child(An+B of S)` aplica a contagem **apenas aos elementos que casam `S`**, não a todos os filhos:
+
+```css
+/* o 2º item que é .featured (ignorando os não-featured na contagem) */
+:nth-child(2 of .featured) { }
+
+/* MUITO diferente de: */
+.featured:nth-child(2) { } /* o 2º filho no geral, E que por acaso é .featured */
+```
+
+No primeiro, a contagem só enxerga `.featured`; no segundo, conta todos os filhos e depois filtra. Essa distinção resolve "listras zebradas" que ignoram itens escondidos, por exemplo: `:nth-child(odd of :not([hidden]))`.
+
+## Especificidade e performance
+
+`:has()` tem a especificidade do seu argumento mais específico (como `:is()`). Quanto à performance, os navegadores modernos otimizam `:has()` bem, mas seletores **muito amplos** (ex.: `:has(.x)` sem âncora à esquerda, varrendo a página toda) custam mais — prefira ancorar (`.card:has(...)`) para limitar o escopo da busca.
+
+> **Resumo:** `:is()` e `:where()` agrupam listas de seletores e são "forgiving" (ignoram seletores inválidos); diferem na especificidade — `:is()` herda a do argumento mais específico, `:where()` é sempre zero. `:has()` é o seletor **relacional**: `A:has(B)` casa um `A` que tem `B`, olhando descendentes (`:has(> img)`) e irmãos (`h2:has(+ p)`). Seu superpoder é estilizar o pai a partir do estado do filho (`.field:has(input:invalid)`) sem JavaScript, e fazer **quantity queries** com `:has(> :nth-child(n))`. E `:nth-child(B of S)` conta apenas elementos que casam `S`, diferente de `S:nth-child(B)`. Ancore `:has()` à esquerda para não pagar caro em performance.

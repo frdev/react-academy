@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-09",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `clamp(1.75rem, 1rem + 3vw, 3rem)` retorna?",
+      "options": [
+        "Sempre 3rem",
+        "O valor fluido `1rem + 3vw`, mas nunca menor que 1.75rem nem maior que 3rem",
+        "A média entre 1.75rem e 3rem",
+        "1rem somado a 3rem"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`clamp(MÍNIMO, PREFERIDO, MÁXIMO)` retorna o valor preferido (aqui `1rem + 3vw`, que cresce com a largura da tela) limitado pelos extremos: trava em 1.75rem abaixo de certa largura e em 3rem acima de outra. Entre os limites, o tamanho flui continuamente, sem breakpoints."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que se deve incluir um termo em `rem` no valor fluido (ex.: `1rem + 3vw`) em vez de usar `4vw` puro?",
+      "options": [
+        "Porque `vw` não é suportado em todos os navegadores",
+        "Porque `vw` puro não reage ao zoom nem às preferências de fonte do usuário; o termo em `rem` mantém o texto acessível e escalável",
+        "Porque `rem` deixa a renderização mais rápida",
+        "Porque `4vw` é sempre maior que o necessário"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Tamanhos em `vw` puro são fixos em relação ao viewport e não mudam quando o usuário aumenta a fonte padrão do navegador — um problema de acessibilidade. Misturar um termo em `rem` (ou `em`) garante que o texto continue escalando com as preferências do usuário. Por isso a regra: sempre combine `rem` com `vw` no termo fluido."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Para limitar a largura de leitura a no máximo 65ch, encolhendo em telas estreitas, qual é a forma correta?",
+      "options": [
+        "`inline-size: max(100%, 65ch)`",
+        "`inline-size: min(100%, 65ch)`",
+        "`inline-size: clamp(65ch, 100%, 65ch)`",
+        "`inline-size: 65ch !important`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Para impor um teto, usa-se `min()`: `min(100%, 65ch)` nunca passa de 65ch (conforto de leitura), mas vira 100% quando a tela é menor que isso. A intuição se inverte: `min()` impõe máximo e `max()` impõe mínimo. `max(100%, 65ch)` faria o oposto, podendo estourar a tela."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como `max()` é tipicamente usado em espaçamentos responsivos?",
+      "options": [
+        "Para impor um teto de espaçamento",
+        "Para impor um piso de espaçamento, ex.: `padding-inline: max(1rem, 5vw)` garante pelo menos 1rem, crescendo em telas largas",
+        "Para centralizar elementos",
+        "Para arredondar valores a múltiplos fixos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`max()` impõe um piso: `max(1rem, 5vw)` nunca fica abaixo de 1rem (respiro mínimo garantido), mas usa `5vw` quando este é maior, em telas largas. É o complemento de `min()`, que impõe teto. Arredondar a múltiplos é trabalho de `round()`, não de `max()`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "De onde vem matematicamente o termo fluido como `1rem + 3vw`?",
+      "options": [
+        "É um valor mágico sem fórmula",
+        "De uma interpolação linear entre dois tamanhos definidos em duas larguras de viewport (ex.: 16px @ 320px → 24px @ 1200px)",
+        "Da média de todos os breakpoints do projeto",
+        "Da resolução da tela em DPI"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O termo fluido é uma reta: você escolhe um tamanho A em uma largura X e um tamanho B em uma largura Y, calcula a inclinação e monta o `calc()` (parte fixa em `rem` + parte proporcional em `vw`). Ferramentas de 'fluid type scale' automatizam essa conta para uma escala inteira, mas o mecanismo é sempre interpolação linear dentro de `clamp()`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que `round(up, var(--h), 8px)` faz?",
+      "options": [
+        "Arredonda --h para cima até o múltiplo de 8px mais próximo (encaixa numa grade de 8px)",
+        "Divide --h por 8px",
+        "Soma 8px a --h",
+        "Converte --h para porcentagem"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`round(strategy, valor, intervalo)` encaixa um valor numa grade definida pelo intervalo. Com a estratégia `up` e intervalo `8px`, arredonda --h para cima até o múltiplo de 8 mais próximo — útil para manter ritmos de espaçamento. As estratégias incluem `up`, `down`, `nearest` e `to-zero`. É aritmética de layout antes só possível com pré-processador."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a diferença de uso entre `text-wrap: balance` e `text-wrap: pretty`?",
+      "options": [
+        "`balance` é para títulos (equilibra o comprimento das linhas); `pretty` é para parágrafos (evita uma última linha órfã com uma só palavra)",
+        "São sinônimos",
+        "`balance` centraliza o texto e `pretty` justifica",
+        "`pretty` é para títulos e `balance` para código"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`balance` distribui as palavras para que as linhas fiquem com comprimentos parecidos, ideal para títulos de poucas linhas (é limitado a poucas linhas por custo de performance). `pretty` foca no fim de parágrafos, evitando 'órfãs' — aquela última linha solitária com uma palavra só. São polimentos tipográficos aplicados a tipos de conteúdo diferentes."
+    }
+  ]
+}

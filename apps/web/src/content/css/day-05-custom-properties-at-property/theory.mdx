@@ -1,0 +1,84 @@
+# Custom Properties Avançado & @property
+
+Você já usou `--cor: blue; color: var(--cor)`. Mas custom properties são bem mais do que "variáveis": são valores **vivos**, que participam da cascata, herdam e mudam em runtime — algo que variáveis de Sass (resolvidas em build) nunca foram. E com a regra `@property` você ganha **tipos**, destravando até animação de variáveis. Este é o motor do theming moderno.
+
+## Custom properties não são variáveis de Sass
+
+```css
+:root { --gap: 1rem; }
+.card { padding: var(--gap); }
+.card.compact { --gap: .5rem; } /* muda em runtime, respeita a cascata e a herança */
+```
+
+Diferenças que importam:
+
+- **Runtime, não build:** mudam via media query, `:hover`, classe, ou JavaScript (`element.style.setProperty('--gap', '2rem')`).
+- **Cascateiam e herdam:** definidas num ancestral, valem nos descendentes; redefinidas mais abaixo, sobrescrevem localmente.
+- **Fallback embutido:** `var(--x, 8px)` usa `8px` se `--x` não existir. Dá pra encadear: `var(--x, var(--y, 8px))`.
+
+## O detalhe traiçoeiro: "invalid at computed-value time"
+
+Custom properties são, por padrão, **sem tipo** — guardam um fluxo de tokens, não um valor tipado. O navegador só descobre se faz sentido na hora de usar:
+
+```css
+.box { --size: 10px; width: var(--size); }   /* ok */
+.box { --size: banana; width: var(--size); }  /* "banana" é token válido como custom prop... */
+```
+
+No segundo caso, `--size` **é** aceita (qualquer texto é um valor válido de custom property), mas ao substituir em `width`, o valor é inválido. A regra `width` então cai para o valor **herdado ou inicial** — não para o valor anterior. Esse comportamento ("invalid at computed-value time") surpreende: o erro só aparece no ponto de uso, não na declaração.
+
+## `@property`: dar tipo às variáveis
+
+`@property` **registra** uma custom property com tipo, herança e valor inicial:
+
+```css
+@property --brand {
+  syntax: '<color>';        /* o tipo: <color>, <length>, <angle>, <number>, <percentage>, '*'… */
+  inherits: false;          /* herda ou não pelos descendentes */
+  initial-value: #6d28d9;   /* valor de partida (obrigatório, exceto para '*') */
+}
+```
+
+Isso muda três coisas:
+
+1. **Checagem de tipo:** `--brand: banana` agora é **ignorado** e cai para o `initial-value`, em vez de envenenar a propriedade no uso.
+2. **Herança controlada:** `inherits: false` impede que descendentes herdem o valor — essencial para certos efeitos.
+3. **Animação:** com o tipo conhecido, o navegador sabe **interpolar** — e variáveis viram animáveis.
+
+## O caso que só `@property` resolve: animar um gradiente
+
+Gradientes não são interpoláveis diretamente. Mas se a **parte que muda** for uma variável tipada, o navegador anima a variável e o gradiente acompanha:
+
+```css
+@property --angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.spinner {
+  background: conic-gradient(from var(--angle), #6d28d9, #ec4899, #6d28d9);
+  transition: --angle 1s linear;
+}
+.spinner:hover { --angle: 360deg; } /* anima de 0 a 360 — gira de verdade */
+```
+
+Sem `@property`, `--angle` é só texto e a transição é um corte seco (0deg → 360deg instantâneo). Com o tipo `<angle>`, vira uma rotação suave. O mesmo vale para animar uma cor, um comprimento, uma porcentagem dentro de qualquer função.
+
+## Theming com camadas semânticas
+
+A prática moderna separa tokens **primitivos** de tokens **semânticos**:
+
+```css
+:root {
+  --purple-600: #7c3aed;          /* primitivo: a cor crua */
+  --color-accent: var(--purple-600); /* semântico: o papel da cor */
+}
+.button { background: var(--color-accent); } /* o componente usa o papel, não a cor crua */
+
+[data-theme="dark"] { --color-accent: #a78bfa; } /* trocar o tema = trocar o semântico */
+```
+
+O componente nunca conhece `--purple-600` — só o papel `--color-accent`. Trocar o tema (claro/escuro, marca A/B) vira redefinir um punhado de tokens semânticos num escopo, sem tocar em nenhum componente.
+
+> **Resumo:** Custom properties são valores vivos: cascateiam, herdam e mudam em runtime (via classe, `:hover`, media query ou JS), com fallback em `var(--x, default)` — diferente das variáveis de build do Sass. Sem tipo, elas sofrem do "invalid at computed-value time": um valor inválido só falha no ponto de uso e cai para herdado/inicial. `@property` registra a variável com `syntax`, `inherits` e `initial-value`, ganhando checagem de tipo, herança controlada e, principalmente, **animação** — é o que permite girar um `conic-gradient` animando um `--angle` do tipo `<angle>`. Para theming, separe tokens primitivos de semânticos: os componentes usam o papel (`--color-accent`), e trocar de tema é só redefinir os semânticos num escopo.

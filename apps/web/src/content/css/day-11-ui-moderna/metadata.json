@@ -1,0 +1,20 @@
+{
+  "id": "day-11",
+  "day": 11,
+  "week": 2,
+  "title": "UI Moderna & Responsividade",
+  "slug": "ui-moderna",
+  "topics": [
+    "aspect-ratio",
+    ":focus-visible",
+    "accent-color",
+    "reset moderno de CSS",
+    "prefers-reduced-motion e inert"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-10"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

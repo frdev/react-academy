@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `width: min-content` e `width: max-content`?",
+      "options": [
+        "min-content usa o menor valor em pixels já definido; max-content usa o maior",
+        "min-content é a menor largura sem overflow (limitada pelo conteúdo indivisível, como a palavra mais larga); max-content é a largura para caber todo o conteúdo numa linha sem quebrar",
+        "São sinônimos; ambos fazem o elemento ocupar 100% do container",
+        "min-content só funciona em Grid e max-content só em Flexbox"
+      ],
+      "correctAnswer": 1,
+      "explanation": "São tamanhos intrínsecos: derivam do conteúdo, não de um número que você dita. `min-content` espreme o elemento até o limite do que não pode ser quebrado — tipicamente a palavra mais larga. `max-content` faz o oposto: a largura necessária para exibir tudo numa única linha, sem quebra. `fit-content` é o meio-termo: cresce como max-content, mas nunca além do espaço disponível."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Você tem `grid-template-columns: 1fr 1fr` e um dos itens contém uma URL muito longa que está estourando o grid horizontalmente. Qual a correção idiomática?",
+      "options": [
+        "Trocar para `grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)`",
+        "Adicionar `overflow: hidden` no container do grid",
+        "Trocar `1fr 1fr` por `50% 50%`",
+        "Adicionar `white-space: nowrap` nos itens"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`1fr` é açúcar para `minmax(auto, 1fr)`, e o piso `auto` equivale a `min-content` — ou seja, o track se recusa a encolher abaixo do conteúdo (a URL longa) e estoura. Trocar o piso para zero com `minmax(0, 1fr)` permite que o track encolha de verdade, e aí o conteúdo passa a respeitar a coluna (podendo quebrar ou usar ellipsis). `overflow: hidden` apenas esconde o sintoma e `50% 50%` não considera o `gap`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Em `repeat(auto-fit, minmax(200px, 1fr))` vs `repeat(auto-fill, ...)`, o que acontece quando há MAIS espaço do que itens?",
+      "options": [
+        "auto-fit cria itens fantasmas para preencher; auto-fill deixa o grid vazio",
+        "auto-fit colapsa os tracks vazios e os itens existentes esticam para preencher a linha; auto-fill mantém tracks vazios reservados, deixando 'buracos'",
+        "Ambos esticam os itens igualmente; não há diferença visível",
+        "auto-fill estica os itens e auto-fit mantém os tracks vazios"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A diferença só aparece quando sobra espaço. `auto-fit` colapsa os tracks vazios a zero, então os itens reais crescem (via o `1fr`) e ocupam a largura toda. `auto-fill` mantém os tracks vazios ocupando lugar, então os itens ficam no tamanho mínimo e sobra espaço vazio à direita. Para uma galeria que deve preencher a largura, use `auto-fit`; para manter um gabarito fixo de colunas, `auto-fill`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "No padrão RAM `repeat(auto-fit, minmax(min(100%, 250px), 1fr))`, qual o papel do `min(100%, 250px)`?",
+      "options": [
+        "Garantir que cada card tenha exatamente 250px sempre",
+        "Evitar overflow horizontal em telas estreitas: quando o viewport é menor que 250px, o piso cede para 100% e o card cabe em vez de estourar",
+        "Forçar no máximo 100 colunas de 250px",
+        "É decorativo; `minmax(250px, 1fr)` funcionaria igual"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com um piso fixo de `250px`, numa tela de, digamos, 200px o track exigiria 250px e causaria scroll horizontal. `min(100%, 250px)` resolve: em telas largas o piso é 250px (comportamento desejado), mas quando 100% do container é menor que 250px, o piso vira 100% e o card encolhe para caber. É o que torna o padrão RAM verdadeiramente responsivo sem nenhuma media query."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a diferença prática entre `flex: 1` e `flex: 1 1 auto` em itens de um flex container?",
+      "options": [
+        "Nenhuma — `flex: 1` é apenas um atalho para `flex: 1 1 auto`",
+        "`flex: 1` equivale a `flex: 1 1 0`: as colunas ficam iguais ignorando o conteúdo. `flex: 1 1 auto` parte do tamanho do conteúdo de cada item antes de distribuir a sobra",
+        "`flex: 1` impede o item de crescer; `flex: 1 1 auto` permite",
+        "`flex: 1` só funciona em coluna e `flex: 1 1 auto` só em linha"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`flex: 1` é `flex: 1 1 0` — com `flex-basis: 0`, o tamanho do conteúdo é ignorado na distribuição e todos os itens recebem partes iguais do espaço, ficando do mesmo tamanho. `flex: 1 1 auto` usa `flex-basis: auto`, então cada item parte do seu tamanho de conteúdo e só a sobra é distribuída — itens com mais conteúdo ficam maiores. São resultados visualmente distintos, e confundi-los é fonte comum de bugs de layout."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Um flex item com texto longo não encolhe e estoura o container, quebrando o `text-overflow: ellipsis`. Qual propriedade resolve?",
+      "options": [
+        "`max-width: 100%` no item",
+        "`min-width: 0` no item",
+        "`flex-wrap: wrap` no container",
+        "`word-break: break-all` no item"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `min-width` automático de um flex item é `min-content`, ou seja, ele não encolhe abaixo do seu conteúdo — por isso estoura. Definir `min-width: 0` libera o item para encolher de verdade, fazendo o `overflow: hidden` + `text-overflow: ellipsis` finalmente funcionarem. É uma das correções mais idiomáticas (e menos óbvias) do Flexbox. `max-width: 100%` não ataca o piso de min-content."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `gap` é preferível a `margin` para espaçar itens de uma lista flex/grid?",
+      "options": [
+        "`gap` é mais rápido de renderizar porque usa a GPU",
+        "`gap` cria espaço apenas ENTRE os itens, sem vazar nas bordas externas nem sofrer com margin collapse — eliminando hacks como `:not(:last-child)`",
+        "`margin` não funciona dentro de flex containers",
+        "`gap` aplica espaçamento também por fora do container automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`gap` define o espaçamento entre itens de Grid, Flexbox e multicolunas sem adicionar espaço nas bordas externas da coleção, e sem os problemas de margin collapse. Isso elimina padrões frágeis como `margin-right` no item seguido de `:last-child { margin: 0 }`. Não é uma questão de performance de GPU — é de modelo de espaçamento mais limpo e previsível."
+    }
+  ]
+}

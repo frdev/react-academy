@@ -1,0 +1,81 @@
+# Nesting Nativo & @scope
+
+Aninhar regras era *o* motivo nº 1 para usar Sass. Agora o navegador faz nativamente — sem build, sem dependência. Mas há uma diferença sutil e importante em relação ao Sass que pega muita gente. E o `@scope` resolve outro problema antigo: limitar o alcance de um bloco de estilos a uma região específica do DOM, com um controle que nem o Sass tinha.
+
+## Nesting nativo: o básico
+
+Você aninha seletores dentro de regras, como esperaria:
+
+```css
+.card {
+  padding: 1rem;
+
+  & .title { font-weight: 700; } /* .card .title */
+  &:hover  { box-shadow: 0 4px 12px #0003; } /* .card:hover */
+  &.active { border-color: var(--brand); } /* .card.active */
+}
+```
+
+O `&` é o **seletor de aninhamento**: representa a regra-pai. Você pode até omiti-lo para descendentes — `.card { .title { } }` funciona, com o navegador inserindo um descendente implícito. Usar o `&` explicitamente, porém, deixa a intenção clara.
+
+## A pegadinha que vem do Sass: `&` não concatena
+
+Esta é a diferença crucial. No Sass, `&` faz **concatenação de strings**, então o padrão BEM funciona:
+
+```css
+/* Sass: isto vira .card__title — concatenação textual */
+.card { &__title { } }
+```
+
+No nesting **nativo**, `&` é uma **referência de seletor**, não texto. `&__title` não vira `.card__title` — é inválido/sem sentido, porque você não pode "colar" texto num seletor. Para compor classes você precisa de classes reais aninhadas:
+
+```css
+/* Nativo: NÃO existe concatenação. Use a classe completa. */
+.card { .card__title { } } /* ou simplesmente: .card { .title { } } */
+```
+
+Se você migra de Sass e seu CSS depende de `&__elemento`, essa parte **não** se traduz direto para nesting nativo.
+
+## Especificidade do `&` e dos pais em lista
+
+`&` carrega a especificidade do **seletor-pai inteiro**, tratado como `:is(...)`. Isso surpreende quando o pai é uma lista:
+
+```css
+.a, #b {
+  & .child { } /* especificidade do & = a do mais específico do grupo (#b) → alta! */
+}
+```
+
+Como `:is(.a, #b)` assume a especificidade de `#b` (um ID), `.child` aninhado herda essa especificidade alta. Aninhar sob listas com seletores de força muito diferente pode inflar a especificidade sem você perceber.
+
+## `@scope`: estilos com fronteira
+
+`@scope` limita um bloco de regras a uma **subárvore** do DOM. Tudo dentro casa a partir de um root:
+
+```css
+@scope (.card) {
+  :scope { border: 1px solid #ddd; } /* :scope = o próprio root (.card) */
+  img    { border-radius: 8px; }      /* só imagens DENTRO de .card */
+  a      { color: var(--brand); }
+}
+```
+
+`:scope` se refere ao elemento-raiz do escopo. As regras só atingem o que está dentro daquele root — uma encapsulação que antes pedia BEM ou CSS Modules.
+
+## Donut scope: incluir o root, excluir um miolo
+
+O recurso mais poderoso do `@scope` é a **fronteira inferior**: `@scope (root) to (limite)` aplica os estilos do root **até** o limite, **excluindo** o que está dentro do limite:
+
+```css
+@scope (.card) to (.card__slot) {
+  a { color: var(--brand); } /* estiliza links do card, MAS não os de dentro de .card__slot */
+}
+```
+
+É o "donut": o recheio (`.card__slot`) fica de fora. Perfeito para estilizar um componente sem vazar para conteúdo aninhado/injetado (slots, markdown do usuário, sub-componentes de terceiros) — algo que era genuinamente difícil antes.
+
+## Proximidade de escopo: um novo critério de desempate
+
+`@scope` ainda adiciona um desempate inédito na cascata: quando duas regras escopadas têm a mesma especificidade, vence aquela cujo **root está mais próximo** do elemento no DOM. Isso resolve elegantemente temas aninhados (um card "dark" dentro de um "light"): a regra do escopo mais próximo ganha, sem truques de especificidade.
+
+> **Resumo:** O **nesting nativo** traz o aninhamento do Sass ao navegador, sem build; `&` é o seletor de aninhamento (`&:hover`, `&.active`), e descendentes podem omiti-lo. A pegadinha: `&` **não concatena** como no Sass — `&__title` (BEM) **não** funciona nativamente, pois `&` é referência de seletor, não texto. Cuidado também com a especificidade: `&` assume a do pai como `:is(...)`, inflando sob listas com IDs. **`@scope (.root)`** limita regras a uma subárvore (`:scope` é o root), e o **donut scope** `@scope (root) to (limite)` estiliza do root até um limite, **excluindo** o miolo — ideal para não vazar em slots/conteúdo injetado. Por fim, `@scope` adiciona o desempate de **proximidade**: em empate de especificidade, vence o escopo cujo root está mais perto do elemento.

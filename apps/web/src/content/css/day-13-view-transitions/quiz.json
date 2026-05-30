@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-13",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Como a View Transitions API anima a passagem entre dois estados em uma SPA?",
+      "options": [
+        "Aplicando `transition` em todas as propriedades automaticamente",
+        "Você embrulha a mudança do DOM em `document.startViewTransition(() => ...)`, e o navegador tira um snapshot antes/depois e anima entre eles (crossfade por padrão)",
+        "Recarregando a página inteira a cada mudança",
+        "Exige uma biblioteca externa de animação"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A API captura o estado visual antes e depois da atualização do DOM. Passando a mudança para `document.startViewTransition(callback)`, o navegador faz snapshots, cria pseudo-elementos (`::view-transition-*`) e anima a transição — um crossfade da página por padrão, customizável em CSS. Não é uma `transition` comum nem exige biblioteca."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Como fazer um elemento 'morfar' entre dois estados (ex.: miniatura que vira imagem de detalhe) com View Transitions?",
+      "options": [
+        "Dar o MESMO `view-transition-name` ao elemento nos dois estados, para o navegador interpolar posição e tamanho",
+        "Usar `position: absolute` e calcular as coordenadas em JS",
+        "Aplicar `animation: morph` manualmente",
+        "Duplicar o elemento e usar `opacity`"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Atribuindo o mesmo `view-transition-name` (ex.: `hero`) ao elemento no estado antigo e no novo, o navegador entende que são 'o mesmo' elemento e anima a transformação de posição e tamanho entre eles — a shared element transition. Cada nome deve ser único dentro de um estado. Nada de cálculo manual de coordenadas."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Como habilitar transições entre páginas (MPA, mesmo domínio) sem JavaScript?",
+      "options": [
+        "Adicionando `startViewTransition` em cada link",
+        "Com a at-rule CSS `@view-transition { navigation: auto; }`",
+        "Não é possível sem JavaScript",
+        "Usando `<meta http-equiv=\"transition\">`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Para navegação entre documentos do mesmo domínio, a at-rule `@view-transition { navigation: auto; }` ativa transições ao navegar entre páginas, sem nenhuma linha de JavaScript. O `startViewTransition()` é a via para SPAs (mudança de estado no mesmo documento); a at-rule cobre o caso multi-página."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual o papel de `@starting-style` ao animar a entrada de um elemento?",
+      "options": [
+        "Define a cor inicial do texto",
+        "Define o estado a partir do qual o elemento transiciona quando aparece pela primeira vez (ex.: `opacity: 0` de onde ele faz fade-in)",
+        "Inicia a folha de estilo do documento",
+        "Marca o elemento como prioritário no carregamento"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`@starting-style` fornece os valores 'de onde' a transição parte na primeira renderização (ou ao sair de `display: none`). Sem ele, não há um estado inicial para interpolar e a entrada não anima. Por exemplo, definir `opacity: 0` dentro de `@starting-style` faz o elemento aparecer com fade-in até a sua `opacity` normal."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Para que serve `transition-behavior: allow-discrete`?",
+      "options": [
+        "Para deixar as transições mais rápidas",
+        "Para permitir que propriedades discretas (como `display` e `visibility`) participem da transição, viabilizando animar `display: none ↔ block`",
+        "Para desativar todas as transições",
+        "Para aplicar transições apenas em telas discretas (pequenas)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Propriedades discretas como `display` normalmente trocam de valor instantaneamente, cortando a animação. `transition-behavior: allow-discrete` as deixa participar da transição, adiando a troca de `display` de forma adequada. Combinado com `@starting-style`, isso permite fade-in/out reais de elementos que aparecem e somem do fluxo (`display: none ↔ block`)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Quais responsabilidades o Popover API (atributo `popover` + `popovertarget`) assume nativamente?",
+      "options": [
+        "Renderizar no top layer, fechar ao clicar fora/Esc (light-dismiss) e gerenciar foco — sem JS para isso",
+        "Apenas mudar a cor de fundo do elemento",
+        "Validar formulários e enviar ao servidor",
+        "Comprimir imagens dentro do popover"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Com `popover` no elemento e `popovertarget` no botão, o navegador renderiza a camada no top layer (sem guerra de `z-index`), fecha ao clicar fora ou apertar Esc (light-dismiss) e cuida do foco e do empilhamento. Em CSS você estiliza `:popover-open` e `::backdrop`. Tudo isso antes exigia JavaScript dedicado."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que o anchor positioning (`anchor-name`, `position-anchor`, `position-area`/`anchor()`) resolve?",
+      "options": [
+        "Ancorar imagens ao topo da página apenas",
+        "Posicionar um elemento relativo a outro (a âncora) em CSS — com fallbacks como `position-try-fallbacks: flip-block` quando falta espaço — sem medir posições em JavaScript",
+        "Fixar o rodapé na base da tela",
+        "Travar o scroll da página"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O anchor positioning prende um elemento a uma âncora: o alvo declara `position-anchor: --x` e se posiciona com `position-area`/`anchor()`. Quando não cabe (ex.: transbordaria a viewport), `position-try-fallbacks` reposiciona automaticamente (virar para cima, etc.). É a base de tooltips, menus e popovers que se reposicionam sozinhos — sem `getBoundingClientRect` em JS. Combinado com o Popover API, forma a stack de floating UI nativa."
+    }
+  ]
+}

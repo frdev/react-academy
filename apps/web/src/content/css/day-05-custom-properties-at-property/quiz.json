@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença fundamental entre uma custom property do CSS (`--x`) e uma variável de Sass (`$x`)?",
+      "options": [
+        "Não há diferença; são a mesma coisa com sintaxe diferente",
+        "A custom property é runtime — cascateia, herda e muda via cascata/JS; a variável de Sass é resolvida em build e some no CSS final",
+        "A variável de Sass cascateia e a custom property não",
+        "Custom properties só funcionam dentro de `@property`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Variáveis de Sass são substituídas em tempo de compilação e desaparecem do CSS gerado — não conhecem cascata nem herança. Custom properties são valores vivos no runtime: participam da cascata, herdam para descendentes e podem mudar via media query, `:hover`, classe ou JavaScript (`setProperty`). Isso é o que viabiliza theming dinâmico."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que `var(--x, var(--y, 8px))` faz?",
+      "options": [
+        "Soma os valores de --x, --y e 8px",
+        "Usa --x; se --x não estiver definida, usa --y; se --y também não, usa 8px",
+        "Sempre usa 8px, ignorando --x e --y",
+        "Gera erro de sintaxe — var() não aceita aninhamento"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O segundo argumento de `var()` é o fallback, e ele pode ser outro `var()`, formando uma cadeia. Aqui: tenta `--x`; faltando, cai para `--y`; faltando, cai para `8px`. Encadear fallbacks é um padrão útil para defaults em camadas (token específico → token genérico → valor cru)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Você escreve `--size: banana; width: var(--size)`. O que acontece?",
+      "options": [
+        "A declaração `--size` é rejeitada imediatamente como erro de sintaxe",
+        "`--size` é aceita (qualquer texto é válido como custom property), mas em `width` o valor é inválido no uso e a propriedade cai para o valor herdado/inicial",
+        "`width` usa o último valor válido que tinha antes",
+        "O navegador converte 'banana' para 0px automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Custom properties sem tipo aceitam praticamente qualquer fluxo de tokens, então `--size: banana` é uma declaração válida. O problema surge no ponto de uso: 'banana' não é um `width` válido, e a regra cai para o valor herdado ou inicial — não para um valor anterior. É o comportamento 'invalid at computed-value time', que surpreende por falhar no uso, não na declaração."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Quais são os três descritores que você define em uma regra `@property`?",
+      "options": [
+        "color, size, position",
+        "syntax, inherits, initial-value",
+        "name, value, scope",
+        "type, default, animation"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`@property` registra uma custom property tipada com: `syntax` (o tipo, ex.: '<color>', '<length>', '<angle>', '*'), `inherits` (se descendentes herdam) e `initial-value` (o valor de partida, obrigatório exceto para o tipo universal '*'). Esses descritores destravam checagem de tipo, herança controlada e animação."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `@property` é necessário para animar a rotação de um `conic-gradient`?",
+      "options": [
+        "Porque gradientes só funcionam dentro de `@property`",
+        "Porque, com um tipo conhecido (ex.: `<angle>`), o navegador sabe interpolar a variável; sem tipo, a transição vira um corte seco",
+        "Porque `@property` aumenta a taxa de quadros da animação",
+        "Porque conic-gradient exige JavaScript sem `@property`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Gradientes não são interpoláveis diretamente, mas você pode animar a variável que os parametriza. Sem `@property`, `--angle` é apenas texto e o navegador não sabe interpolar entre '0deg' e '360deg' — o resultado é um salto instantâneo. Registrando `--angle` com `syntax: '<angle>'`, o navegador interpola o ângulo de forma contínua e o gradiente gira suavemente."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para que serve `inherits: false` em uma regra `@property`?",
+      "options": [
+        "Desativa completamente a custom property",
+        "Impede que os elementos descendentes herdem o valor da custom property",
+        "Faz a propriedade ignorar a cascata inteira",
+        "Torna a propriedade obrigatória em todos os elementos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`inherits: false` controla a herança: os descendentes não recebem o valor automaticamente, ficando com o `initial-value` a menos que o redefinam. Isso é essencial em casos como o `--angle` de um gradiente — você não quer que filhos herdem e girem junto. Custom properties normais herdam por padrão; `@property` te dá controle explícito."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Na prática moderna de theming, qual a vantagem de separar tokens primitivos (`--purple-600`) de tokens semânticos (`--color-accent`)?",
+      "options": [
+        "Reduz o número de cores que o navegador precisa renderizar",
+        "Os componentes referenciam o papel (`--color-accent`), então trocar de tema é redefinir poucos tokens semânticos num escopo, sem tocar nos componentes",
+        "Tokens primitivos são mais rápidos que semânticos",
+        "Elimina a necessidade de `var()`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com camadas semânticas, o componente usa `var(--color-accent)` (o papel), nunca a cor crua `--purple-600`. Assim, mudar para tema escuro ou para outra marca é só redefinir os tokens semânticos num escopo (ex.: `[data-theme=\"dark\"]`), e todos os componentes acompanham sem alteração. É o padrão que torna design systems temáveis e sustentáveis."
+    }
+  ]
+}

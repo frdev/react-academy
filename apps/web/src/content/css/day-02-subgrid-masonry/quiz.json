@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual problema o `subgrid` foi criado para resolver?",
+      "options": [
+        "Permitir mais de 12 colunas em um grid",
+        "Fazer um grid aninhado adotar as tracks (linhas/colunas) do grid pai, alinhando elementos internos de itens vizinhos",
+        "Substituir o Flexbox em layouts de uma dimensão",
+        "Carregar imagens de forma lazy dentro do grid"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Por padrão, um grid aninhado é independente: ele calcula suas próprias tracks sem conhecer as do pai. Isso impede, por exemplo, que títulos e rodapés de cards vizinhos se alinhem. `subgrid` permite que o item filho adote as tracks do pai em um eixo, fazendo seus elementos internos compartilharem a mesma grade dos irmãos."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Para um card usar `grid-template-rows: subgrid` e alinhar suas 3 seções às dos cards vizinhos, o que mais é necessário?",
+      "options": [
+        "Nada além de declarar `subgrid`",
+        "O card precisa ABRANGER as linhas do pai, por exemplo com `grid-row: span 3`, e o pai precisa definir essas linhas",
+        "O card precisa ter `position: absolute`",
+        "Todos os cards precisam ter a mesma altura fixa em pixels"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`subgrid` adota as tracks do pai apenas para as linhas/colunas que o item abrange. Então o pai precisa definir as tracks (ex.: `grid-template-rows: auto 1fr auto`), e o card precisa abranger essas linhas (`grid-row: span 3`) antes de declarar `grid-template-rows: subgrid`. Sem abranger as linhas do pai, não há tracks para herdar."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Além das tracks, o que mais um subgrid herda do grid pai por padrão?",
+      "options": [
+        "O `background-color` e a tipografia",
+        "O `gap` e os nomes de linha definidos no pai (ambos podendo ser usados/sobrescritos dentro do filho)",
+        "Os event listeners de JavaScript",
+        "Nada — apenas o tamanho das tracks"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um subgrid herda o `gap` do pai (que você pode sobrescrever no filho) e também os nomes de linha definidos no pai passam a valer dentro do filho, facilitando posicionar elementos por nome. O que ele compartilha é a estrutura da grade — não estilos visuais como cor ou fonte."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a característica visual central de um layout 'masonry' (alvenaria)?",
+      "options": [
+        "Todas as colunas e linhas perfeitamente alinhadas em uma grade rígida",
+        "Itens de alturas diferentes que se encaixam na coluna mais curta disponível, sem linhas alinhadas (estilo Pinterest)",
+        "Um único item ocupando a tela inteira por vez",
+        "Itens dispostos sempre em uma única linha horizontal com scroll"
+      ],
+      "correctAnswer": 1,
+      "explanation": "No masonry, os itens têm alturas variadas e cada novo item se acomoda na coluna que está mais curta no momento, como tijolos de uma parede. Não há linhas horizontais alinhadas entre colunas — esse é justamente o visual 'Pinterest' que o Grid tradicional (com linhas alinhadas) não produz."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que usar `columns` (CSS multicolunas) como masonry costuma ser problemático?",
+      "options": [
+        "Porque `columns` não permite definir o número de colunas",
+        "Porque a ordem de leitura fica vertical (preenche a 1ª coluna inteira antes da 2ª), o que costuma estar errado para feeds cronológicos",
+        "Porque `columns` não suporta imagens",
+        "Porque `columns` exige JavaScript para funcionar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `columns`, o conteúdo flui de cima a baixo na primeira coluna, depois na segunda, e assim por diante. Para um feed onde a ordem importa (ex.: posts do mais recente ao mais antigo lendo da esquerda para a direita), essa ordem vertical fica errada. É a principal limitação do `columns` como masonry — embora ele funcione hoje, sem flags, como fallback aceitável."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Sobre o masonry NATIVO de CSS (`grid-template-rows: masonry`), qual afirmação é correta hoje?",
+      "options": [
+        "Já tem suporte estável e universal; pode usar em produção sem fallback",
+        "Ainda é experimental, disponível atrás de flags em alguns navegadores e com a sintaxe em padronização — use como enhancement com fallback",
+        "Foi descontinuado e nunca será implementado",
+        "Só funciona em conjunto com JavaScript do Masonry.js"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O masonry nativo preserva a ordem do documento (resolvendo o defeito do `columns`), mas ainda é experimental: disponível atrás de flags em parte dos navegadores, e a própria sintaxe esteve em debate (masonry no Grid vs. uma proposta separada de `display: masonry`). Em produção, trate como progressive enhancement, com `columns` ou JS como base."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Em qual cenário o `subgrid` é a ferramenta certa?",
+      "options": [
+        "Empilhar itens de alturas diferentes em colunas, estilo Pinterest",
+        "Alinhar rótulos e campos de um formulário em colunas compartilhadas, linha após linha, mesmo que cada linha seja um sub-componente",
+        "Criar um carrossel horizontal com scroll-snap",
+        "Animar a entrada de elementos ao rolar a página"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sempre que um filho precisa se alinhar à grade do avô (em vez de criar uma grade nova), é caso de `subgrid`. Um formulário onde cada linha é um componente, mas rótulos e inputs devem alinhar em colunas comuns, é o exemplo clássico em colunas. O cenário Pinterest é masonry; carrossel é scroll-snap; animação ao rolar é scroll-driven animation — todos temas de outros dias."
+    }
+  ]
+}
