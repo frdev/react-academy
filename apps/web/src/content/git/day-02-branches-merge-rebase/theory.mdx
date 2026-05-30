@@ -37,9 +37,9 @@ depois:  A───B───C───D───E   ← main e feature  (main "
 **Merge commit** — se a `main` recebeu commits próprios enquanto você trabalhava, as histórias **divergiram**. O Git cria um **commit de merge** (`M`), com dois pais, costurando as duas linhas:
 
 ```text
-         A───B───C───F        ← main
+         A───B───C───F        (main antes do merge)
               \           \
-               D───E───────M   ← M tem dois pais: F e E
+               D───E───────M   ← main agora (M = merge; pais: F e E)
 ```
 
 ```bash
