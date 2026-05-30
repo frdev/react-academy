@@ -7,6 +7,7 @@ import { CSS_LESSONS } from './css-lessons'
 import { HTML_LESSONS } from './html-lessons'
 import { REGEX_LESSONS } from './regex-lessons'
 import { PACKAGE_MANAGERS_LESSONS } from './package-managers-lessons'
+import { GIT_LESSONS } from './git-lessons'
 import type { LessonMetadata } from '@/features/curriculum/types'
 
 export function getLessonsForStack(stackId: string): LessonMetadata[] {
@@ -18,5 +19,6 @@ export function getLessonsForStack(stackId: string): LessonMetadata[] {
   if (stackId === 'html') return HTML_LESSONS
   if (stackId === 'regex') return REGEX_LESSONS
   if (stackId === 'package-managers') return PACKAGE_MANAGERS_LESSONS
+  if (stackId === 'git') return GIT_LESSONS
   return LESSONS
 }
