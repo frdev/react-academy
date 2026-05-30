@@ -157,7 +157,7 @@ git reset --hard    descartadas de vez (cuidado!)
 
 ```bash
 git reset --soft HEAD~1    # desfaz o último commit, mantém tudo staged
-git reset HEAD~1           # desfaz o commit, deixa as mudanças no working tree
+git reset --mixed HEAD~1   # (padrão) desfaz o commit, deixa as mudanças no working tree
 git reset --hard HEAD~1    # desfaz o commit E as mudanças — irreversível
 ```
 
