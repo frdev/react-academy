@@ -74,8 +74,8 @@ export default function StackSelectorPage() {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold text-white mb-3">Escolha sua stack</h2>
-          <p className="text-gray-400 text-lg">30 dias de conteúdo focado para dominar a tecnologia que você escolher.</p>
+          <h2 className="text-3xl font-bold text-white mb-3">Comece agora!</h2>
+          <p className="text-gray-400 text-lg">Conteúdos focado para dominar a tecnologia que você escolher.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

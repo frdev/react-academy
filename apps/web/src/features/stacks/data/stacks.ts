@@ -1,10 +1,11 @@
 import type { Stack } from '../types'
 
 export const STACKS: Stack[] = [
+  
   {
     id: 'javascript',
     name: 'JavaScript',
-    tagline: '30 dias do básico ao avançado de verdade',
+    tagline: '30 dias de JavaScript avançado de verdade',
     description: 'Types, closures, prototype, event loop, V8 internals, Proxy, generators e muito mais.',
     totalDays: 30,
     status: 'available',
@@ -32,24 +33,14 @@ export const STACKS: Stack[] = [
     weekThemes: ['Fundamentos Profundos', 'Hooks Avançados', 'Arquitetura', 'Performance'],
   },
   {
-    id: 'nodejs',
-    name: 'Node.js',
-    tagline: 'Em breve',
-    description: 'APIs, streams, performance e arquitetura backend com Node.js.',
-    totalDays: 30,
-    status: 'coming-soon',
-    color: 'green',
-    weekThemes: ['APIs & Módulos', 'Streams & Eventos', 'Performance', 'Arquitetura'],
-  },
-  {
-    id: 'ai',
-    name: 'AI Moderna com Anthropic',
-    tagline: '14 dias construindo com AI: da API aos agentes',
-    description: 'LLMs, Anthropic API, tool use, RAG, MCP, Skills, agents e multi-agentes — hands-on, do zero ao sistema agêntico.',
+    id: 'css',
+    name: 'CSS Moderno & Avançado',
+    tagline: '14 dias de CSS de ponta: do layout intrínseco às View Transitions',
+    description: 'Container queries, subgrid, :has(), cascade layers, propriedades lógicas, cor moderna (oklch/color-mix), nesting nativo, scroll-driven animations e View Transitions — técnicas, padrões e novidades.',
     totalDays: 14,
     status: 'available',
-    color: 'purple',
-    weekThemes: ['Fundamentos & Ferramentas', 'Agentes & Produção'],
+    color: 'pink',
+    weekThemes: ['Layout, Arquitetura & Seletores', 'Cor, Movimento & Novidades'],
   },
   {
     id: 'algorithms',
@@ -62,14 +53,24 @@ export const STACKS: Stack[] = [
     weekThemes: ['Fundamentos & Estruturas Lineares', 'Algoritmos & Estruturas Não-Lineares'],
   },
   {
-    id: 'css',
-    name: 'CSS Moderno & Avançado',
-    tagline: '14 dias de CSS de ponta: do layout intrínseco às View Transitions',
-    description: 'Container queries, subgrid, :has(), cascade layers, propriedades lógicas, cor moderna (oklch/color-mix), nesting nativo, scroll-driven animations e View Transitions — técnicas, padrões e novidades.',
+    id: 'ai',
+    name: 'AI Moderna com Anthropic',
+    tagline: '14 dias construindo com AI: da API aos agentes',
+    description: 'LLMs, Anthropic API, tool use, RAG, MCP, Skills, agents e multi-agentes — hands-on, do zero ao sistema agêntico.',
     totalDays: 14,
     status: 'available',
-    color: 'pink',
-    weekThemes: ['Layout, Arquitetura & Seletores', 'Cor, Movimento & Novidades'],
+    color: 'purple',
+    weekThemes: ['Fundamentos & Ferramentas', 'Agentes & Produção'],
+  },
+  {
+    id: 'nodejs',
+    name: 'Node.js',
+    tagline: 'Em breve',
+    description: 'APIs, streams, performance e arquitetura backend com Node.js.',
+    totalDays: 30,
+    status: 'coming-soon',
+    color: 'green',
+    weekThemes: ['APIs & Módulos', 'Streams & Eventos', 'Performance', 'Arquitetura'],
   },
 ]
 
