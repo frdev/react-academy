@@ -9,6 +9,7 @@ import { REGEX_LESSONS } from './regex-lessons'
 import { PACKAGE_MANAGERS_LESSONS } from './package-managers-lessons'
 import { GIT_LESSONS } from './git-lessons'
 import { FRONTEND_ARCHITECTURE_LESSONS } from './frontend-architecture-lessons'
+import { TYPESCRIPT_ESSENTIALS_LESSONS } from './typescript-essentials-lessons'
 import type { LessonMetadata } from '@/features/curriculum/types'
 
 export function getLessonsForStack(stackId: string): LessonMetadata[] {
@@ -22,5 +23,6 @@ export function getLessonsForStack(stackId: string): LessonMetadata[] {
   if (stackId === 'package-managers') return PACKAGE_MANAGERS_LESSONS
   if (stackId === 'git') return GIT_LESSONS
   if (stackId === 'frontend-architecture') return FRONTEND_ARCHITECTURE_LESSONS
+  if (stackId === 'typescript-essentials') return TYPESCRIPT_ESSENTIALS_LESSONS
   return LESSONS
 }

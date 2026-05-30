@@ -178,6 +178,11 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-02': () => import('@/content/frontend-architecture/day-02-componentizacao-e-estado/quiz.json'),
     'day-03': () => import('@/content/frontend-architecture/day-03-arquitetura-por-feature/quiz.json'),
   },
+  'typescript-essentials': {
+    'day-01': () => import('@/content/typescript-essentials/day-01-tipos-e-inferencia/quiz.json'),
+    'day-02': () => import('@/content/typescript-essentials/day-02-interfaces-e-narrowing/quiz.json'),
+    'day-03': () => import('@/content/typescript-essentials/day-03-generics-e-utility-types/quiz.json'),
+  },
 }
 
 interface QuizQuestion {

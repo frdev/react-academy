@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual afirmação sobre `interface` e `type` é correta?",
+      "options": [
+        "interface consegue apelidar uma union como `string | number`",
+        "type pode representar unions, intersections e primitivos além de objetos; interface descreve formatos de objeto (e permite extends)",
+        "type e interface nunca podem descrever o mesmo objeto",
+        "interface é sempre mais lenta que type em tempo de execução"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`type` apelida qualquer tipo (union, intersection, primitivo, tupla); `interface` descreve objetos e permite `extends`. Para um objeto, os dois se equivalem. Tipos não existem em runtime, então não há diferença de performance."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que `readonly` faz numa propriedade de interface, como em `readonly versao: string`?",
+      "options": [
+        "Impede que a propriedade seja lida",
+        "Impede reatribuir a propriedade depois que o objeto é criado",
+        "Torna a propriedade opcional",
+        "Faz a propriedade só aceitar números"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`readonly` documenta e impõe imutabilidade: você lê normalmente, mas reatribuir (`c.versao = ...`) vira erro de compilação. Quem torna opcional é o `?`."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que preferir uma discriminated union (`{ status: \"sucesso\"; dados: T } | { status: \"erro\"; mensagem: string }`) a um objeto `{ carregando: boolean; dados?: T; erro?: string }`?",
+      "options": [
+        "Ocupa menos memória em tempo de execução",
+        "Cada estado declara exatamente os campos que possui, e o TS sabe quais existem após checar o discriminante",
+        "Elimina a necessidade de tratar o estado de erro",
+        "Permite que dados e erro existam ao mesmo tempo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Na union, cada estado lista só os campos reais daquele momento; ao checar `status`, o TS estreita e libera os campos certos. No objeto com tudo opcional, `dados` e `erro` parecem sempre poder existir (ou faltar), e nada disso aparece em runtime."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Dentro do bloco `if (typeof valor === \"string\") { ... }`, onde `valor` é `string | number`, qual é o tipo de `valor` nesse bloco?",
+      "options": [
+        "string | number",
+        "string",
+        "any",
+        "unknown"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`typeof` faz narrowing: dentro do `if`, o TS sabe que `valor` é `string` e libera métodos de string como `.trim()`. No `else`, sobraria `number`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual operador você usa para estreitar uma union de objetos checando se uma propriedade existe?",
+      "options": [
+        "typeof",
+        "apenas instanceof",
+        "in (ex.: \"miar\" in animal)",
+        "readonly"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`\"propriedade\" in objeto` estreita unions de objetos com formatos diferentes. `typeof` é para primitivos (string, number, boolean) e não enxerga a forma de objetos."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "Atribuir o valor restante a uma variável `: never` no `default` de um `switch` faz o TS acusar erro caso você adicione um novo membro à union e esqueça de tratá-lo.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 0,
+      "explanation": "Verdadeiro. Se algum caso não for tratado, o valor que chega ao `default` não é `never`, e a atribuição falha na compilação — um lembrete automático (checagem de exaustividade) para tratar o novo estado."
+    }
+  ]
+}

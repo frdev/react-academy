@@ -1,0 +1,21 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Generics e Utility Types",
+  "slug": "generics-e-utility-types",
+  "topics": [
+    "o problema que generics resolvem (any perde informação)",
+    "generics em funções com inferência de T",
+    "constraints com extends",
+    "utility types: Partial, Pick, Omit",
+    "Record, Required e Readonly",
+    "type guards com predicate (x is T) e tsconfig strict"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

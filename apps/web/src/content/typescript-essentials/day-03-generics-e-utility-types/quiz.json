@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `function primeiro<T>(lista: T[]): T` é melhor do que usar `any[]` e retorno `any`?",
+      "options": [
+        "Roda mais rápido em tempo de execução",
+        "Preserva o tipo: passando `number[]`, o retorno é `number`, com autocomplete e checagem",
+        "Aceita menos tipos de array",
+        "Dispensa o uso de `return`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O generic carrega o tipo da entrada para a saída: `number[]` entra, `number` sai. Com `any` o retorno seria `any` e você perderia autocomplete e checagem. Generics somem na build — não mudam performance."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em `function primeiro<T>(lista: T[]): T`, como o TS descobre o que é `T` ao chamar `primeiro([1, 2, 3])`?",
+      "options": [
+        "Você precisa sempre escrever `primeiro<number>([1, 2, 3])`",
+        "O TS infere `T` a partir do argumento (`number[]` → `T = number`)",
+        "`T` é sempre `any` por padrão",
+        "`T` é definido no tsconfig"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Na maioria dos casos o TS infere o type parameter pelo argumento passado, então você nem escreve `<number>`. Passar explicitamente é possível, mas costuma ser redundante."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que significa a constraint `T extends { length: number }`?",
+      "options": [
+        "T herda de uma classe chamada length",
+        "T precisa ter pelo menos uma propriedade `length` numérica para ser aceito",
+        "T é convertido em number",
+        "T só pode ser um array"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Aqui `extends` é uma restrição (um piso), não herança: qualquer tipo com `length: number` serve — string, array, objetos próprios. Um `number` puro não tem `length`, então é rejeitado."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Você tem `interface Usuario { id: number; nome: string; email: string }` e quer um tipo para updates onde qualquer campo pode faltar. Qual utility type usar?",
+      "options": [
+        "Required<Usuario>",
+        "Readonly<Usuario>",
+        "Partial<Usuario>",
+        "Record<Usuario>"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`Partial<Usuario>` torna todas as propriedades opcionais, perfeito para um patch parcial. `Required` faria o oposto, `Readonly` só impediria reatribuição e `Record` nem tem essa forma de uso."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `Pick` e `Omit`?",
+      "options": [
+        "São idênticos",
+        "`Pick` seleciona apenas as chaves indicadas; `Omit` mantém tudo exceto as chaves indicadas",
+        "`Pick` remove chaves; `Omit` adiciona chaves",
+        "`Pick` é para arrays e `Omit` para objetos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`Pick<T, K>` constrói um tipo só com as chaves `K`; `Omit<T, K>` constrói um tipo com todas as chaves menos `K`. São duas formas complementares de derivar um subconjunto de um tipo."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "Com `strict: true`, o `strictNullChecks` faz o TS tratar `string` e `string | null` como o mesmo tipo, ignorando o `null`.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso — é o contrário. `strictNullChecks` separa `string` de `string | null` e te obriga a tratar o `null`/`undefined` (com narrowing) antes de usar o valor, pegando justamente essa classe de bugs."
+    }
+  ]
+}

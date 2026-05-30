@@ -1,0 +1,118 @@
+# Generics e Utility Types
+
+Você já descreve formatos fixos. Mas pense numa função que recebe um array de **qualquer coisa** e devolve o primeiro item: ela serve para `number[]`, `Usuario[]`, `string[]`. Tipar o parâmetro como `any[]` faz o TS esquecer o tipo na saída. **Generics** são como reaproveitar código *sem* perder os tipos. E os **utility types** são transformações prontas para derivar um tipo de outro — em vez de redigitar tudo.
+
+## any joga a informação fora
+
+```ts
+function primeiro(lista: any[]): any {
+  return lista[0]
+}
+
+const n = primeiro([1, 2, 3]) // n: any 😞 — perdemos "number"
+n.toExponential()              // sem autocomplete, sem checagem
+```
+
+O `any` "funciona", mas apaga o tipo na saída. O que você queria: entrou `number[]`, sai `number`.
+
+## Generics: o tipo vem junto
+
+Um **type parameter** `<T>` é um espaço reservado que o TS preenche conforme o uso:
+
+```ts
+function primeiro<T>(lista: T[]): T {
+  return lista[0]
+}
+
+const n = primeiro([1, 2, 3])  // T = number → n: number ✅
+const s = primeiro(["a", "b"]) // T = string → s: string ✅
+```
+
+Você não passa o `T` à mão: o TS **infere** pelo argumento. Um molde, vários tipos concretos — sem duplicar a função.
+
+## Constraints: limitando o T com extends
+
+Às vezes `T` não pode ser *qualquer* coisa — precisa ter um certo formato. `extends` põe um piso:
+
+```ts
+function tamanho<T extends { length: number }>(x: T): number {
+  return x.length
+}
+
+tamanho("texto")   // ok: string tem length
+tamanho([1, 2, 3]) // ok: array tem length
+tamanho(42)        // ❌ number não tem length
+```
+
+Aqui `extends` não é herança — é "T precisa ser **pelo menos** isto".
+
+## Derivando tipos: Partial, Pick, Omit
+
+Dado um tipo, você raramente quer redigitar uma variação dele. Os **utility types** derivam:
+
+```ts
+interface Usuario {
+  id: number
+  nome: string
+  email: string
+}
+
+// todas as props opcionais — ótimo para updates parciais
+function atualizar(id: number, mudancas: Partial<Usuario>) {}
+atualizar(1, { nome: "Ana" }) // não precisa mandar tudo
+
+type Credencial = Pick<Usuario, "email">     // { email: string }
+type UsuarioPublico = Omit<Usuario, "email"> // { id: number; nome: string }
+```
+
+Mudou `Usuario`? Todos os derivados se atualizam sozinhos — uma única fonte da verdade.
+
+## Record, Required e Readonly
+
+`Record<K, V>` descreve um objeto com chaves `K` e valores `V`:
+
+```ts
+const porId: Record<number, Usuario> = {}
+const traducoes: Record<"pt" | "en", string> = { pt: "Olá", en: "Hi" }
+```
+
+E ainda há `Required<T>` (o oposto de `Partial` — torna tudo obrigatório) e `Readonly<T>` (deixa tudo `readonly`). Todos combinam entre si:
+
+```ts
+type ResumoUsuario = Readonly<Pick<Usuario, "id" | "nome">>
+```
+
+## Type guards: ensinando o TS a checar
+
+No Dia 2 você usou `typeof` e `in`. Para os **seus** tipos, escreva uma função que devolve um **type predicate** (`x is T`):
+
+```ts
+interface Gato { miar: () => void }
+interface Cachorro { latir: () => void }
+
+function ehGato(animal: Gato | Cachorro): animal is Gato {
+  return "miar" in animal
+}
+
+function emitirSom(animal: Gato | Cachorro) {
+  if (ehGato(animal)) {
+    animal.miar()  // TS sabe: é Gato
+  } else {
+    animal.latir() // sobrou Cachorro
+  }
+}
+```
+
+O `animal is Gato` é o que faz o narrowing atravessar a fronteira da função.
+
+## Ligue o strict
+
+Tudo isso só rende de verdade com o modo **`strict`** ligado no `tsconfig.json`:
+
+```json
+{ "compilerOptions": { "strict": true } }
+```
+
+Ele ativa checagens como `strictNullChecks`, que separa `string` de `string | null` e te obriga a tratar o `null`/`undefined` antes de usar o valor. Sem `strict`, o TS deixa passar exatamente os bugs que você adotou TypeScript para pegar. Em projeto novo, ligue desde o primeiro dia.
+
+> **Resumo:** **Generics** (`<T>`) reaproveitam código sem trocar tipos por `any`: `primeiro<T>(lista: T[]): T` mantém o tipo da entrada na saída, e o TS infere `T` pelo uso. Limite o `T` com **constraints** (`T extends { length: number }`). Os **utility types** derivam um tipo de outro sem redigitar — `Partial` (tudo opcional, ideal para updates), `Pick`/`Omit` (selecionar/remover chaves), `Record<K, V>` (mapa), mais `Required` e `Readonly`, todos combináveis e presos a uma única fonte da verdade. Para narrowing dos seus próprios tipos, escreva **type guards** com predicate `x is T`. E nada disso entrega o prometido sem **`strict: true`** no tsconfig, que te obriga a tratar `null`/`undefined`. Daqui você está pronto para a trilha de **TypeScript avançado**: conditional types, mapped types e `infer`.

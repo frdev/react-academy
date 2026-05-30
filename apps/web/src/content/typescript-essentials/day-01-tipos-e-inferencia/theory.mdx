@@ -1,0 +1,132 @@
+# Tipos e Inferência
+
+JavaScript te deixa rodar `usuario.nome.toUpperCase()` mesmo quando `usuario` chega `undefined` — e você só descobre o erro quando ele explode na tela de quem está usando. TypeScript é JavaScript com **tipos**: ele lê seu código antes de rodar, entende o formato de cada valor e te avisa do problema enquanto você ainda está digitando. Hoje você aprende a descrever esses formatos — e a deixar o próprio TS descobrir a maior parte deles sozinho.
+
+## Por que adicionar tipos
+
+JavaScript só reclama de um erro de tipo quando o código roda — e às vezes nem reclama, só produz `NaN` ou `undefined` silenciosamente e segue em frente.
+
+```js
+function aplicarDesconto(preco, desconto) {
+  return preco - preco * desconto
+}
+
+aplicarDesconto(100, "10%") // NaN — e ninguém avisou
+```
+
+Em TypeScript você descreve o que cada parâmetro é, e o erro aparece na hora, no editor:
+
+```ts
+function aplicarDesconto(preco: number, desconto: number) {
+  return preco - preco * desconto
+}
+
+aplicarDesconto(100, "10%")
+//                   ~~~~~ Argument of type 'string' is not assignable to 'number'
+```
+
+O tipo é um contrato verificado: o erro sai do *tempo de execução, na frente do usuário* e vira um aviso no *tempo de escrita, no seu editor*.
+
+## Você anota menos do que imagina
+
+Não precisa anotar tudo. Quando o valor já nasce com um conteúdo, o TS **infere** o tipo sozinho:
+
+```ts
+let nome = "Ana"   // inferido: string
+let idade = 30     // inferido: number
+let ativo = true   // inferido: boolean
+
+idade = "trinta"   // ❌ erro: number não aceita string
+```
+
+`const` com um literal vai além e infere o **valor exato**:
+
+```ts
+const metodo = "GET" // tipo: "GET" (literal)
+let outro = "GET"    // tipo: string
+```
+
+Regra prática: **deixe o TS inferir variáveis locais** e anote nas fronteiras — parâmetros de função, retornos importantes e dados que vêm de fora (APIs, formulários).
+
+## Tipando funções
+
+Parâmetros quase sempre precisam de anotação (o TS não tem como adivinhar o que entra). O retorno costuma ser inferido, mas anotá-lo em funções importantes documenta a intenção e te avisa se você devolver a coisa errada por engano:
+
+```ts
+function saudar(nome: string): string {
+  return `Olá, ${nome}`
+}
+```
+
+Parâmetros podem ter valor padrão ou ser opcionais com `?`:
+
+```ts
+function criarUsuario(nome: string, admin: boolean = false) {}
+function buscar(id: number, filtro?: string) {} // filtro: string | undefined
+```
+
+## Descrevendo dados: arrays e objetos
+
+```ts
+const numeros: number[] = [1, 2, 3]
+const nomes: string[] = ["Ana", "Bia"]
+
+const usuario: { nome: string; idade: number } = {
+  nome: "Ana",
+  idade: 30,
+}
+```
+
+Uma propriedade que pode faltar leva `?`:
+
+```ts
+const config: { tema: string; debug?: boolean } = { tema: "dark" }
+// debug pode existir ou não
+```
+
+Repetir esse formato inline em várias funções cansa — no Dia 2 ele vira uma `interface` reaproveitável.
+
+## Combinando possibilidades: union e literal types
+
+Um **union type** diz "pode ser um ou outro":
+
+```ts
+let id: string | number
+id = "abc" // ok
+id = 123   // ok
+id = true  // ❌ não é string nem number
+```
+
+Literais unidos formam um **conjunto fechado** de valores — bem melhor que uma string solta:
+
+```ts
+let status: "rascunho" | "publicado" | "arquivado"
+status = "publicado" // ok
+status = "deletado"  // ❌ não está no conjunto
+```
+
+Você ganha autocomplete e o TS barra valores inválidos — sem enum, sem constante mágica.
+
+## any desliga o TypeScript; unknown é o seguro
+
+`any` desativa toda a checagem: vale tudo, e você perde a rede de proteção. Evite.
+
+```ts
+let x: any = "texto"
+x.naoExiste() // sem erro... e explode em runtime
+```
+
+`unknown` é o "any seguro": aceita qualquer valor, mas te obriga a checar antes de usar.
+
+```ts
+let y: unknown = "texto"
+y.toUpperCase() // ❌ TS exige checar primeiro
+
+if (typeof y === "string") {
+  y.toUpperCase() // ✅ agora é seguro
+}
+```
+
+Existe ainda o `never`: o tipo do valor que *nunca* acontece (uma função que sempre lança, um caso impossível). Você o reencontra no Dia 2, fechando a checagem de estados.
+
+> **Resumo:** TypeScript confere o **formato dos valores antes de rodar**, transformando bugs de runtime em avisos no editor. Anote **parâmetros de função** e **dados que vêm de fora**, mas deixe o TS **inferir** o resto (`const "GET"` vira o literal `"GET"`, não `any`). Descreva dados com `number[]` e objetos `{ nome: string; idade?: number }`, combine opções com **union types** (`string | number`) e feche conjuntos com **literal types** (`"rascunho" | "publicado"`). Fuja de `any` (desliga a checagem); quando o tipo for incerto, use **`unknown`** e cheque antes de usar. No Dia 2 esses formatos viram `interface`/`type` reaproveitáveis e você refina unions com narrowing.

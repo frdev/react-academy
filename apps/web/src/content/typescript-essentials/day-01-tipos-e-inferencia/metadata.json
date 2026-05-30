@@ -1,0 +1,21 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Tipos e Inferência",
+  "slug": "tipos-e-inferencia",
+  "topics": [
+    "por que TypeScript existe (erros em tempo de compilação)",
+    "tipos primitivos e anotações (string, number, boolean)",
+    "inferência: quando deixar o TS adivinhar e quando anotar",
+    "tipando parâmetros e retorno de funções",
+    "arrays, objetos e propriedades opcionais",
+    "union types, literal types e any vs unknown"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

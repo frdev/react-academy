@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a principal vantagem de tipar `function aplicarDesconto(preco: number, desconto: number)` em vez da versão sem tipos?",
+      "options": [
+        "O código roda mais rápido em produção",
+        "Passar uma string onde se espera número vira um erro no editor, antes de rodar",
+        "Elimina a necessidade de escrever testes",
+        "Permite usar variáveis sem declarar"
+      ],
+      "correctAnswer": 1,
+      "explanation": "TypeScript verifica os tipos em tempo de compilação, então o erro aparece enquanto você digita — não em runtime na frente do usuário. Tipos somem na build (não afetam performance), não substituem testes e não mudam como variáveis são declaradas."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual o tipo inferido para `const metodo = \"GET\"`?",
+      "options": [
+        "string",
+        "any",
+        "\"GET\" (um literal type)",
+        "String (o objeto wrapper)"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`const` com um literal de string infere o valor exato `\"GET\"` (literal type), porque a constante nunca pode mudar. Com `let metodo = \"GET\"` o tipo seria `string`, já que poderia ser reatribuída a qualquer texto."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Sobre quando anotar tipos e quando deixar o TS inferir, qual é a recomendação prática?",
+      "options": [
+        "Anotar todas as variáveis sempre; inferência é insegura",
+        "Anotar parâmetros de função e dados externos, e deixar variáveis locais inferirem",
+        "Nunca anotar nada; o TS sempre adivinha o tipo certo",
+        "Anotar apenas números; o resto o TS infere bem"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A inferência é confiável para variáveis locais (o valor inicial já revela o tipo). Você anota nas fronteiras — parâmetros, retornos importantes e dados que vêm de fora —, onde o TS não tem como adivinhar."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Você quer que a variável `status` aceite apenas \"rascunho\", \"publicado\" ou \"arquivado\". Qual tipo expressa isso?",
+      "options": [
+        "string",
+        "string | number",
+        "\"rascunho\" | \"publicado\" | \"arquivado\"",
+        "any"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Uma union de literais fecha o conjunto de valores válidos: o TS dá autocomplete dos três e barra qualquer outro texto. `string` aceitaria qualquer coisa, e `any` desligaria a checagem."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `any` e `unknown`?",
+      "options": [
+        "São idênticos, só muda o nome",
+        "`any` aceita qualquer valor e desliga a checagem; `unknown` aceita qualquer valor mas obriga a checar o tipo antes de usar",
+        "`unknown` é mais perigoso que `any`",
+        "`any` só aceita números e `unknown` só aceita strings"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`any` é uma saída de emergência que desativa o TypeScript naquele valor. `unknown` é o \"any seguro\": você pode receber qualquer coisa, mas precisa estreitar o tipo (ex.: `typeof x === \"string\"`) antes de chamar métodos."
+    },
+    {
+      "id": "q6",
+      "type": "true-false",
+      "question": "Escrever `let idade: number = 30` é obrigatório — sem a anotação, o TS trataria `idade` como `any`.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. O TS infere `number` a partir do valor `30`; a anotação aqui é redundante. Inferência não é `any` — o tipo resultante é exatamente o mesmo, só que descoberto automaticamente."
+    }
+  ]
+}

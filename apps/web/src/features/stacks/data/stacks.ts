@@ -37,13 +37,13 @@ export const STACKS: Stack[] = [
   {
     id: 'typescript-essentials',
     name: 'TypeScript Essencial',
-    tagline: '7 dias de tipos, do básico ao React',
+    tagline: '3 dias do tipo básico aos generics',
     description: 'Tipos, interfaces, unions, narrowing, generics e utility types — a rampa para o TS avançado.',
-    totalDays: 7,
-    status: 'coming-soon',
+    totalDays: 3,
+    status: 'available',
     level: 'fundamentos',
     color: 'sky',
-    weekThemes: ['Tipos do Básico ao React'],
+    weekThemes: ['Tipos, Interfaces & Generics'],
   },
   {
     id: 'package-managers',

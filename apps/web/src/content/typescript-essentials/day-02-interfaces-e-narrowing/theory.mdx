@@ -1,0 +1,128 @@
+# Interfaces, Unions e Narrowing
+
+No Dia 1 você descreveu formatos inline: `{ nome: string; idade: number }`. Funciona para um objeto, mas repetir isso em dez funções é o *magic number* dos tipos. Hoje você dá **nome** a esses formatos com `interface` e `type`, aprende a combiná-los e — o pulo do gato — a fazer o TS **estreitar** um tipo amplo até o caso específico que você quer tratar.
+
+## Dando nome aos formatos
+
+```ts
+// repetido e frágil: mude um campo e precisa caçar todas as cópias
+function salvar(u: { nome: string; idade: number }) {}
+function exibir(u: { nome: string; idade: number }) {}
+```
+
+```ts
+interface Usuario {
+  nome: string
+  idade: number
+}
+
+function salvar(u: Usuario) {}
+function exibir(u: Usuario) {}
+```
+
+Um nome, uma fonte da verdade — o formato muda num lugar só.
+
+## interface ou type?
+
+`type` faz tudo que `interface` faz para objetos, e ainda apelida unions, primitivos e tuplas:
+
+```ts
+type ID = string | number             // só type faz isto
+type Ponto = { x: number; y: number }
+interface Ponto2 { x: number; y: number } // equivalente para objetos
+```
+
+Regra prática: use **`interface` para formatos de objeto e contratos** (especialmente quando quiser `extends`), e **`type` quando precisar de union, intersection ou apelidar um primitivo**. Para objetos os dois quase se equivalem — escolha um padrão no time e siga.
+
+## Opcionais e readonly
+
+```ts
+interface Config {
+  tema: "claro" | "escuro"
+  debug?: boolean         // pode faltar → boolean | undefined
+  readonly versao: string // não pode ser reatribuída depois
+}
+
+const c: Config = { tema: "escuro", versao: "1.0" }
+c.versao = "2.0" // ❌ readonly
+```
+
+`?` modela "pode não vir"; `readonly` documenta "isto não muda depois de criado".
+
+## Combinando tipos
+
+`extends` (em interface) e a intersection `&` (em type) somam formatos:
+
+```ts
+interface Identificavel { id: number }
+
+interface Usuario extends Identificavel {
+  nome: string
+} // Usuario tem id e nome
+
+type ComTimestamps = { criadoEm: string; atualizadoEm: string }
+type Post = { titulo: string } & ComTimestamps
+```
+
+## Discriminated unions: modelando estados
+
+A jogada mais útil do TS no dia a dia. Em vez de um objeto cheio de campos opcionais que "às vezes existem", modele cada estado como um membro de uma union, com um campo **discriminante**:
+
+```ts
+// frágil: quais campos existem em cada momento?
+interface Req { carregando: boolean; dados?: Usuario; erro?: string }
+```
+
+```ts
+// claro: cada estado declara exatamente seus campos
+type Requisicao =
+  | { status: "carregando" }
+  | { status: "sucesso"; dados: Usuario }
+  | { status: "erro"; mensagem: string }
+```
+
+O campo `status` é o discriminante: é por ele que o TS descobre quais outros campos existem.
+
+## Narrowing: do tipo amplo ao específico
+
+Quando um valor pode ser de vários tipos, você **estreita** (narrow) checando antes de usar. O TS acompanha a checagem e libera só o que é seguro em cada ramo:
+
+```ts
+function formatar(valor: string | number) {
+  if (typeof valor === "string") {
+    return valor.trim()   // aqui valor é string
+  }
+  return valor.toFixed(2) // aqui valor é number
+}
+```
+
+As ferramentas de narrowing são `typeof` (primitivos), `in` (a propriedade existe?), truthiness (`if (valor)`) e o discriminante da union:
+
+```ts
+function render(req: Requisicao) {
+  switch (req.status) {
+    case "carregando": return "Carregando..."
+    case "sucesso":    return req.dados.nome // TS sabe que dados existe
+    case "erro":       return req.mensagem
+  }
+}
+```
+
+## Exaustividade com never
+
+Quer garantir que **todos** os estados foram tratados? Atribua o caso restante a `never`. Se você adicionar um novo membro à union e esquecer de tratá-lo, o TS acusa o erro:
+
+```ts
+function render(req: Requisicao): string {
+  switch (req.status) {
+    case "carregando": return "Carregando..."
+    case "sucesso":    return req.dados.nome
+    case "erro":       return req.mensagem
+    default:
+      const _exaustivo: never = req // ❌ erro se sobrar algum status
+      return _exaustivo
+  }
+}
+```
+
+> **Resumo:** Dê **nome** aos formatos com `interface` (objetos e contratos, com `extends`) ou `type` (quando precisar de **union**, **intersection** `&` ou apelidar um primitivo). Marque campos com `?` (opcional) e `readonly` (imutável). O padrão mais valioso é a **discriminated union** — cada estado é um membro com um campo discriminante (`status`) em vez de um amontoado de campos opcionais. E **narrowing** é como você sai do tipo amplo para o específico: `typeof`, `in`, truthiness e o discriminante deixam o TS liberar só o que é seguro em cada ramo — com `never` no `default` para garantir que nenhum caso ficou de fora. No Dia 3 você generaliza tudo isso com generics e utility types.
