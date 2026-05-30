@@ -1,0 +1,97 @@
+# Scroll-Driven Animations
+
+Animar com base no scroll sempre significou um listener de `scroll` em JavaScript, recalculando posições a cada quadro — travado e custoso. O CSS moderno amarra a **progressão de uma animação** diretamente à posição de rolagem, rodando **fora da main thread** (no compositor). Barras de progresso de leitura, revelar elementos ao entrar na tela, efeitos de parallax — tudo declarativo, suave e sem JS.
+
+## A ideia: tempo vira scroll
+
+Uma animação CSS normal progride com o **tempo** (`animation-duration`). Numa scroll-driven animation, a progressão vem de uma **timeline de scroll**: 0% no início da rolagem, 100% no fim. Você troca a fonte da progressão pela propriedade `animation-timeline`.
+
+Há duas timelines anônimas:
+
+- **`scroll()`** — progride conforme um **container** rola, do topo à base.
+- **`view()`** — progride conforme **o próprio elemento** entra e sai da área visível.
+
+## `scroll()`: progresso de um container
+
+O caso clássico é a barra de progresso de leitura, atada ao scroll da página:
+
+```css
+@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.reading-progress {
+  transform-origin: left;
+  animation: grow linear;
+  animation-timeline: scroll(root block); /* o scroll vertical do documento controla a barra */
+}
+```
+
+Não há `duration`: a barra está em 0% quando a página está no topo e 100% quando chega ao fim. `scroll(root block)` lê o eixo de blocos (vertical) do scroller raiz; você pode mirar `nearest` ou `self` e o eixo `inline`.
+
+## `view()`: revelar ao entrar na tela
+
+`view()` ata a animação à **visibilidade do elemento** no scrollport — perfeito para "aparecer ao rolar":
+
+```css
+@keyframes reveal {
+  from { opacity: 0; translate: 0 2rem; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+.card {
+  animation: reveal linear both;
+  animation-timeline: view();
+  animation-range: entry 0% cover 40%; /* anima enquanto entra, terminando ao cobrir 40% */
+}
+```
+
+`animation-range` define **em que trecho** da passagem do elemento a animação acontece: `entry` (entrando pela borda), `cover` (atravessando), `exit` (saindo). Aqui o card revela-se conforme entra e completa antes de chegar ao centro.
+
+## Timelines nomeadas
+
+Para ligar a animação de um elemento ao scroll/visibilidade de **outro**, dê nome à timeline:
+
+```css
+.gallery { scroll-timeline: --gallery inline; } /* o scroll horizontal da galeria... */
+.indicator {
+  animation: grow linear;
+  animation-timeline: --gallery; /* ...controla este indicador, mesmo estando fora da galeria */
+}
+```
+
+`scroll-timeline-name`/`view-timeline-name` (e seus atalhos) publicam uma timeline que qualquer descendente do escopo pode consumir por nome — desacoplando o que anima de quem rola.
+
+## `scroll-snap`: parar nos lugares certos
+
+Relacionado à experiência de rolagem, `scroll-snap` faz a rolagem "encaixar" em pontos definidos — carrosséis e galerias sem JS:
+
+```css
+.carousel { scroll-snap-type: x mandatory; overflow-x: auto; }
+.slide    { scroll-snap-align: center; }
+```
+
+`scroll-snap-type: x mandatory` força o encaixe no eixo X; `scroll-snap-align` define o ponto de parada de cada item. Combine com `scroll-padding` para respeitar cabeçalhos fixos.
+
+## Performance: `content-visibility` e `contain`
+
+Páginas longas se beneficiam de pular a renderização do que está fora da tela:
+
+```css
+.section {
+  content-visibility: auto;          /* não renderiza o que está fora da viewport */
+  contain-intrinsic-size: 0 600px;   /* reserva uma altura estimada para o scrollbar não pular */
+}
+```
+
+`content-visibility: auto` pode acelerar muito o primeiro render de páginas grandes, e `contain-intrinsic-size` evita saltos do scroll ao reservar espaço estimado. A família `contain` (`layout`, `paint`, `size`, `style`) isola subárvores, limitando o quanto uma mudança força o navegador a recalcular.
+
+## Os dois cuidados obrigatórios
+
+```css
+@supports (animation-timeline: scroll()) { /* só aplique onde há suporte */ }
+
+@media (prefers-reduced-motion: reduce) { /* desligue/abrande para quem pediu menos movimento */ }
+```
+
+Sem suporte a `animation-timeline`, uma animação com `duration` poderia disparar por tempo — então guarde com `@supports`. E, como sempre, respeite `prefers-reduced-motion`: efeitos de scroll podem causar desconforto.
+
+> **Resumo:** Scroll-driven animations trocam o **tempo** pela **rolagem** como fonte de progressão, rodando no compositor (suave, sem JS). `animation-timeline: scroll()` ata a animação ao scroll de um container (barra de progresso com `scroll(root block)`); `animation-timeline: view()` ata à **visibilidade do elemento** (revelar ao entrar), com `animation-range` (`entry`/`cover`/`exit`) definindo o trecho. **Timelines nomeadas** (`scroll-timeline-name`/`view-timeline-name`) desacoplam quem anima de quem rola. `scroll-snap` cria carrosséis que encaixam sem JS. Para performance, `content-visibility: auto` (+ `contain-intrinsic-size`) pula o render fora da tela e `contain` isola subárvores. Sempre proteja com `@supports (animation-timeline: scroll())` e respeite `prefers-reduced-motion`.

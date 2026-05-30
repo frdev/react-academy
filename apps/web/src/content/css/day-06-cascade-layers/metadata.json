@@ -1,0 +1,20 @@
+{
+  "id": "day-06",
+  "day": 6,
+  "week": 1,
+  "title": "Cascade Layers & Especificidade",
+  "slug": "cascade-layers",
+  "topics": [
+    "@layer e ordenação de camadas",
+    "controle de especificidade",
+    ":where() e :is()",
+    "domar CSS de terceiros",
+    "arquitetura em camadas"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-05"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

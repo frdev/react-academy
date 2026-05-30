@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-12",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença central entre uma animação CSS tradicional e uma scroll-driven animation?",
+      "options": [
+        "A scroll-driven usa cores diferentes",
+        "A tradicional progride com o tempo (`animation-duration`); a scroll-driven progride com a posição de rolagem, geralmente rodando fora da main thread",
+        "A scroll-driven só funciona com JavaScript",
+        "Não há diferença; são a mesma coisa"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Numa animação tradicional, a progressão vem do tempo. Numa scroll-driven animation, a fonte da progressão é uma timeline de scroll: 0% no início da rolagem, 100% no fim. Além de declarativo, costuma rodar no compositor (fora da main thread), resultando em movimento suave — sem o listener de `scroll` em JS que recalculava tudo a cada quadro."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre as timelines `scroll()` e `view()`?",
+      "options": [
+        "`scroll()` progride conforme um container rola; `view()` progride conforme o próprio elemento entra e sai da área visível",
+        "`scroll()` é para horizontal e `view()` para vertical",
+        "`view()` é só para vídeos",
+        "São sinônimos"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`scroll()` ata a progressão ao scroll de um container (do topo à base) — ideal para barras de progresso. `view()` ata à visibilidade do próprio elemento dentro do scrollport, progredindo conforme ele entra e sai da tela — ideal para 'revelar ao rolar'. A escolha depende de o gatilho ser a rolagem do container ou a passagem do elemento."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Para uma barra de progresso de leitura atada ao scroll vertical do documento, qual declaração é adequada?",
+      "options": [
+        "`animation-timeline: view()`",
+        "`animation-timeline: scroll(root block)`",
+        "`animation-duration: 100vh`",
+        "`scroll-snap-type: y mandatory`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`scroll(root block)` cria uma timeline baseada no scroll do scroller raiz (a página) no eixo de blocos (vertical). Atada a uma animação que escala a barra de 0 a 1, ela fica em 0% no topo da página e 100% no fim — sem `duration`. `view()` seria para reagir à visibilidade de um elemento, não ao scroll geral do documento."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Com `animation-timeline: view()`, para que serve `animation-range` (ex.: `entry 0% cover 40%`)?",
+      "options": [
+        "Define a cor da animação",
+        "Define em qual trecho da passagem do elemento pelo scrollport a animação ocorre (entrando, cobrindo, saindo)",
+        "Define a duração em segundos",
+        "Define quantas vezes a animação repete"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`animation-range` delimita o intervalo da passagem do elemento em que a animação acontece: `entry` (entrando pela borda da tela), `cover` (atravessando) e `exit` (saindo), com porcentagens. `entry 0% cover 40%` faz a animação rodar desde o início da entrada até o elemento cobrir 40% — útil para revelar antes de chegar ao centro."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Para que servem as timelines nomeadas (`scroll-timeline-name` / `view-timeline-name`)?",
+      "options": [
+        "Para dar nomes bonitos às animações no DevTools",
+        "Para ligar a animação de um elemento ao scroll/visibilidade de OUTRO elemento, desacoplando o que anima de quem rola",
+        "Para traduzir a animação para outro idioma",
+        "Para nomear arquivos CSS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Timelines anônimas (`scroll()`/`view()`) usam o scroller/elemento mais próximo. As nomeadas publicam uma timeline com um nome que qualquer descendente do escopo pode consumir via `animation-timeline: --nome`. Isso permite, por exemplo, um indicador fora de uma galeria reagir ao scroll horizontal dela — desacoplando o elemento animado do elemento que rola."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como `content-visibility: auto` melhora a performance de páginas longas?",
+      "options": [
+        "Comprimindo o HTML enviado pelo servidor",
+        "Pulando a renderização do conteúdo que está fora da viewport (idealmente combinado com `contain-intrinsic-size` para reservar espaço e evitar saltos do scroll)",
+        "Carregando todas as imagens de uma vez",
+        "Desativando o CSS da página"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`content-visibility: auto` permite ao navegador pular o trabalho de layout/paint de seções fora da tela até que se aproximem, acelerando muito o primeiro render de páginas grandes. Como a seção não renderizada não tem altura, usa-se `contain-intrinsic-size` para reservar uma altura estimada, evitando que o scrollbar 'pule' conforme o conteúdo é revelado."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Quais são os dois cuidados obrigatórios ao usar scroll-driven animations?",
+      "options": [
+        "Usar apenas cores hexadecimais e evitar `rem`",
+        "Proteger com `@supports (animation-timeline: scroll())` e respeitar `@media (prefers-reduced-motion: reduce)`",
+        "Adicionar `!important` e `z-index` alto",
+        "Rodar tudo dentro de um Web Worker"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem suporte a `animation-timeline`, uma animação com `duration` poderia disparar por tempo de forma indesejada — por isso guarde o uso com `@supports (animation-timeline: scroll())`. E, como qualquer movimento, efeitos de scroll podem causar desconforto: respeite `prefers-reduced-motion: reduce`, reduzindo ou desligando a animação para quem pediu menos movimento."
+    }
+  ]
+}

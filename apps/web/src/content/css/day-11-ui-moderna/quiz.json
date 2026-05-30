@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-11",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Além de simplificar o código, qual benefício extra `aspect-ratio` traz para imagens e vídeos?",
+      "options": [
+        "Comprime o arquivo da imagem",
+        "Reserva o espaço antes da mídia carregar, eliminando o layout shift (CLS) — a página não 'pula' quando a mídia chega",
+        "Converte a imagem para WebP automaticamente",
+        "Aplica lazy loading por padrão"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`aspect-ratio` define a proporção do elemento independentemente do conteúdo, então o navegador reserva o espaço correto antes mesmo de a imagem carregar. Isso elimina o Cumulative Layout Shift — o conteúdo abaixo não é empurrado quando a mídia chega. Combinado com `object-fit: cover`, a imagem preenche sem distorcer. Não tem relação com compressão ou formato do arquivo."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `:focus-visible` é preferível a remover o outline com `:focus { outline: none }`?",
+      "options": [
+        "Porque `:focus-visible` é mais rápido de renderizar",
+        "Porque mostra o anel de foco quando ele é útil (tipicamente navegação por teclado) e o omite no clique de mouse, preservando a acessibilidade",
+        "Porque `:focus` foi descontinuado",
+        "Porque `:focus-visible` remove o foco completamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`:focus { outline: none }` é um anti-padrão: destrói a navegação por teclado para quem depende dela. `:focus-visible` aplica o estilo só quando o navegador julga o anel útil — geralmente foco via teclado —, mantendo a UI limpa no mouse e acessível no teclado. É o melhor dos dois mundos."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `accent-color: var(--brand)` faz?",
+      "options": [
+        "Muda a cor de fundo da página",
+        "Tinge controles de formulário NATIVOS (checkbox, radio, range, progress) com a cor, preservando comportamento e acessibilidade nativos",
+        "Cria um novo componente de checkbox em JavaScript",
+        "Só funciona em botões"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`accent-color` colore os controles nativos (checkboxes, radios, sliders `range`, `progress`) com a cor indicada, sem que você precise recriá-los do zero — o que destruiria a acessibilidade e o comportamento nativo. Uma única propriedade coloca todos os controles na identidade visual da marca, de forma robusta."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Em um reset moderno, qual o propósito de `img, picture, video { display: block; max-inline-size: 100% }`?",
+      "options": [
+        "Esconder as imagens por padrão",
+        "Remover o espaço fantasma sob mídias inline e impedir que estourem a largura do container",
+        "Forçar todas as imagens a ocupar a tela inteira",
+        "Aplicar bordas arredondadas em todas as mídias"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Mídias são inline por padrão, o que cria um pequeno espaço fantasma embaixo (do alinhamento de baseline) e permite que transbordem o container. `display: block` remove o espaço fantasma e `max-inline-size: 100%` garante que a mídia nunca exceda a largura disponível — dois ajustes essenciais de um reset enxuto."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "No reset, por que incluir `input, button, textarea, select { font: inherit }`?",
+      "options": [
+        "Para aumentar a fonte de todos os textos",
+        "Porque controles de formulário não herdam a tipografia por padrão e acabam usando a fonte do sistema; `font: inherit` os alinha ao restante do design",
+        "Para desativar os controles",
+        "Para remover as bordas dos inputs"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Por padrão, controles de formulário usam uma fonte própria do sistema, destoando do resto da página. `font: inherit` faz inputs, botões, textareas e selects herdarem a tipografia do contexto, garantindo consistência visual. É um dos ajustes mais notáveis de um reset moderno."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como o CSS deve respeitar usuários que preferem menos movimento?",
+      "options": [
+        "Removendo todas as transições do projeto para todos os usuários",
+        "Usando `@media (prefers-reduced-motion: reduce)` para reduzir/zerar animações e transições apenas para quem ativou essa preferência no sistema",
+        "Adicionando um botão de play em cada animação",
+        "Animações modernas não causam problemas a ninguém"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O sistema operacional expõe a preferência por menos movimento (importante para desconforto vestibular). O CSS deve respeitá-la via `@media (prefers-reduced-motion: reduce)`, reduzindo durações e iterações. O padrão saudável é 'animar por opção': UI sóbria por base, movimento ativado em `no-preference` — sem penalizar quem não pediu para desativar."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual o uso correto do atributo `inert` em uma UI moderna?",
+      "options": [
+        "Acelerar a renderização de listas longas",
+        "Desativar uma subárvore inteira (sem foco, cliques ou presença na árvore de acessibilidade) — ideal para congelar o fundo enquanto um modal está aberto",
+        "Marcar elementos como somente leitura no banco de dados",
+        "Aplicar uma animação de entrada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`inert` torna um ramo do DOM totalmente inativo: não recebe foco, não responde a cliques e sai da árvore de acessibilidade. É a forma correta de 'congelar' o conteúdo de fundo ao abrir modais e menus off-canvas, evitando que o teclado escape para trás da camada — algo que antes exigia gerenciar `tabindex` manualmente."
+    }
+  ]
+}

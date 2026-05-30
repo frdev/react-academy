@@ -1,0 +1,20 @@
+{
+  "id": "day-13",
+  "day": 13,
+  "week": 2,
+  "title": "View Transitions, Popover & Anchor Positioning",
+  "slug": "view-transitions",
+  "topics": [
+    "View Transitions API",
+    "view-transition-name e ::view-transition-*",
+    "@starting-style",
+    "transition-behavior: allow-discrete",
+    "popover e anchor positioning"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 55,
+  "prerequisites": ["day-12"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

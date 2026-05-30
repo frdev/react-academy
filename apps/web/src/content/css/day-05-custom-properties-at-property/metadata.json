@@ -1,0 +1,20 @@
+{
+  "id": "day-05",
+  "day": 5,
+  "week": 1,
+  "title": "Custom Properties Avançado & @property",
+  "slug": "custom-properties-at-property",
+  "topics": [
+    "custom properties vs preprocessador",
+    "@property (syntax / inherits / initial-value)",
+    "fallback e herança",
+    "theming dinâmico",
+    "animar variáveis tipadas"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-04"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,92 @@
+# Container Queries
+
+Por duas décadas, "responsivo" significou reagir ao **viewport** via `media query`. Mas um componente não sabe onde será usado — o mesmo card pode aparecer numa sidebar estreita e numa área principal larga, na mesma tela. `media query` enxerga só a janela, não o espaço real do componente. **Container queries** invertem isso: o componente responde ao **tamanho do seu container**, tornando-se verdadeiramente reutilizável.
+
+## O salto mental: do viewport para o container
+
+```css
+/* ANTES: o card reage à janela — errado quando ele vive numa coluna estreita numa tela larga */
+@media (min-width: 700px) { .card { /* layout horizontal */ } }
+
+/* DEPOIS: o card reage ao ESPAÇO QUE ELE OCUPA, onde quer que esteja */
+@container (min-width: 400px) { .card { /* layout horizontal */ } }
+```
+
+Com container queries, você escreve o componente **uma vez** e ele se adapta sozinho ao contexto — sidebar, grid de 2 colunas, largura total. O conhecimento de layout mora no componente, não numa media query global que precisa saber de todos os lugares onde ele aparece.
+
+## Passo 1: declarar um container de consulta
+
+Um elemento não é consultável por padrão. Você precisa transformar o **ancestral** num container:
+
+```css
+.card-wrapper {
+  container-type: inline-size;       /* consulta a dimensão inline (largura, em texto horizontal) */
+  container-name: card;              /* nome opcional, para mirar este container específico */
+}
+/* atalho equivalente: */
+.card-wrapper { container: card / inline-size; }
+```
+
+Valores de `container-type`:
+
+- **`inline-size`** — o caso comum: consulta só o eixo inline (largura). O container vira contexto de contenção inline.
+- **`size`** — consulta ambos os eixos (largura **e** altura). Exige que o container tenha uma altura determinada, senão o layout pode colapsar.
+- **`normal`** — padrão; não é container de tamanho, mas ainda permite **style queries** (adiante).
+
+## Passo 2: consultar
+
+A regra `@container` mira o **container ancestral mais próximo** (ou um nomeado):
+
+```css
+.card { display: grid; gap: .5rem; }            /* layout base, container estreito */
+
+@container (min-width: 400px) {
+  .card { grid-template-columns: 8rem 1fr; }    /* vira horizontal quando o CONTAINER passa de 400px */
+}
+
+@container card (min-width: 600px) {            /* mira o container chamado "card" */
+  .card { grid-template-columns: 12rem 1fr; }
+}
+```
+
+Detalhe crucial: você estiliza elementos **dentro** do container; o container **não estiliza a si mesmo** com seu próprio `@container`. Mire sempre os filhos.
+
+## Unidades de container
+
+Assim como `vw`/`vh` se referem ao viewport, há unidades relativas ao **container de consulta**:
+
+```css
+.card h2 { font-size: clamp(1rem, 5cqi, 2rem); } /* tipografia que escala com a largura do container */
+```
+
+- **`cqi`** — 1% do *inline-size* do container (o mais usado).
+- **`cqb`** — 1% do *block-size*.
+- **`cqw`/`cqh`** — 1% da largura/altura.
+- **`cqmin`/`cqmax`** — o menor/maior entre `cqi` e `cqb`.
+
+Com `cqi`, um título escala conforme o **espaço do componente**, não da janela — fluido de verdade dentro de qualquer contexto.
+
+## Style queries: consultar valores, não só tamanho
+
+`@container` também consulta o **valor computado de uma custom property** do container — útil para variantes temáticas sem classes extras:
+
+```css
+.panel { container-name: panel; }
+.panel { --tone: neutral; }
+.panel[data-featured] { --tone: brand; }
+
+@container panel style(--tone: brand) {
+  .panel__title { color: var(--brand-600); }
+}
+```
+
+Style queries por custom property já funcionam nos navegadores atuais; variações baseadas em tamanho via `style()` ainda estão amadurecendo. A ideia é poderosa: o componente reage tanto ao **espaço** quanto ao **estado** declarado em variáveis.
+
+## Armadilhas comuns
+
+- **Esquecer o `container-type`:** sem ele no ancestral, nenhum `@container` casa. O erro mais frequente.
+- **Consultar o próprio container:** o `@container` afeta descendentes, não o elemento que tem `container-type`.
+- **`size` sem altura:** `container-type: size` precisa de altura determinada, ou o conteúdo colapsa.
+- **Contenção inline:** `inline-size` aplica contenção no eixo inline — em geral inofensivo, mas saiba que o conteúdo não "empurra" mais a largura do container de fora para dentro.
+
+> **Resumo:** `media query` reage ao viewport; **container query** reage ao espaço do próprio componente, tornando-o reutilizável em qualquer contexto. Primeiro declare o container no **ancestral** com `container-type: inline-size` (mais comum) e opcionalmente `container-name`; depois consulte com `@container (min-width: …)`, estilizando os **filhos** (o container não estiliza a si mesmo). Unidades `cqi`/`cqb`/`cqmin` escalam com o container — `5cqi` para tipografia fluida de verdade. **Style queries** (`@container style(--x: …)`) reagem ao valor de custom properties. As armadilhas clássicas: esquecer o `container-type` e tentar estilizar o próprio container.

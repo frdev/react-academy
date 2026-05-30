@@ -1,0 +1,98 @@
+# View Transitions, Popover & Anchor Positioning
+
+Este dia reúne as novidades mais transformadoras do CSS recente — as que apagam fronteiras entre "isso dá pra fazer em CSS" e "isso precisa de JS e biblioteca". **View Transitions** animam mudanças de estado e de página; o **Popover API** entrega camadas flutuantes nativas; e o **anchor positioning** prende um elemento a outro sem cálculo de posição em JavaScript.
+
+## View Transitions: animar entre dois estados
+
+A API tira um "antes" e um "depois" do DOM e anima a passagem entre eles. Numa SPA, você embrulha a mudança de estado:
+
+```js
+document.startViewTransition(() => updateTheDOM());
+```
+
+Por padrão, o navegador faz um **crossfade** da página inteira. Por baixo, ele cria pseudo-elementos que você estiliza em CSS:
+
+```css
+::view-transition-old(root) { animation: fade-out .3s; }
+::view-transition-new(root) { animation: fade-in  .3s; }
+```
+
+## Shared element transitions: o elemento que "voa"
+
+O efeito marcante é morfar **o mesmo elemento** entre dois estados — uma miniatura que cresce até a imagem de detalhe. Basta dar o mesmo nome de transição nos dois estados:
+
+```css
+.thumb  { view-transition-name: hero; }
+.detail { view-transition-name: hero; } /* mesmo nome → o navegador interpola posição e tamanho */
+```
+
+O navegador entende que são "o mesmo" elemento e anima a transformação de um para o outro, sem você calcular nada. Cada `view-transition-name` deve ser único por estado.
+
+## Transições entre páginas, sem JS
+
+Para navegação entre documentos (MPA) do mesmo domínio, há uma at-rule puramente CSS:
+
+```css
+@view-transition { navigation: auto; } /* ativa transições ao navegar entre páginas */
+```
+
+Com isso, trocar de página ganha uma transição suave sem nenhuma linha de JavaScript. (Respeite `prefers-reduced-motion` — a API integra com essa preferência.)
+
+## `@starting-style` e `transition-behavior: allow-discrete`
+
+Animar a **entrada** de um elemento — especialmente algo que sai de `display: none` — sempre foi capenga. Duas peças resolvem isso:
+
+```css
+.toast {
+  opacity: 1;
+  transition: opacity .3s, display .3s allow-discrete; /* display participa da transição */
+}
+@starting-style {
+  .toast { opacity: 0; } /* estado DE ONDE a entrada parte na primeira renderização */
+}
+```
+
+`@starting-style` define o estilo inicial a partir do qual o elemento transiciona ao aparecer; `transition-behavior: allow-discrete` permite que propriedades **discretas** (como `display` e `visibility`) entrem na transição, de modo que `display: none ↔ block` deixe de cortar a animação. Juntos, entregam fade-in/out de verdade para elementos que aparecem e somem.
+
+## Popover API: camadas flutuantes nativas
+
+Tooltips, menus e diálogos não-modais exigiam JS para abrir/fechar, fechar ao clicar fora, gerenciar foco e empilhamento. O atributo `popover` faz tudo isso nativamente:
+
+```html
+<button popovertarget="menu">Abrir</button>
+<div id="menu" popover>…conteúdo flutuante…</div>
+```
+
+O navegador renderiza no **top layer** (acima de tudo, sem guerra de `z-index`), fecha ao clicar fora ou apertar Esc (*light-dismiss*) e cuida do foco. Em CSS, você estiliza o estado aberto e o fundo:
+
+```css
+[popover]:popover-open { /* estilos do estado aberto (combine com @starting-style p/ animar) */ }
+[popover]::backdrop    { background: #0006; } /* a camada atrás do popover */
+```
+
+## Anchor Positioning: prender um elemento a outro
+
+Posicionar um tooltip "logo abaixo do botão" sempre exigiu medir o botão em JS. O anchor positioning faz isso em CSS: um elemento vira **âncora**, e o outro se posiciona em relação a ela.
+
+```css
+.trigger { anchor-name: --trigger; }
+
+.tooltip {
+  position: fixed;
+  position-anchor: --trigger;
+  position-area: bottom;          /* coloca o tooltip na faixa abaixo da âncora */
+  /* alternativa precisa: inset-block-start: anchor(bottom); */
+}
+```
+
+E o melhor: **fallbacks de posição** quando não há espaço. Se o tooltip transbordaria a viewport embaixo, o navegador tenta outra posição:
+
+```css
+.tooltip {
+  position-try-fallbacks: flip-block; /* se não couber embaixo, vira para cima */
+}
+```
+
+Tooltips, menus e popovers que se reposicionam sozinhos ao chegar perto da borda — sem nenhum `getBoundingClientRect`. Combinado com o Popover API, é a stack completa de "floating UI" nativa.
+
+> **Resumo:** **View Transitions** animam entre dois estados do DOM: `document.startViewTransition()` numa SPA (ou a at-rule `@view-transition { navigation: auto }` entre páginas, sem JS), com crossfade padrão e pseudo-elementos (`::view-transition-old/new(root)`) estilizáveis; o mesmo `view-transition-name` nos dois estados faz um elemento **morfar** (shared element). **`@starting-style`** + **`transition-behavior: allow-discrete`** destravam animar entrada/saída de elementos, inclusive `display: none ↔ block`. O **Popover API** (atributo `popover` + `popovertarget`) entrega camadas no top layer com light-dismiss e foco nativos, estilizáveis via `:popover-open` e `::backdrop`. E o **anchor positioning** (`anchor-name`, `position-anchor`, `position-area`/`anchor()`, com `position-try-fallbacks`) prende e reposiciona elementos relativos a uma âncora — floating UI sem JS.

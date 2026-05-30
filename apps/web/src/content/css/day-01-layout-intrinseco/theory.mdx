@@ -1,0 +1,81 @@
+# Layout Intrínseco com Grid & Flexbox
+
+A maior parte do CSS que você escreveu até hoje provavelmente **dita** tamanhos: `width: 300px`, `max-width: 60%`. Isso é **sizing extrínseco** — você decide de fora. O CSS moderno te dá o oposto: deixar o **conteúdo** decidir o tamanho (**sizing intrínseco**) e combinar isso com Grid e Flexbox para montar layouts que se adaptam sozinhos, com muito menos `media query`.
+
+## Extrínseco vs. intrínseco
+
+No modelo extrínseco, o container impõe a medida e o conteúdo se vira (quebra, transborda, encolhe). No intrínseco, a medida **emerge** do conteúdo. Três palavras-chave expressam isso:
+
+```css
+.box { width: min-content; } /* menor largura possível sem overflow: a palavra mais larga */
+.box { width: max-content; } /* largura "ideal": todo o conteúdo numa linha só, sem quebrar */
+.box { width: fit-content; } /* min(max-content, espaço disponível) — cresce até caber, depois para */
+```
+
+Intuição: `min-content` "espreme" até o limite do conteúdo indivisível; `max-content` "estica" até não precisar quebrar; `fit-content` é o meio-termo prático — ocupa o necessário, mas nunca mais que o espaço disponível. Um botão com `width: fit-content` acompanha o texto sem você fixar pixels.
+
+## A unidade `fr` e a função `minmax()`
+
+Em Grid, `fr` representa uma **fração do espaço livre** — o que sobra depois de descontar `gap`s e tracks de tamanho fixo.
+
+```css
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr; /* a 2ª coluna recebe o dobro do espaço livre da 1ª */
+  gap: 1rem;
+}
+```
+
+A pegadinha clássica: `1fr` é, na verdade, `minmax(auto, 1fr)`, e o piso `auto` equivale a `min-content`. Se um item tiver conteúdo largo (uma URL longa, uma imagem), ele **se recusa a encolher abaixo do próprio conteúdo** e estoura o grid. A correção idiomática é trocar o piso para zero:
+
+```css
+.grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } /* permite encolher de verdade */
+```
+
+## `auto-fill` vs. `auto-fit`
+
+`repeat()` aceita duas palavras mágicas que criam **quantos tracks couberem**, sem você saber o número de antemão:
+
+```css
+.cards { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.cards { grid-template-columns: repeat(auto-fit,  minmax(200px, 1fr)); }
+```
+
+A diferença aparece quando **sobra espaço**: `auto-fill` mantém tracks vazios reservados (os itens ficam no tamanho mínimo, com "buracos" à direita); `auto-fit` **colapsa** os tracks vazios, e os itens existentes esticam para preencher a linha. Para uma galeria que deve ocupar a largura toda, use `auto-fit`; para manter um gabarito fixo de colunas, `auto-fill`.
+
+## O padrão RAM (Repeat, Auto, Minmax)
+
+Juntando tudo, nasce o layout responsivo **sem nenhuma media query**:
+
+```css
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 1rem;
+}
+```
+
+O truque fino é o `min(100%, 250px)` no piso do `minmax`. Em telas largas, cada card quer no mínimo `250px`. Mas numa tela de `200px`, um piso fixo de `250px` causaria overflow horizontal — então `min(100%, 250px)` cede para `100%` e o card cabe. Um layout, zero breakpoints.
+
+## Flexbox intrínseco: `flex` e o `min-width: 0`
+
+Em Flexbox, `flex` é o atalho de três valores: `flex: <grow> <shrink> <basis>`.
+
+```css
+.item { flex: 1 1 0; }    /* grow=1 shrink=1 basis=0 → colunas IGUAIS, ignora o conteúdo */
+.item { flex: 1 1 auto; } /* basis=auto → tamanho proporcional ao CONTEÚDO de cada item */
+```
+
+`flex: 1` (igual a `1 1 0`) distribui o espaço em partes iguais; `flex: 1 1 auto` parte do tamanho do conteúdo e só então distribui a sobra — resultados visualmente bem diferentes.
+
+E a dor de cabeça mais famosa do Flexbox: um item com texto longo **não encolhe** e estoura o container. O motivo é o mesmo do grid — o `min-width` automático de um flex item é `min-content`. A cura:
+
+```css
+.item { min-width: 0; } /* permite encolher abaixo do conteúdo; deixa text-overflow/ellipsis funcionar */
+```
+
+## `gap` em todo lugar
+
+`gap` (e `row-gap`/`column-gap`) funciona em Grid, Flexbox e multicolunas. Ele cria espaçamento **entre** itens sem o velho hack de `margin` no último filho ou `:not(:last-child)`. Prefira `gap` a `margin` para espaçar coleções: ele não vaza nas bordas e não soma com `margin collapse`.
+
+> **Resumo:** Sizing **extrínseco** é você ditar a medida; **intrínseco** é o conteúdo ditá-la via `min-content`, `max-content` e `fit-content`. Em Grid, `fr` distribui o espaço livre, mas `1fr` tem piso `min-content` — use `minmax(0, 1fr)` para encolher de verdade. `auto-fill` reserva tracks vazios; `auto-fit` os colapsa e estica os itens. O **padrão RAM** `repeat(auto-fit, minmax(min(100%, 250px), 1fr))` entrega responsividade sem media query. Em Flexbox, `flex: 1` iguala colunas (basis 0) e `flex: 1 1 auto` respeita o conteúdo; `min-width: 0` resolve o overflow de itens que não encolhem. E `gap` espaça coleções sem hacks de margin.

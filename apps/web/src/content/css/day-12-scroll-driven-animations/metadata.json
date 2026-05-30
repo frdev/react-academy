@@ -1,0 +1,20 @@
+{
+  "id": "day-12",
+  "day": 12,
+  "week": 2,
+  "title": "Scroll-Driven Animations",
+  "slug": "scroll-driven-animations",
+  "topics": [
+    "animation-timeline",
+    "scroll() e view()",
+    "scroll-snap",
+    "content-visibility",
+    "contain e performance"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-11"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

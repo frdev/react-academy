@@ -1,0 +1,83 @@
+# UI Moderna & Responsividade
+
+Muita coisa que exigia hacks ou JavaScript virou uma linha de CSS: reservar proporção de imagens, mostrar o anel de foco só para teclado, colorir checkboxes nativos, respeitar quem prefere menos movimento. Este dia reúne as propriedades modernas que tornam uma UI **robusta, acessível e responsiva** com pouco código — e um reset enxuto que prepara o terreno.
+
+## `aspect-ratio`: proporção sem o hack do padding
+
+Antes, manter um vídeo 16:9 responsivo exigia o "padding-bottom hack". Agora:
+
+```css
+.thumb {
+  aspect-ratio: 16 / 9;
+  object-fit: cover; /* a imagem preenche sem distorcer */
+  inline-size: 100%;
+}
+.avatar { aspect-ratio: 1; } /* quadrado perfeito */
+```
+
+Além de simplificar, `aspect-ratio` **reserva o espaço** antes da imagem carregar, eliminando o *layout shift* (CLS) — a página não "pula" quando a mídia chega.
+
+## `:focus-visible`: anel de foco inteligente
+
+O anti-padrão clássico é `:focus { outline: none }` — que destrói a acessibilidade para quem navega por teclado. A solução moderna distingue **como** o foco chegou:
+
+```css
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+:focus:not(:focus-visible) { outline: none; } /* sem anel em clique de mouse, com anel no teclado */
+```
+
+`:focus-visible` aplica o estilo só quando o navegador julga que o anel é útil (tipicamente navegação por teclado), dando o melhor dos dois mundos: limpo no mouse, acessível no teclado.
+
+## `accent-color`: controles nativos na sua marca
+
+Estilizar checkbox, radio, `range` e `progress` costumava exigir reconstruí-los do zero (perdendo acessibilidade). `accent-color` tinge o controle **nativo**, preservando comportamento e a11y:
+
+```css
+:root { accent-color: var(--brand); } /* checkboxes, radios e sliders na cor da marca */
+```
+
+Uma propriedade, todos os controles na identidade visual, sem CSS frágil de recriação.
+
+## Um reset moderno e enxuto
+
+Resets atuais (estilo Andy Bell / Josh Comeau) são curtos e resolvem dores reais:
+
+```css
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+body { min-block-size: 100vh; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+img, picture, video, canvas, svg { display: block; max-inline-size: 100%; }
+input, button, textarea, select { font: inherit; } /* controles herdam a tipografia */
+p, h1, h2, h3 { text-wrap: balance; } /* ou pretty para corpo */
+```
+
+Os pontos altos: `box-sizing: border-box` universal (largura previsível), `margin: 0` (sem margens-surpresa), mídia como `block` com `max-inline-size: 100%` (nunca estoura o container) e `font: inherit` nos controles (formulários param de usar a fonte feia do sistema).
+
+## `prefers-reduced-motion`: respeitar quem se incomoda com movimento
+
+Animações exageradas causam enjoo e desconforto vestibular em parte das pessoas. O sistema operacional expõe essa preferência, e você deve respeitá-la:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+O padrão saudável é **animar por opção**: deixe a UI sóbria por base e ative movimento dentro de `@media (prefers-reduced-motion: no-preference)`, ou desligue tudo no `reduce` como acima.
+
+## `prefers-color-scheme` e o atributo `inert`
+
+`prefers-color-scheme` reage ao modo claro/escuro do SO (combinando com `light-dark()` do dia de cor). E o atributo HTML `inert` desativa uma subárvore inteira — sem foco, sem cliques, fora da árvore de acessibilidade:
+
+```html
+<main inert> <!-- conteúdo de fundo desativado enquanto um modal está aberto --> </main>
+```
+
+`inert` é a forma correta de "congelar" o fundo ao abrir modais e menus off-canvas, evitando que o teclado escape para trás da camada — algo que antes exigia gerenciar `tabindex` na mão.
+
+> **Resumo:** O CSS moderno entrega UI robusta com pouco código: **`aspect-ratio`** reserva proporção e mata o layout shift (com `object-fit: cover`); **`:focus-visible`** mostra o anel de foco só para teclado, encerrando o anti-padrão `outline: none`; **`accent-color`** tinge controles **nativos** na cor da marca sem perder acessibilidade. Um **reset enxuto** (`box-sizing: border-box`, `margin: 0`, mídia em `block` com `max-inline-size: 100%`, `font: inherit` nos controles) prepara o terreno. **`prefers-reduced-motion: reduce`** respeita quem se incomoda com movimento — anime por opção. E `prefers-color-scheme` segue o tema do SO, enquanto o atributo `inert` congela o fundo de modais sem mexer em `tabindex`.

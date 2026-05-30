@@ -1,0 +1,20 @@
+{
+  "id": "day-09",
+  "day": 9,
+  "week": 2,
+  "title": "Tipografia Fluida & Funções Matemáticas",
+  "slug": "tipografia-fluida",
+  "topics": [
+    "clamp()",
+    "min() e max()",
+    "round() / mod() / rem()",
+    "escala tipográfica fluida",
+    "text-wrap: balance / pretty"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-08"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

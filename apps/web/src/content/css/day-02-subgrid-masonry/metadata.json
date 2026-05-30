@@ -1,0 +1,20 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "Subgrid & Masonry",
+  "slug": "subgrid-masonry",
+  "topics": [
+    "subgrid em linhas e colunas",
+    "alinhamento herdado de grids aninhados",
+    "layout masonry",
+    "cards alinhados sem hacks",
+    "casos de uso reais"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

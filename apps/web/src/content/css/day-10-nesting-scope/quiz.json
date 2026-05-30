@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-10",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "No nesting nativo do CSS, o que o `&` representa?",
+      "options": [
+        "Uma variável de cor",
+        "O seletor de aninhamento — uma referência ao seletor-pai (ex.: `&:hover` vira `.card:hover`)",
+        "Um comentário",
+        "O operador de concatenação de strings, como no Sass"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`&` é o seletor de aninhamento: representa o seletor-pai da regra. Assim `.card { &:hover { } }` equivale a `.card:hover`. Para descendentes simples você pode até omiti-lo (`.card { .title { } }`), mas usá-lo deixa a intenção explícita. Crucialmente, ele NÃO é um operador de concatenação textual."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Você migra de Sass e tem `.card { &__title { } }` esperando gerar `.card__title`. O que acontece no nesting nativo?",
+      "options": [
+        "Funciona igual ao Sass, gerando `.card__title`",
+        "Não funciona: no nativo `&` é referência de seletor, não concatenação de string, então `&__title` não vira `.card__title`",
+        "Gera `.card .__title` automaticamente",
+        "Gera um erro que quebra toda a folha de estilo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Essa é a diferença crucial. No Sass, `&` concatena texto, então `&__title` produz `.card__title` (padrão BEM). No nesting nativo, `&` é uma referência de seletor — não há colagem de strings —, então `&__title` não monta `.card__title`. CSS BEM baseado em concatenação não migra direto para o nesting nativo; use as classes completas."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que aninhar sob um pai em lista como `.a, #b` pode inflar a especificidade inesperadamente?",
+      "options": [
+        "Porque listas são proibidas no nesting",
+        "Porque `&` assume a especificidade do pai tratado como `:is(...)`, ou seja, a do seletor mais específico do grupo (aqui o ID `#b`)",
+        "Porque o navegador duplica as regras",
+        "Porque vírgulas zeram a especificidade"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O seletor de aninhamento carrega a especificidade do pai inteiro, computada como `:is(...)`. Como `:is(.a, #b)` assume a especificidade do argumento mais forte (o ID `#b`), qualquer coisa aninhada herda essa especificidade alta. Aninhar sob listas que misturam seletores fracos e fortes pode elevar a especificidade sem você perceber."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Dentro de `@scope (.card) { ... }`, a que se refere a pseudo-classe `:scope`?",
+      "options": [
+        "A qualquer elemento da página",
+        "Ao elemento-raiz do escopo — o próprio `.card`",
+        "Ao último filho de `.card`",
+        "Ao `:root` do documento (o html)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`:scope` referencia o elemento-raiz do escopo declarado — aqui, o `.card`. As demais regras dentro do `@scope` casam apenas elementos dentro desse root. É uma forma de encapsular estilos numa subárvore do DOM, papel que antes cabia a BEM ou CSS Modules."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que `@scope (.card) to (.card__slot)` (donut scope) faz?",
+      "options": [
+        "Aplica os estilos apenas dentro de `.card__slot`",
+        "Aplica os estilos de `.card` para baixo, mas EXCLUI o que está dentro de `.card__slot`",
+        "Aplica os estilos a `.card` e a `.card__slot` igualmente",
+        "Remove `.card__slot` do DOM"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A fronteira inferior `to (.card__slot)` define onde o escopo para: os estilos valem do root `.card` até encontrar `.card__slot`, excluindo o conteúdo dentro dele — o 'donut', cujo recheio fica de fora. É ideal para estilizar um componente sem vazar para conteúdo aninhado ou injetado (slots, markdown do usuário, sub-componentes)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual novo critério de desempate o `@scope` adiciona à cascata?",
+      "options": [
+        "A ordem alfabética dos seletores",
+        "A proximidade de escopo: em empate de especificidade, vence a regra cujo root de escopo está mais próximo do elemento no DOM",
+        "O tamanho do arquivo CSS",
+        "A data de modificação da folha de estilo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`@scope` introduz a proximidade de escopo: quando duas regras escopadas têm a mesma especificidade, ganha aquela cujo root está mais perto do elemento na árvore. Isso resolve elegantemente temas aninhados — um card 'dark' dentro de um 'light' — porque a regra do escopo mais próximo prevalece, sem hacks de especificidade."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual problema antigo o donut scope resolve melhor que BEM/CSS Modules?",
+      "options": [
+        "Minificar o CSS final",
+        "Estilizar uma região de um componente sem que os estilos vazem para conteúdo aninhado/injetado (como slots ou markdown do usuário)",
+        "Carregar fontes mais rápido",
+        "Garantir compatibilidade com Internet Explorer"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Limitar estilos a um componente mas impedir que eles atinjam conteúdo aninhado/injetado (slots, HTML de terceiros, markdown do usuário) sempre foi difícil. O donut scope expressa isso diretamente com a fronteira `to (...)`, excluindo o miolo. BEM e CSS Modules ajudam na encapsulação por nomes, mas não têm uma forma nativa tão direta de excluir uma sub-região."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-14",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que declarar `@layer reset, tokens, base, components, utilities` logo no início do design system?",
+      "options": [
+        "Para importar bibliotecas externas",
+        "Para fixar a ordem de prioridade do sistema inteiro de antemão, fazendo sobrescritas serem decisões de camada em vez de guerras de especificidade",
+        "Para ativar o modo escuro",
+        "Porque sem isso o CSS não carrega"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Declarar a ordem das camadas no início estabelece a prioridade global: `reset` é a base fraca e `utilities` sempre vence. Com isso, cada parte do sistema vai para sua camada e sobrescrever vira uma decisão de ordem de camada — não de aumentar especificidade com seletores barrocos ou `!important`. É a fundação arquitetural do sistema."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "No esquema de tokens, qual a vantagem de o componente consumir `--color-accent` (semântico) em vez de `--brand-600` (primitivo)?",
+      "options": [
+        "O primitivo é mais rápido de renderizar",
+        "Trocar de tema (claro/escuro, outra marca) vira redefinir poucos tokens semânticos num escopo, sem tocar em nenhum componente",
+        "Tokens semânticos ocupam menos memória",
+        "Não há diferença prática"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O componente referencia o papel (`--color-accent`), nunca a cor crua (`--brand-600`). Assim, mudar para tema escuro ou outra marca é só redefinir os tokens semânticos num escopo (ex.: `[data-theme=\"dark\"]`), e todos os componentes acompanham automaticamente. É o que torna o sistema temável sem refatorar componentes."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "No Card, `@container card (min-width: 420px) { .card:has(> img) { grid-template-columns: 12rem 1fr } }` combina quais duas técnicas?",
+      "options": [
+        "Media queries e flexbox",
+        "Container queries (reage ao espaço do próprio container) e `:has()` (reage à presença de uma imagem como filho)",
+        "View transitions e cascade layers",
+        "Anchor positioning e `@property`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A regra usa container query (`@container card`) para reagir ao espaço do container do card — não ao viewport — e `:has(> img)` para aplicar o layout horizontal só quando o card tem uma imagem como filho direto. Juntas, fazem o mesmo `.card` se adaptar ao contexto e ao conteúdo, sem media query e sem JavaScript."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que o Card usa `padding-inline`/`padding-block` em vez de `padding-left`/`padding-top`?",
+      "options": [
+        "Porque são mais curtos de escrever",
+        "Porque são propriedades lógicas: o espaçamento se reorienta sozinho em RTL e escrita vertical, deixando o componente pronto para i18n",
+        "Porque `padding-left` foi removido do CSS",
+        "Porque só funcionam dentro de container queries"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Propriedades lógicas (`padding-inline`/`padding-block`) descrevem o espaçamento pelos eixos de fluxo, não por direções físicas. Assim o card mantém o espaçamento correto em LTR, RTL e escrita vertical sem um stylesheet separado — deixando o componente internacionalizado por padrão, alinhado ao resto do design system."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como `.card:has(:checked) { outline: ... }` melhora o componente?",
+      "options": [
+        "Faz o card reagir ao seu estado interno (um item marcado dentro dele) sem nenhum JavaScript",
+        "Carrega o conteúdo do card via fetch",
+        "Marca o checkbox automaticamente",
+        "Aplica a outline a todos os cards da página"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`:has(:checked)` faz o próprio card reagir quando contém um elemento marcado — destacando-se sem um listener de JS adicionando classe no ancestral. É o 'estado sem JS' do CSS moderno, mantendo a aparência sempre em sincronia com o DOM. A outline só atinge os cards que de fato têm algo marcado dentro."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Ao adicionar a shared element transition (`view-transition-name: card-hero`), qual cuidado o sistema mantém?",
+      "options": [
+        "Aumentar o `z-index` do card",
+        "Respeitar `prefers-reduced-motion`, desligando/abrandando o movimento para quem pediu menos animação",
+        "Carregar a imagem em alta resolução sempre",
+        "Remover o card do DOM após a transição"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Movimento deve ser acessível: mesmo usando view transitions para dar continuidade visual ao expandir o card, o sistema protege a animação com `@media (prefers-reduced-motion: reduce)`, anulando-a para quem prefere menos movimento. Acessibilidade do movimento é parte integrante de um design system moderno, não um extra."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a ideia central que conecta as técnicas dos 14 dias neste projeto?",
+      "options": [
+        "Substituir todo o CSS por JavaScript",
+        "Cada técnica moderna resolve uma fatia do problema (ordem, tokens, tema, adaptação ao espaço, estado, i18n, movimento) e, somadas, formam um sistema robusto que dispensa quase todo o JS que antes era obrigatório",
+        "Usar o máximo de `!important` possível",
+        "Depender de um framework CSS para tudo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O fio condutor é a complementaridade: camadas dão ordem; `@property`/`oklch` dão tokens coerentes; `color-mix`/`light-dark` dão temas; container queries dão componentes que se adaptam ao espaço; `:has()` dá estado sem JS; propriedades lógicas dão i18n; view transitions dão movimento acessível. Cada peça resolve uma camada do problema, e a soma é um design system moderno, enxuto e quase sem JavaScript."
+    }
+  ]
+}

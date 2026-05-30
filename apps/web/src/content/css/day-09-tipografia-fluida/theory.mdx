@@ -1,0 +1,71 @@
+# Tipografia Fluida & Funções Matemáticas
+
+Tipografia responsiva à moda antiga é uma escada: `font-size: 1rem`, aí um `@media` para `1.25rem`, outro para `1.5rem`. Saltos bruscos, muitos breakpoints. O CSS moderno faz a tipografia **fluir** continuamente com o viewport usando funções matemáticas — `clamp()`, `min()`, `max()` — e ainda traz `round()`, `mod()` e companhia para cálculos de layout que antes exigiam pré-processador ou JS.
+
+## `clamp()`: o coração da fluidez
+
+`clamp(MÍNIMO, PREFERIDO, MÁXIMO)` retorna o valor preferido, mas nunca abaixo do mínimo nem acima do máximo:
+
+```css
+h1 { font-size: clamp(1.75rem, 1rem + 3vw, 3rem); }
+/*               │ piso        │ valor fluido  │ teto */
+```
+
+Entre os limites, o termo do meio (`1rem + 3vw`) cresce com a largura da tela — suave, sem nenhum breakpoint. Abaixo de certa largura, trava em `1.75rem`; acima de outra, trava em `3rem`.
+
+## A regra de ouro da acessibilidade: sempre um `rem` no meio
+
+Repare que o valor preferido é `1rem + 3vw`, não `4vw` puro. Isso é deliberado:
+
+```css
+h1 { font-size: clamp(1.75rem, 4vw, 3rem); }        /* RUIM: ignora o zoom do usuário */
+h1 { font-size: clamp(1.75rem, 1rem + 3vw, 3rem); } /* BOM: o rem responde ao zoom/preferências */
+```
+
+`vw` puro não reage quando a pessoa aumenta a fonte padrão do navegador — um problema sério de acessibilidade. Incluir um termo em `rem` garante que o texto continue escalando com as preferências do usuário. Sempre misture `rem` (ou `em`) com `vw` no termo fluido.
+
+## `min()` e `max()`: limites de um lado só
+
+Onde `clamp()` limita dos dois lados, `min()` e `max()` limitam de um:
+
+```css
+.container { inline-size: min(100%, 65ch); } /* no máximo 65ch, mas encolhe em telas estreitas */
+.gutter    { padding-inline: max(1rem, 5vw); } /* respiro mínimo de 1rem, crescendo em telas largas */
+```
+
+`min(100%, 65ch)` é o "container ideal de leitura": nunca passa de 65 caracteres de largura (conforto de leitura), mas em telas pequenas vira `100%`. Note a inversão intuitiva: para impor um **teto**, usa-se `min()`; para impor um **piso**, `max()`.
+
+## De onde sai o termo fluido
+
+O `1rem + 3vw` não é mágica: é uma **interpolação linear** entre dois tamanhos em duas larguras de tela. Você escolhe "no viewport X o texto tem tamanho A; no viewport Y, tamanho B", calcula a inclinação e monta o `calc()`:
+
+```css
+/* exemplo: 16px @ 320px  →  24px @ 1200px */
+h2 { font-size: clamp(1rem, 0.71rem + 1.45vw, 1.5rem); }
+```
+
+Ferramentas de "fluid type scale" automatizam essa conta para uma escala inteira (vários níveis com a mesma lógica), mas o mecanismo é sempre `clamp()` + interpolação linear.
+
+## Funções matemáticas novas: `round()`, `mod()`, `rem()`
+
+O CSS ganhou aritmética que antes era só de pré-processador:
+
+```css
+.snap { height: round(up, var(--h), 8px); } /* arredonda para o múltiplo de 8px mais próximo (p/ cima) */
+.tick { rotate: mod(var(--i) * 30deg, 360deg); } /* resto da divisão — útil para repetições cíclicas */
+```
+
+`round(strategy, valor, intervalo)` encaixa valores numa grade (estratégias `up`, `down`, `nearest`, `to-zero`); `mod()` e `rem()` dão o resto da divisão (diferindo no tratamento de sinais). Há ainda `pow()`, `sqrt()`, `sin()`, `cos()`, `hypot()` chegando — trigonometria e potências direto no CSS, ótimas para layouts radiais e cálculos geométricos.
+
+## `text-wrap`: quebras de linha inteligentes
+
+Duas novidades melhoram a **forma** do texto sem você mexer no conteúdo:
+
+```css
+h1, h2, h3 { text-wrap: balance; } /* equilibra o comprimento das linhas de títulos */
+p          { text-wrap: pretty; }  /* evita "órfãs": uma última linha com só uma palavra */
+```
+
+`balance` distribui as palavras para que as linhas de um título fiquem com comprimentos parecidos (aplicado a blocos de poucas linhas, por custo de performance). `pretty` foca no fim do parágrafo, evitando aquela última linha solitária com uma palavra só. Pequenos toques, grande polimento tipográfico.
+
+> **Resumo:** A tipografia fluida troca a escada de breakpoints por funções matemáticas. **`clamp(min, preferido, max)`** entrega tamanho contínuo entre dois limites; o termo preferido **deve misturar `rem` com `vw`** (ex.: `1rem + 3vw`) — `vw` puro ignora o zoom e quebra a acessibilidade. **`min()`** impõe teto (`min(100%, 65ch)` = container de leitura) e **`max()`** impõe piso; a intuição se inverte. O termo fluido vem de uma interpolação linear entre dois tamanhos em duas larguras. Novas funções — **`round()`**, `mod()`, `rem()` e a trigonometria que chega — trazem aritmética de layout sem pré-processador. E `text-wrap: balance`/`pretty` refinam as quebras de linha de títulos e parágrafos.

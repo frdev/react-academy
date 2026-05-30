@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-08",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que `hsl()` é problemático para gerar paletas consistentes?",
+      "options": [
+        "Porque não suporta o canal alfa",
+        "Porque não é perceptualmente uniforme: cores com o mesmo `L` podem ter brilhos percebidos muito diferentes entre matizes",
+        "Porque só funciona em telas P3",
+        "Porque `hsl()` foi removido do CSS moderno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`hsl()` é uma transformação simples de sRGB, não um modelo de percepção. Por isso um amarelo e um azul com `L: 50%` parecem ter brilhos opostos. Isso impede gerar de forma consistente 'a versão 20% mais escura' de uma cor entre matizes — o que `oklch`, sendo perceptualmente uniforme, resolve."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que os três componentes de `oklch(70% 0.15 250)` representam?",
+      "options": [
+        "Red, Green, Blue",
+        "Lightness (luminosidade), Chroma (saturação) e Hue (matiz em graus)",
+        "Hue, Saturation, Lightness, na ordem do hsl",
+        "Opacidade, brilho e contraste"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Em `oklch(L C H)`: L é a luminosidade (0% preto a 100% branco, e aqui honesta perceptualmente), C é o chroma/saturação (0 = cinza, sem teto rígido) e H é o matiz em graus (0–360). Por ser uniforme, variar só o L mantendo C e H gera escalas de tom visualmente coerentes."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual a forma idiomática moderna de criar um hover '15% mais escuro' a partir de `--brand`?",
+      "options": [
+        "Pré-calcular o hex mais escuro manualmente e colá-lo",
+        "`color-mix(in oklch, var(--brand) 85%, black)`",
+        "`var(--brand) * 0.85`",
+        "`darken(var(--brand), 15%)` nativo do CSS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`color-mix(in oklch, var(--brand) 85%, black)` mistura 85% da marca com 15% de preto, escurecendo sem você pré-calcular hex. Misturar em `oklch` produz transições mais naturais que em sRGB. Não existe uma função `darken()` nativa no CSS (isso era do Sass); `color-mix()` é o substituto moderno, e CSS não faz aritmética com `*` em cores."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Por que o espaço escolhido em `color-mix(in <espaço>, ...)` importa?",
+      "options": [
+        "Não importa; o resultado é sempre o mesmo",
+        "Espaços diferentes interpolam de formas diferentes — misturar em `oklch` evita os 'cinzas mortos' que surgem ao interpolar cores opostas em sRGB",
+        "Só `in srgb` é válido; os outros dão erro",
+        "O espaço só afeta a performance, não a cor"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A interpolação acontece dentro do espaço indicado, e cada espaço tem uma geometria diferente. Misturar duas cores opostas em sRGB costuma passar por um cinza apagado no meio; em `oklch`, o caminho perceptual evita esses 'cinzas mortos'. Por isso `in oklch` é uma escolha comum para misturas mais naturais."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que a relative color syntax `oklch(from var(--brand) calc(l + 0.1) c h)` faz?",
+      "options": [
+        "Cria uma cor aleatória baseada em --brand",
+        "Decompõe --brand em seus canais (l, c, h) e a reconstrói com a luminosidade aumentada em 0.1, mantendo chroma e hue",
+        "Converte --brand para escala de cinza",
+        "Mistura --brand com a cor `l`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A sintaxe `from <cor>` expõe os canais da cor (aqui `l c h`) como valores reutilizáveis, inclusive dentro de `calc()`. Assim `calc(l + 0.1)` clareia mantendo chroma e hue intactos, derivando uma variação a partir de uma única base. É o mecanismo que permite gerar paletas inteiras de um só token de marca."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Como acessar cores mais vívidas do que o sRGB permite, em telas modernas?",
+      "options": [
+        "Aumentando o brilho do monitor via CSS",
+        "Usando `color(display-p3 ...)` ou valores de chroma alto em `oklch`, com o navegador fazendo gamut mapping como fallback",
+        "Não é possível; CSS só suporta sRGB",
+        "Adicionando `!important` às cores"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Telas P3 exibem vermelhos/verdes mais saturados que o sRGB descreve. Você acessa esse gamut com `color(display-p3 1 0 0)` ou com `oklch` de chroma alto. Em telas sem P3, o navegador faz gamut mapping, aproximando para a cor exibível mais próxima — então é seguro usar como progressive enhancement."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a vantagem de `color-scheme: light dark` combinado com `light-dark(claro, escuro)`?",
+      "options": [
+        "Dobra a saturação de todas as cores",
+        "Resolve o valor claro ou escuro conforme o esquema ativo, permitindo temas claro/escuro em uma linha por propriedade, sem uma media query para cada uma",
+        "Desativa o modo escuro do sistema",
+        "Só funciona com JavaScript habilitado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`color-scheme` informa ao navegador os esquemas suportados (ajustando controles, scrollbars e fundo padrão) e destrava `light-dark()`. Com isso, `light-dark(white, #1a1a1a)` escolhe automaticamente o valor conforme o esquema ativo, eliminando a necessidade de escrever uma `@media (prefers-color-scheme: dark)` separada para cada propriedade."
+    }
+  ]
+}

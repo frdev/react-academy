@@ -134,6 +134,22 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-13': () => import('@/content/ai/day-13-eval-observabilidade-guardrails/theory.mdx'),
     'day-14': () => import('@/content/ai/day-14-projeto-final-sistema-agentico/theory.mdx'),
   },
+  css: {
+    'day-01': () => import('@/content/css/day-01-layout-intrinseco/theory.mdx'),
+    'day-02': () => import('@/content/css/day-02-subgrid-masonry/theory.mdx'),
+    'day-03': () => import('@/content/css/day-03-container-queries/theory.mdx'),
+    'day-04': () => import('@/content/css/day-04-propriedades-logicas/theory.mdx'),
+    'day-05': () => import('@/content/css/day-05-custom-properties-at-property/theory.mdx'),
+    'day-06': () => import('@/content/css/day-06-cascade-layers/theory.mdx'),
+    'day-07': () => import('@/content/css/day-07-has-is-where/theory.mdx'),
+    'day-08': () => import('@/content/css/day-08-cor-moderna/theory.mdx'),
+    'day-09': () => import('@/content/css/day-09-tipografia-fluida/theory.mdx'),
+    'day-10': () => import('@/content/css/day-10-nesting-scope/theory.mdx'),
+    'day-11': () => import('@/content/css/day-11-ui-moderna/theory.mdx'),
+    'day-12': () => import('@/content/css/day-12-scroll-driven-animations/theory.mdx'),
+    'day-13': () => import('@/content/css/day-13-view-transitions/theory.mdx'),
+    'day-14': () => import('@/content/css/day-14-projeto-final-design-system/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content

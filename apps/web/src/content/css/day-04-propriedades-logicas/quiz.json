@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-04",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Em escrita horizontal LTR (português), a que correspondem os eixos inline e block?",
+      "options": [
+        "inline é vertical (empilhamento das linhas) e block é horizontal (fluxo dos caracteres)",
+        "inline é horizontal (fluxo dos caracteres, esquerda→direita) e block é vertical (empilhamento das linhas, cima→baixo)",
+        "inline e block são ambos horizontais",
+        "Dependem da cor do texto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O eixo inline é a direção em que os caracteres fluem (horizontal, esquerda→direita em português); o eixo block é a direção em que as linhas se empilham (vertical, cima→baixo). Propriedades lógicas falam nesses eixos, então se reorientam sozinhas quando o `writing-mode` ou `direction` muda."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual é o equivalente lógico de `margin-left` em escrita LTR?",
+      "options": [
+        "margin-block-start",
+        "margin-inline-start",
+        "margin-inline-end",
+        "margin-block-end"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`margin-left` afasta o conteúdo da borda esquerda. O equivalente lógico é `margin-inline-start` — o início do eixo inline, que é a esquerda em LTR e a direita em RTL. É justamente essa reorientação automática que faz o mesmo CSS funcionar nos dois sentidos sem um arquivo RTL separado."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `inline-size` controla?",
+      "options": [
+        "Sempre a altura do elemento",
+        "A dimensão no eixo inline — a largura em escrita horizontal, mas a altura em escrita vertical",
+        "O tamanho da fonte inline",
+        "A margem interna do elemento"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`inline-size` é o equivalente lógico de `width`, mas amarrado ao eixo inline: em escrita horizontal corresponde à largura; em `writing-mode: vertical-rl`, o eixo inline é vertical, então `inline-size` passa a controlar a altura. `block-size` é o análogo de `height`. Isso mantém o significado ('tamanho na direção do texto') estável entre orientações."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que faz `margin-inline: auto`?",
+      "options": [
+        "Remove todas as margens do elemento",
+        "Centraliza o elemento no eixo inline (o equivalente lógico do clássico `margin: 0 auto`)",
+        "Aplica margem automática apenas no topo",
+        "Faz o elemento ocupar 100% da largura"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`margin-inline` é o atalho para as duas margens do eixo inline (esquerda e direita em LTR). Com `auto`, distribui o espaço livre igualmente dos dois lados, centralizando o elemento — a versão lógica de `margin: 0 auto`. Como é lógico, continua centralizando corretamente mesmo em RTL ou escrita vertical."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Por que `text-align: start` é preferível a `text-align: left` em CSS internacionalizado?",
+      "options": [
+        "Porque `left` foi removido da especificação",
+        "Porque `start` alinha ao início do texto — esquerda em LTR e direita em RTL — sem precisar reescrever a regra por idioma",
+        "Porque `start` centraliza o texto",
+        "Porque `left` só funciona em Flexbox"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`text-align: left` fixa o alinhamento à esquerda física, errado para idiomas RTL como árabe e hebraico. `text-align: start` alinha ao início do eixo inline, que acompanha o `direction`: esquerda em LTR, direita em RTL. Assim o mesmo CSS serve qualquer idioma, sem condicionais por `dir`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Normalmente, como se controla o sentido RTL de uma página (eixo inline da direita para a esquerda)?",
+      "options": [
+        "Definindo `writing-mode: rtl` no CSS",
+        "Com o atributo `dir=\"rtl\"` no HTML (que ajusta o `direction`), e o CSS lógico se adapta automaticamente",
+        "Invertendo manualmente todos os `margin-left` para `margin-right`",
+        "Não é possível controlar RTL com CSS moderno"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O sentido inline (LTR/RTL) é tipicamente definido pelo atributo `dir` no HTML (`dir=\"rtl\"`), que corresponde à propriedade CSS `direction`. Com propriedades lógicas, basta isso: `margin-inline-start`, `text-align: start` e companhia se reorientam sozinhos. `writing-mode` cuida da orientação dos blocos (ex.: texto vertical), não do RTL horizontal."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a principal vantagem de adotar propriedades lógicas por padrão num design system?",
+      "options": [
+        "Elas renderizam mais rápido que as físicas",
+        "Um único stylesheet serve LTR, RTL e escrita vertical, evitando manter um arquivo `rtl.css` paralelo",
+        "Elas eliminam a necessidade de Flexbox e Grid",
+        "Elas reduzem o tamanho das imagens"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A grande vantagem é internacionalização sem retrabalho: como as propriedades lógicas se reorientam com o idioma, o mesmo CSS funciona em LTR, RTL e vertical, dispensando um stylesheet RTL separado. Como bônus, a semântica fica mais honesta ('espaço antes do conteúdo' em vez de 'à esquerda') e alinhada ao modelo start/end que Flexbox e Grid já usam."
+    }
+  ]
+}

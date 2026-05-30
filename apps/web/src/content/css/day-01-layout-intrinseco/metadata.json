@@ -1,0 +1,20 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Layout Intrínseco com Grid & Flexbox",
+  "slug": "layout-intrinseco",
+  "topics": [
+    "intrinsic sizing",
+    "min-content / max-content / fit-content",
+    "minmax() e a unidade fr",
+    "auto-fill vs auto-fit",
+    "gap e o RAM pattern"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,119 @@
+# Projeto Final: Design System Moderno
+
+Chegou a hora de costurar os 13 dias num só projeto: um mini **design system** construído inteiramente com CSS moderno, sem framework, sem pré-processador, sem JavaScript para o que o CSS já resolve. Você vai ver as peças — `@layer`, `@property`, `oklch`, container queries, `:has()`, propriedades lógicas, view transitions — operando **juntas**. Esta é a síntese.
+
+## 1. Arquitetura: camadas primeiro
+
+Antes de qualquer estilo, declare a ordem das camadas. Ela define a prioridade do sistema inteiro e encerra guerras de especificidade desde o início:
+
+```css
+@layer reset, tokens, base, components, utilities;
+```
+
+`reset` é a base fraca; `utilities` sempre vence. Cada parte do sistema vai para sua camada, e sobrescrever passa a ser uma decisão de **camada**, não de seletor barroco.
+
+## 2. Tokens: tipados e semânticos
+
+Os tokens vivem na camada `tokens`. Use `@property` para os que precisam de tipo (e de animação), e separe **primitivos** de **semânticos** com `oklch` para escalas coerentes:
+
+```css
+@property --radius { syntax: "<length>"; inherits: true; initial-value: 8px; }
+
+@layer tokens {
+  :root {
+    /* primitivos: cor crua, escala por luminosidade em oklch */
+    --brand-400: oklch(75% 0.14 280);
+    --brand-600: oklch(62% 0.16 280);
+
+    /* semânticos: o PAPEL, que os componentes consomem */
+    --color-accent: var(--brand-600);
+    --color-accent-hover: color-mix(in oklch, var(--color-accent) 85%, black);
+    --surface: light-dark(white, oklch(25% 0.02 280));
+    --text:    light-dark(oklch(25% 0.02 280), oklch(95% 0.01 280));
+  }
+  :root { color-scheme: light dark; }
+  [data-theme="dark"] { color-scheme: dark; }
+}
+```
+
+Trocar o tema vira redefinir alguns semânticos; nenhum componente conhece `--brand-600` — só `--color-accent`.
+
+## 3. Base: reset e tipografia fluida
+
+A camada `base` traz o reset enxuto e a escala tipográfica fluida com `clamp()` (sempre com um termo em `rem`):
+
+```css
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  body { background: var(--surface); color: var(--text); line-height: 1.5; }
+  img, svg, video { display: block; max-inline-size: 100%; }
+  input, button { font: inherit; accent-color: var(--color-accent); }
+  h1 { font-size: clamp(1.75rem, 1rem + 3vw, 3rem); text-wrap: balance; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+```
+
+## 4. Componente: um Card que se adapta sozinho
+
+O Card é o coração. Ele usa **container queries** (reage ao próprio espaço), **propriedades lógicas** (pronto para i18n), **`:has()`** (reage ao conteúdo/estado) e os tokens semânticos:
+
+```css
+@layer components {
+  .card-wrap { container: card / inline-size; } /* o card consulta seu próprio espaço */
+
+  .card {
+    display: grid;
+    gap: 1rem;
+    padding-inline: 1.25rem;          /* lógico: adapta a RTL */
+    padding-block: 1.25rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  /* reage ao conteúdo: vira horizontal quando há imagem E o container é largo */
+  @container card (min-width: 420px) {
+    .card:has(> img) { grid-template-columns: 12rem 1fr; }
+  }
+
+  /* reage ao estado interno, sem JS */
+  .card:has(:checked) { outline: 2px solid var(--color-accent); }
+
+  .card a { color: var(--color-accent); }
+  .card a:hover { color: var(--color-accent-hover); }
+}
+```
+
+Repare: o mesmo `.card` funciona numa sidebar estreita (empilhado) e numa coluna larga com imagem (horizontal), **sem media query** — porque consulta o container, não a janela. E destaca-se quando contém algo marcado, **sem JavaScript** — porque `:has()` enxerga o estado.
+
+## 5. Interação: view transition com respeito ao usuário
+
+Ao expandir um card para detalhe, uma shared element transition dá continuidade visual — protegida por `prefers-reduced-motion`:
+
+```css
+@layer components {
+  .card > img { view-transition-name: card-hero; } /* "voa" para o detalhe */
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*) { animation: none; } /* sem movimento para quem pediu */
+}
+```
+
+A troca de DOM é envolvida em `document.startViewTransition()`; o CSS cuida da animação e da preferência de movimento.
+
+## 6. Utilities por último
+
+A camada `utilities` existe para ajustes pontuais que devem vencer componentes — graças à ordem de camadas, uma classe simples basta, sem `!important`:
+
+```css
+@layer utilities {
+  .text-center { text-align: center; }
+  .stack-lg    { gap: 2rem; }
+}
+```
+
+## O sistema, em uma frase
+
+Camadas dão **ordem**; `@property` e `oklch` dão **tokens** tipados e coerentes; `color-mix`/`light-dark` dão **temas**; container queries dão **componentes** que se adaptam ao espaço; `:has()` dá **estado** sem JS; propriedades lógicas dão **i18n**; view transitions dão **movimento** acessível. Cada peça resolve uma camada do problema, e juntas formam um design system moderno — enxuto, robusto e quase sem JavaScript.
+
+> **Resumo:** Um design system moderno se monta em camadas: declare `@layer reset, tokens, base, components, utilities` para fixar a prioridade. Em **tokens**, use `@property` (tipo + animação) e separe primitivos de semânticos com `oklch` (escalas coerentes), temando com `color-mix` e `light-dark`/`color-scheme`. Em **base**, reset enxuto + tipografia fluida (`clamp` com `rem`). O **componente** Card combina container queries (adapta-se ao próprio espaço, sem media query), propriedades lógicas (i18n), `:has()` (reage a conteúdo e estado sem JS) e os tokens semânticos. **Interações** usam view transitions (shared element via `view-transition-name`) sempre sob `prefers-reduced-motion`. E **utilities** vence por ordem de camada, sem `!important`. Cada uma das técnicas dos 14 dias resolve uma fatia — e a soma é um CSS moderno que dispensa quase todo o JavaScript que antes era obrigatório.

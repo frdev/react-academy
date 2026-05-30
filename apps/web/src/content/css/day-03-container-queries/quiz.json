@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença fundamental entre uma `media query` e uma `container query`?",
+      "options": [
+        "media query é mais rápida; container query é mais lenta",
+        "media query reage ao tamanho do viewport; container query reage ao tamanho do container do componente",
+        "Não há diferença prática; são sinônimos",
+        "container query só funciona em impressão (print)"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`media query` enxerga apenas a janela (viewport), então um componente não consegue se adaptar ao espaço real que ocupa. `container query` faz o componente reagir ao tamanho do seu container — então o mesmo card numa sidebar estreita e numa área larga se adapta a cada contexto. Isso torna o componente verdadeiramente reutilizável, com o conhecimento de layout dentro dele."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual o erro mais comum que faz nenhuma regra `@container` ser aplicada?",
+      "options": [
+        "Esquecer de definir `container-type` (ou `container`) em um elemento ancestral",
+        "Usar `min-width` em vez de `max-width`",
+        "Não importar um polyfill de JavaScript",
+        "Colocar o `@container` antes do `@media` no arquivo"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Um elemento só se torna container consultável quando recebe `container-type` (ou o atalho `container`). Sem isso em algum ancestral do elemento-alvo, o `@container` não tem o que consultar e nada acontece. É de longe a causa nº 1 de container queries 'que não funcionam'."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que `container-type: inline-size` permite consultar?",
+      "options": [
+        "Apenas a altura (block-size) do container",
+        "A dimensão inline do container (a largura, em texto horizontal)",
+        "A cor de fundo do container",
+        "A posição do scroll dentro do container"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`inline-size` estabelece contenção e consulta no eixo inline — em escrita horizontal, a largura. É o valor mais usado porque a maioria dos componentes adapta seu layout pela largura disponível. `size` consulta ambos os eixos, mas exige altura determinada; `normal` não consulta tamanho (só habilita style queries)."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Dentro de um container com `container-type: inline-size`, qual elemento você deve estilizar nas regras `@container`?",
+      "options": [
+        "O próprio elemento que tem `container-type` — ele estiliza a si mesmo",
+        "Os elementos DESCENDENTES do container; o container não aplica o `@container` a si próprio",
+        "Qualquer elemento da página, inclusive fora do container",
+        "Apenas elementos irmãos do container"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `@container` consulta o container ancestral mais próximo e aplica estilos aos seus descendentes. O elemento que carrega o `container-type` não é alvo do seu próprio `@container` — por isso o padrão é ter um wrapper como container e estilizar os filhos (o card, o título, etc.). Tentar estilizar o próprio container é uma armadilha comum."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que a unidade `cqi` representa?",
+      "options": [
+        "1% da largura do viewport, como `vw`",
+        "1% do inline-size (largura, em texto horizontal) do container de consulta",
+        "1 pixel multiplicado pelo container index",
+        "1% da altura do documento"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`cqi` é 1% do inline-size do container de consulta — o análogo de `vw`, mas relativo ao container em vez do viewport. Por isso `font-size: clamp(1rem, 5cqi, 2rem)` escala a tipografia conforme o espaço do componente, não da janela. Há ainda `cqb` (block-size), `cqw`/`cqh` e `cqmin`/`cqmax`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que uma style query como `@container style(--tone: brand)` consulta?",
+      "options": [
+        "A largura do container em pixels",
+        "O valor computado de uma custom property do container (ex.: --tone igual a brand)",
+        "O estilo inline definido via atributo style do HTML",
+        "A folha de estilo externa carregada"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Style queries consultam o valor computado de uma custom property no container. Isso permite reagir a um 'estado' declarado em variáveis (ex.: uma variante featured que define `--tone: brand`) sem precisar de classes extras propagadas. Style queries por custom property já funcionam nos navegadores atuais; as baseadas em tamanho via `style()` ainda amadurecem."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Por que `container-type: size` pode fazer o layout colapsar se usado sem cuidado?",
+      "options": [
+        "Porque `size` desativa o Flexbox dentro do container",
+        "Porque `size` consulta ambos os eixos e aplica contenção de tamanho — exigindo uma altura determinada; sem altura definida, o conteúdo pode colapsar",
+        "Porque `size` só funciona em elementos `position: fixed`",
+        "Porque `size` ignora o `container-name`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`size` consulta largura e altura, o que implica contenção de tamanho nos dois eixos. Para o navegador consultar a altura, o container precisa ter altura determinada independentemente do conteúdo — caso contrário a contenção faz o container não crescer com o conteúdo e o layout colapsa. Por isso `inline-size` (só largura) é o valor seguro e mais comum."
+    }
+  ]
+}

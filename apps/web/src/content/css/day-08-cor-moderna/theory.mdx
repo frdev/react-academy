@@ -1,0 +1,92 @@
+# Cor Moderna
+
+Durante 25 anos, CSS viveu preso ao **sRGB** — `#hex`, `rgb()`, `hsl()`. O problema: sRGB cobre só uma fatia das cores que telas modernas exibem, e `hsl()` **mente** sobre luminosidade (um amarelo e um azul com o mesmo `L` parecem ter brilhos completamente diferentes). O CSS moderno traz espaços de cor **perceptualmente uniformes**, mistura de cores, derivação de paletas a partir de uma cor-base e acesso ao gamut amplo das telas atuais.
+
+## Por que `hsl()` não basta
+
+```css
+.a { background: hsl(60 100% 50%); }  /* amarelo: PARECE muito claro */
+.b { background: hsl(240 100% 50%); } /* azul: mesmo L=50%, mas PARECE escuro */
+```
+
+Mesmo `L: 50%`, brilhos percebidos opostos. Isso quebra paletas: você não consegue gerar "a versão 20% mais escura" de forma consistente entre matizes. A causa é que `hsl` é uma transformação simples de sRGB, não um modelo de **percepção** humana.
+
+## `oklch`: o novo padrão sensato
+
+`oklch(L C H)` é perceptualmente uniforme: passos numéricos iguais geram diferenças visuais parecidas, entre quaisquer matizes.
+
+```css
+.brand { color: oklch(70% 0.15 250); }
+/*               │     │    └ Hue: matiz em graus (0–360) */
+/*               │     └ Chroma: saturação (0 = cinza, sem teto rígido) */
+/*               └ Lightness: 0% (preto) a 100% (branco) — e aqui ela é HONESTA */
+```
+
+A vantagem prática é gerar paletas variando **só o L**, mantendo C e H — e os tons ficam visualmente coerentes:
+
+```css
+:root {
+  --brand-300: oklch(85% 0.12 250);
+  --brand-500: oklch(70% 0.15 250);
+  --brand-700: oklch(55% 0.15 250);
+}
+```
+
+(`oklab` é o primo cartesiano de `oklch`; `lab`/`lch` são gerações anteriores com um leve desvio de matiz no azul que `oklch` corrige.)
+
+## `color-mix()`: misturar cores de verdade
+
+`color-mix()` combina duas cores num espaço escolhido — ideal para estados de hover, tints e shades sem pré-calcular hex:
+
+```css
+.btn        { background: var(--brand); }
+.btn:hover  { background: color-mix(in oklch, var(--brand) 85%, black); } /* 15% mais escuro */
+.btn-subtle { background: color-mix(in oklch, var(--brand) 15%, white); } /* tint suave */
+```
+
+O espaço importa: `color-mix(in srgb, …)` e `color-mix(in oklch, …)` dão resultados diferentes — misturar em `oklch` evita os "cinzas mortos" que aparecem ao interpolar cores opostas em sRGB.
+
+## Relative color syntax: derivar a partir de uma cor
+
+A sintaxe relativa **decompõe** uma cor em canais e deixa você reconstruí-la — gerar variações a partir de **uma** base:
+
+```css
+/* clareia a marca somando 0.1 na luminosidade, mantendo chroma e hue */
+--brand-light: oklch(from var(--brand) calc(l + 0.1) c h);
+
+/* mesma cor, com 50% de opacidade */
+--brand-50: rgb(from var(--brand) r g b / 50%);
+```
+
+`from <cor>` expõe os canais (`l c h`, ou `r g b`, etc.) como valores que você recombina, inclusive com `calc()`. Uma paleta inteira pode nascer de um único token de marca.
+
+## Gamut amplo: cores que o sRGB não alcança
+
+Telas modernas (P3) exibem vermelhos e verdes mais vívidos do que o sRGB consegue descrever. Você acessa esse gamut com `color()` ou diretamente em `oklch`:
+
+```css
+.vivid { color: color(display-p3 1 0 0); } /* vermelho mais saturado que o #f00 do sRGB */
+
+@media (color-gamut: p3) {
+  .brand { color: oklch(65% 0.3 25); } /* chroma alto que só telas P3 mostram por inteiro */
+}
+```
+
+O navegador faz **gamut mapping**: em telas sem P3, aproxima para a cor exibível mais próxima.
+
+## `color-scheme` e `light-dark()`
+
+`color-scheme` informa ao navegador quais esquemas o elemento suporta — isso ajusta controles de formulário, scrollbars e o fundo padrão para o modo certo. E destrava `light-dark()`:
+
+```css
+:root { color-scheme: light dark; } /* respeita a preferência do SO/usuário */
+
+.card {
+  background: light-dark(white, #1a1a1a); /* escolhe conforme o esquema ativo */
+  color:      light-dark(#1a1a1a, #f5f5f5);
+}
+```
+
+Com `color-scheme` definido, `light-dark()` resolve o valor certo **sem** uma media query `prefers-color-scheme` para cada propriedade — o tema claro/escuro fica em uma linha por propriedade.
+
+> **Resumo:** `hsl()` mente sobre luminosidade, quebrando paletas. **`oklch(L C H)`** é perceptualmente uniforme — gere tons variando só o `L`, com C e H fixos, para escalas coerentes. **`color-mix(in oklch, a, b)`** mistura cores (hover, tints, shades) sem pré-calcular hex, e o espaço escolhido muda o resultado. A **relative color syntax** (`oklch(from var(--brand) calc(l + .1) c h)`) decompõe uma cor em canais e a reconstrói, derivando paletas inteiras de uma base. `color(display-p3 …)` e `oklch` de chroma alto acessam o **gamut amplo** das telas modernas, com gamut mapping de fallback. E `color-scheme: light dark` + **`light-dark(claro, escuro)`** entregam tema claro/escuro em uma linha por propriedade, sem media query.

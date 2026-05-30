@@ -1,0 +1,20 @@
+{
+  "id": "day-14",
+  "day": 14,
+  "week": 2,
+  "title": "Projeto Final: Design System Moderno",
+  "slug": "projeto-final-design-system",
+  "topics": [
+    "tokens com @property + @layer",
+    "componentes com container queries",
+    ":has() para estado de UI",
+    "color-mix() para temas",
+    "view transitions no sistema"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 60,
+  "prerequisites": ["day-13"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}
