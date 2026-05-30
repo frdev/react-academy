@@ -1,0 +1,20 @@
+{
+  "id": "day-08",
+  "day": 8,
+  "week": 2,
+  "title": "Skills",
+  "slug": "skills",
+  "topics": [
+    "o que são Skills",
+    "progressive disclosure",
+    "anatomia do SKILL.md",
+    "criando skills eficazes",
+    "skills vs. tools vs. prompts"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-07"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

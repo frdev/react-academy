@@ -1,0 +1,20 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "Tool use (function calling)",
+  "slug": "tool-use",
+  "topics": [
+    "loop tool_use / tool_result",
+    "design de boas tools",
+    "JSON schemas de input",
+    "tool choice",
+    "tratamento de erros de tool"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-03"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

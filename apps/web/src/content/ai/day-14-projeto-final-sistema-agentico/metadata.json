@@ -1,0 +1,20 @@
+{
+  "id": "day-14",
+  "day": 14,
+  "week": 2,
+  "title": "Projeto final — sistema agêntico",
+  "slug": "projeto-final-sistema-agentico",
+  "topics": [
+    "integração MCP + tools + skills",
+    "orquestração multi-agente",
+    "memória e estado",
+    "eval e guardrails",
+    "deploy do agente"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 90,
+  "prerequisites": ["day-13"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 200
+}

@@ -1,0 +1,235 @@
+# Memória & estado persistente
+
+LLMs são stateless por design: cada chamada à API começa do zero, sem lembrança de interações anteriores (dia 1). Memória de agente é uma camada que *você* constrói por cima — um conjunto de decisões sobre o que reenviar ao modelo, o que persistir fora da janela de contexto e como recuperar informação relevante quando necessário. Dominar essa camada é o que diferencia um agente de longa duração eficaz de um que "esquece" tudo a cada sessão.
+
+## Memória short-term: a janela de contexto
+
+A janela de contexto é a única memória nativa de um LLM. Tudo que o modelo "sabe" em uma chamada específica vive ali: system prompt, histórico de mensagens, resultados de ferramentas, documentos injetados. Para o Claude Sonnet/Opus, essa janela chega a 200k tokens — grande, mas finita e cara.
+
+A memória short-term funciona sem nenhuma infraestrutura adicional: basta reenviar o array `messages` a cada chamada. O modelo lê o histórico completo e responde considerando tudo o que foi trocado:
+
+```ts
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic()
+
+// histórico mantido em memória pela sua aplicação
+const history: { role: 'user' | 'assistant'; content: string }[] = []
+
+async function chat(userMessage: string): Promise<string> {
+  history.push({ role: 'user', content: userMessage })
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 1024,
+    system: 'Você é um assistente técnico conciso.',
+    messages: history,
+  })
+
+  const assistantText = response.content[0].type === 'text'
+    ? response.content[0].text
+    : ''
+
+  history.push({ role: 'assistant', content: assistantText })
+  return assistantText
+}
+```
+
+**Regra prática:** a janela de contexto é perfeita para sessões curtas (uma tarefa, uma conversa). Para sessões que se estendem por horas ou dias — ou entre processos distintos — você precisa de memória long-term.
+
+## Memória long-term: persistência fora do modelo
+
+Memória long-term é qualquer dado relevante armazenado fora do processo e recuperado sob demanda. Ela pode ser estruturada (banco relacional, chave-valor) ou vetorial (para busca semântica — veja o dia 5 sobre RAG). As categorias práticas são:
+
+- **Fatos destilados:** informações sobre o usuário, projeto ou domínio, armazenadas como texto estruturado.
+- **Resumos de sessões anteriores:** compactações de conversas passadas.
+- **Resultados de raciocínio:** decisões, conclusões ou planos produzidos pelo agente.
+- **Histórico bruto:** mensagens originais paginadas em um banco, recuperadas quando necessário.
+
+Um padrão simples com store chave-valor (Redis, SQLite, arquivo JSON):
+
+```ts
+import { readFileSync, writeFileSync } from 'fs'
+
+interface MemoryStore {
+  userFacts: Record<string, string>
+  sessionSummaries: { date: string; summary: string }[]
+}
+
+const STORE_PATH = './agent-memory.json'
+
+function loadMemory(): MemoryStore {
+  try {
+    return JSON.parse(readFileSync(STORE_PATH, 'utf-8'))
+  } catch {
+    return { userFacts: {}, sessionSummaries: [] }
+  }
+}
+
+function saveMemory(store: MemoryStore): void {
+  writeFileSync(STORE_PATH, JSON.stringify(store, null, 2))
+}
+
+// Ao iniciar uma nova sessão, injetar memória no system prompt
+function buildSystemPrompt(store: MemoryStore): string {
+  const facts = Object.entries(store.userFacts)
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join('\n')
+
+  const recentSummary = store.sessionSummaries.at(-1)?.summary ?? ''
+
+  return `Você é um assistente técnico personalizado.
+
+## O que você sabe sobre o usuário
+${facts || 'Nenhum fato registrado ainda.'}
+
+## Resumo da última sessão
+${recentSummary || 'Primeira sessão.'}
+
+Ao descobrir novos fatos relevantes sobre o usuário ou projeto, registre-os explicitamente.`
+}
+```
+
+**Regra prática:** separe fatos *estáveis* (preferências, nome do projeto, stack tecnológica) de fatos *voláteis* (estado atual de uma tarefa). Os estáveis vão no system prompt; os voláteis, no contexto da mensagem atual.
+
+## Context compaction: comprimindo o histórico longo
+
+Quando a conversa cresce, o histórico bruto consome tokens que poderiam ser usados para raciocínio. Context compaction é a técnica de substituir mensagens antigas por um resumo conciso, preservando apenas as informações necessárias para continuar.
+
+A estratégia mais comum: ao atingir um limiar (ex.: 70% da janela), sumarize os N turnos mais antigos com um modelo auxiliar mais barato e descarte as mensagens originais.
+
+```ts
+const TOKEN_THRESHOLD = 0.7 // 70% da janela
+const MAX_WINDOW = 200_000  // tokens do modelo principal
+
+async function compactIfNeeded(
+  messages: { role: string; content: string }[],
+  currentTokens: number
+): Promise<{ role: string; content: string }[]> {
+  if (currentTokens / MAX_WINDOW < TOKEN_THRESHOLD) return messages
+
+  // Separa os turnos antigos dos recentes
+  const keepRecent = 10 // manter as últimas 10 trocas intactas
+  const toCompress = messages.slice(0, -keepRecent)
+  const toKeep = messages.slice(-keepRecent)
+
+  if (toCompress.length === 0) return messages
+
+  // Sumariza os turnos antigos com um modelo leve
+  const summaryResponse = await client.messages.create({
+    model: 'claude-haiku-4-5', // mais barato, suficiente para sumarização
+    max_tokens: 512,
+    system: `Sumarize a conversa abaixo de forma concisa.
+Preserve: decisões tomadas, fatos descobertos, código produzido, pendências.
+Formato: bullet points curtos. Máximo 400 tokens.`,
+    messages: [
+      {
+        role: 'user',
+        content: toCompress
+          .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+          .join('\n\n'),
+      },
+    ],
+  })
+
+  const summary = summaryResponse.content[0].type === 'text'
+    ? summaryResponse.content[0].text
+    : ''
+
+  // Substitui os turnos antigos por uma mensagem-resumo
+  return [
+    { role: 'user', content: `[RESUMO DE CONVERSA ANTERIOR]\n${summary}` },
+    { role: 'assistant', content: 'Entendido. Continuando com base nesse contexto.' },
+    ...toKeep,
+  ]
+}
+```
+
+**Regra prática:** nunca comprima os últimos N turnos — o modelo precisa do contexto imediato para manter coerência. Comprima sempre as mensagens mais antigas. Para sistemas de produção, persista o resumo gerado como parte da memória long-term da sessão.
+
+## Estratégias de recuperação: o que trazer de volta ao contexto
+
+Ter memória persistida é metade do problema. A outra metade é decidir *o que* recuperar e *quando*. Três estratégias principais:
+
+**1. Recuperação por relevância semântica (RAG)**
+Use embeddings (dia 5) para buscar fatos ou resumos semanticamente parecidos com a mensagem atual do usuário. É a abordagem mais precisa para bases grandes de memória.
+
+```ts
+// Pseudocódigo — integra com o store de vetores do dia 5
+async function retrieveRelevantMemories(
+  query: string,
+  memoryIndex: VectorStore
+): Promise<string[]> {
+  const results = await memoryIndex.search(query, { topK: 5 })
+  return results.map((r) => r.text)
+}
+```
+
+**2. Recuperação temporal (janela deslizante)**
+Sempre inclua as últimas N sessões ou os últimos K dias de histórico. Simples, previsível, funciona bem quando a relevância é temporal (ex.: agente de desenvolvimento que trabalha no mesmo projeto todo dia).
+
+**3. Recuperação estruturada por chave**
+Se você catalogou fatos com chaves explícitas (user.name, project.stack, task.current), faça lookup direto pelas chaves relevantes para o contexto atual. Mais eficiente que busca vetorial para fatos bem definidos.
+
+```ts
+function buildContextFromMemory(
+  currentTask: string,
+  store: MemoryStore
+): string {
+  // Combina as três estratégias
+  const structuredFacts = Object.entries(store.userFacts)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join('\n')
+
+  const recentSessions = store.sessionSummaries
+    .slice(-3) // últimas 3 sessões
+    .map((s) => `[${s.date}] ${s.summary}`)
+    .join('\n')
+
+  return `## Fatos do usuário\n${structuredFacts}\n\n## Sessões recentes\n${recentSessions}`
+}
+```
+
+**Regra prática:** prefira busca semântica para memórias grandes e variadas; prefira lookup estruturado para fatos bem catalogados. Combine as duas em agentes complexos — recuperação estruturada para o contexto fixo (perfil do usuário), semântica para o histórico de decisões.
+
+## Limites de memória e trade-offs
+
+Nenhuma estratégia de memória é gratuita. Cada escolha tem custos e limites que você precisa gerenciar explicitamente:
+
+| Estratégia | Capacidade | Custo por chamada | Precisão | Complexidade |
+|---|---|---|---|---|
+| Janela de contexto (short-term) | ~200k tokens | Alto (tokens cobrados) | Perfeita (tudo incluso) | Baixa |
+| Store chave-valor (long-term) | Ilimitada | Lookup O(1) | Alta (lookup exato) | Baixa |
+| Vector store / RAG | Ilimitada | Embedding + query | Alta (semântica) | Média |
+| Context compaction | Reduz 70-90% | Uma chamada auxiliar | Pode perder detalhes | Média |
+
+**Dilemas práticos:**
+
+- **Fidelidade vs. custo:** incluir o histórico completo garante fidelidade mas custa tokens. Compactar reduz custo mas perde granularidade.
+- **Privacidade:** persistir conversas em banco coloca dados fora do processo — exige criptografia e política de retenção.
+- **Staleness:** fatos persistidos podem ficar desatualizados. Inclua `updatedAt` em tudo que você persiste.
+- **Context pollution:** injetar memória irrelevante é pior que não injetar nada — dilui a atenção do modelo no que importa.
+
+```ts
+// Boas práticas de gestão de memória
+interface MemoryEntry {
+  key: string
+  value: string
+  updatedAt: string   // ISO 8601
+  ttlDays?: number    // opcional: expirar entradas velhas
+  source: 'user' | 'agent' | 'tool'
+}
+
+function filterStaleMemories(entries: MemoryEntry[]): MemoryEntry[] {
+  const now = Date.now()
+  return entries.filter((e) => {
+    if (!e.ttlDays) return true
+    const age = (now - new Date(e.updatedAt).getTime()) / 86_400_000
+    return age <= e.ttlDays
+  })
+}
+```
+
+**Regra prática:** implemente expiração (`ttlDays`) desde o início, mesmo que todos os valores iniciais sejam `undefined`. Adicionar expiração retroativamente em produção é doloroso.
+
+> **Resumo:** LLMs são stateless; memória é uma responsabilidade da aplicação. Memória short-term vive na janela de contexto — reenvie o array `messages` para manter coerência em uma sessão. Memória long-term exige um store externo (chave-valor ou vetorial): persista fatos destilados e resumos de sessão, recupere por relevância semântica (RAG, dia 5) ou lookup estruturado. Context compaction substitui turnos antigos por resumos gerados por um modelo auxiliar, preservando os turnos recentes intactos. O equilíbrio entre fidelidade, custo e precisão é o trade-off central do design de memória para agentes.

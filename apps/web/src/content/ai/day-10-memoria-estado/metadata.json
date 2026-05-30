@@ -1,0 +1,20 @@
+{
+  "id": "day-10",
+  "day": 10,
+  "week": 2,
+  "title": "Memória & estado persistente",
+  "slug": "memoria-estado",
+  "topics": [
+    "memória short-term vs. long-term",
+    "estado persistente",
+    "context compaction",
+    "estratégias de recuperação",
+    "limites de memória"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-09"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

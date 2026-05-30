@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a operação fundamental que um LLM executa?",
+      "options": [
+        "Busca a resposta mais parecida em um banco de dados de textos memorizados",
+        "Prevê uma distribuição de probabilidade sobre o próximo token dado o contexto, e gera texto autoregressivamente",
+        "Executa regras lógicas pré-programadas para deduzir a resposta correta",
+        "Compila a pergunta em código e roda esse código para obter o resultado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um LLM é, na essência, um previsor do próximo token: dado o contexto atual, ele produz probabilidades para o próximo token e escolhe um (via sampling), repetindo o processo autoregressivamente. Ele não consulta um banco de dados nem executa lógica simbólica — a coerência emerge de prever repetidamente o token provável. Isso explica por que ele pode alucinar: o texto mais 'provável' nem sempre é o mais verdadeiro."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que LLMs podem 'alucinar' (produzir informação falsa com confiança)?",
+      "options": [
+        "Porque seus bancos de dados internos ficam desatualizados e precisam de reindexação",
+        "Porque otimizam para gerar o texto estatisticamente mais provável, que nem sempre corresponde à verdade",
+        "Porque a temperature está sempre acima de 1.0 por padrão",
+        "Porque ficam sem memória RAM durante a inferência"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O modelo prevê padrões estatísticos de linguagem, não fatos armazenados. Quando o padrão mais provável diverge da realidade — por exemplo, ao perguntar sobre algo fora do treino ou muito específico — ele gera um texto plausível e bem formado, porém incorreto. Por isso integramos tools e RAG: para ancorar respostas em fontes externas verificáveis em vez de depender só da previsão."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que exatamente conta para o limite da context window em uma chamada?",
+      "options": [
+        "Apenas o input do usuário",
+        "Apenas o histórico da conversa, excluindo o system prompt",
+        "System prompt + histórico + input atual + a própria resposta a ser gerada, tudo somado",
+        "Somente os tokens que ultrapassam o system prompt"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A context window é um orçamento compartilhado: system prompt, todo o histórico, o input atual E a resposta gerada disputam o mesmo limite de tokens. Cada token gasto em contexto é um token a menos disponível para a resposta. Por isso encher a janela com contexto irrelevante não só custa mais como pode degradar a qualidade — gerir esse orçamento é o cerne do context engineering."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Um sistema precisa 'lembrar' do que o usuário disse há 3 mensagens. Como o LLM acessa essa informação?",
+      "options": [
+        "Ele mantém memória interna persistente entre chamadas automaticamente",
+        "A informação precisa ser reenviada no contexto da chamada atual — o modelo não tem estado entre requisições",
+        "Ele consulta um cache global do provedor que guarda conversas anteriores",
+        "Ele reconstrói a mensagem a partir dos pesos do modelo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "LLMs são stateless entre chamadas: cada requisição é independente. 'Lembrar' significa incluir (reenviar) o histórico relevante no contexto da chamada atual. Não há memória implícita — qualquer continuidade de conversa é construída por você reenviando mensagens anteriores. Estratégias de memória e compactação de contexto existem justamente para gerenciar isso quando o histórico cresce além da janela."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Você está construindo um extrator que classifica e-mails em categorias fixas. Qual configuração de sampling faz mais sentido?",
+      "options": [
+        "temperature alta (~1.2) para o modelo ser mais criativo nas categorias",
+        "temperature baixa (~0) para respostas determinísticas e consistentes",
+        "max_tokens muito alto para garantir variedade de saída",
+        "top_p igual a 0 para desabilitar o modelo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Classificação e extração são tarefas determinísticas: você quer a mesma entrada sempre mapeada para a mesma categoria, sem criatividade. temperature baixa (próxima de 0) faz o modelo escolher consistentemente o token mais provável. temperature alta é útil para brainstorm e redação criativa, onde variação é desejável — o oposto do que você quer aqui. (Note: top_p 0 não 'desabilita' o modelo, mas temperature baixa é o controle idiomático para determinismo.)"
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual destas tarefas é estruturalmente MAIS arriscada para confiar a um LLM puro, sem ferramentas externas?",
+      "options": [
+        "Resumir um artigo que está no contexto",
+        "Reescrever um parágrafo em tom mais formal",
+        "Calcular com exatidão a soma de uma lista de 40 números grandes",
+        "Extrair os nomes próprios de um texto fornecido"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Aritmética exata é um ponto fraco estrutural: previsão de tokens não é uma calculadora, e o modelo pode errar contas longas com confiança. As outras opções são forças do modelo, pois operam sobre o conteúdo presente no contexto (resumir, reescrever, extrair). A solução idiomática para cálculo exato é dar ao modelo uma tool (ex.: uma calculadora ou execução de código) — exatamente o padrão agêntico que transforma um limite em ponto de integração."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a ideia central do 'padrão agêntico' que a AI moderna adota para contornar os limites de um LLM?",
+      "options": [
+        "Treinar um modelo novo a cada tarefa para eliminar alucinações",
+        "Aumentar indefinidamente a context window até caber todo o conhecimento do mundo",
+        "Dar ao modelo ferramentas, conhecimento externo e um loop de agir-observar-corrigir, em vez de exigir tudo de uma única previsão",
+        "Reduzir a temperature a zero para o modelo nunca errar"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O padrão agêntico aceita que uma única previsão tem limites (fatos externos, aritmética, estado) e os transforma em pontos de integração: tools para agir e buscar dados, RAG/MCP para conhecimento externo, e um loop onde o modelo age, observa o resultado e corrige. Não se trata de retreinar por tarefa, nem de inflar a janela, nem de zerar a temperature — é orquestrar o modelo com capacidades externas. É exatamente o que os próximos dias do curso constroem."
+    }
+  ]
+}

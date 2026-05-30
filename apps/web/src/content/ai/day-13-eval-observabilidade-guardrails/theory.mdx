@@ -1,0 +1,327 @@
+# Eval, observabilidade & guardrails
+
+Colocar agentes em produção exige mais do que fazer o fluxo funcionar uma vez: você precisa medir qualidade sistematicamente, observar cada etapa do loop de execução e impor limites que previnam comportamentos indesejados. Essa tríade — eval, observabilidade e guardrails — é o que separa um demo impressionante de um sistema confiável. Sem ela, erros silenciosos se acumulam, custos disparam e o usuário paga o preço.
+
+## Por que avaliar agentes é diferente de testar software tradicional
+
+Software determinístico tem um contrato claro: mesma entrada, mesma saída. Agentes com LLMs são não-determinísticos por design — temperatura, variações de prompt, mudanças de modelo e até a ordem das mensagens afetam a saída. Não existe assertion simples que valide "o agente respondeu corretamente".
+
+Isso cria três desafios específicos:
+
+- **Ausência de ground truth único.** Para "resuma este artigo", há dezenas de respostas corretas. Comparação exata (string match) é inútil.
+- **Cascata de erros.** Um agente que chama 5 ferramentas pode errar na etapa 2 e produzir uma saída plausível porém errada na etapa 5, sem nenhuma exceção lançada.
+- **Deriva silenciosa.** Trocar o modelo base, ajustar o system prompt ou mudar os dados de produção pode degradar qualidade gradualmente sem quebrar nenhum teste de integração.
+
+A resposta é substituir testes pontuais por **avaliações contínuas** sobre datasets curados, com métricas que medem qualidade semântica — não igualdade de strings.
+
+**Regra prática:** trate evals como CI para comportamento do agente. Rode-os a cada mudança de prompt, modelo ou lógica de orquestração.
+
+## Estrutura de evals: datasets, casos e LLM-as-judge
+
+Um eval de agente tem três componentes:
+
+1. **Dataset de casos** — pares (input, saída esperada ou critério de avaliação).
+2. **Executor** — roda o agente para cada caso e coleta a saída real.
+3. **Juiz** — avalia a saída real contra o critério; pode ser regex, função determinística ou outro LLM.
+
+```ts
+// Caso de eval: uma entrada + critério de avaliação
+interface EvalCase {
+  id: string
+  input: string
+  expectedBehavior: string   // critério em linguagem natural
+}
+
+// Resultado de um turn do agente
+interface AgentOutput {
+  text: string
+  toolCalls: string[]
+  inputTokens: number
+  outputTokens: number
+  latencyMs: number
+}
+
+// LLM-as-judge: usa o modelo para avaliar a resposta
+async function judge(
+  client: Anthropic,
+  evalCase: EvalCase,
+  agentOutput: AgentOutput,
+): Promise<{ score: number; reason: string }> {
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5',   // modelo mais barato para julgamento massivo
+    max_tokens: 256,
+    system: `Você é um avaliador de respostas de agentes de IA.
+Retorne JSON com os campos "score" (0-10) e "reason" (string curta).
+Critério principal: a resposta atende ao comportamento esperado?
+Sem texto fora do JSON.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Input do usuário: ${evalCase.input}
+Comportamento esperado: ${evalCase.expectedBehavior}
+Resposta do agente: ${agentOutput.text}
+Ferramentas chamadas: ${agentOutput.toolCalls.join(', ') || 'nenhuma'}`,
+      },
+    ],
+  })
+
+  return JSON.parse(response.content[0].text)
+}
+```
+
+Métricas que valem medir por dataset:
+
+- **Score médio do juiz** — qualidade semântica agregada (meta: ≥ 7 / 10)
+- **Taxa de tool calls corretas** — o agente chamou as ferramentas esperadas?
+- **Taxa de recusa indevida** — o agente negou tarefas legítimas?
+- **Latência P50 / P95** — tempo de resposta em condições normais e sob pico
+- **Custo médio por turno** — `(inputTokens * preçoInput + outputTokens * preçoOutput)`
+
+**Regra prática:** mantenha um dataset de regressão com pelo menos 20-50 casos que cobrem os comportamentos críticos do seu agente. Adicione um novo caso sempre que encontrar um bug em produção.
+
+## Tracing e observabilidade do loop agêntico
+
+Um agente executa um loop: recebe tarefa → raciocina → chama ferramenta → processa resultado → repete. Sem logs estruturados de cada turn, depurar falhas é arqueologia. Você precisa capturar o estado completo de cada iteração.
+
+```ts
+// Estrutura de log de um turn do agente
+interface TurnTrace {
+  traceId: string          // ID único da execução completa
+  turnIndex: number        // qual iteração do loop (0, 1, 2...)
+  timestamp: string        // ISO 8601
+  model: string
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheCreationTokens: number
+  costUsd: number          // calculado no cliente
+  latencyMs: number
+  stopReason: string       // 'end_turn' | 'tool_use' | 'max_tokens'
+  toolCalls: Array<{
+    name: string
+    input: unknown
+    outputSizeBytes: number
+    durationMs: number
+  }>
+}
+
+// Calculando custo no cliente (Claude Sonnet 4 como referência)
+function calcCost(usage: {
+  input_tokens: number
+  output_tokens: number
+  cache_read_input_tokens?: number
+  cache_creation_input_tokens?: number
+}): number {
+  const PRICE = {
+    input: 3 / 1_000_000,          // $3 por MTok
+    output: 15 / 1_000_000,        // $15 por MTok
+    cacheRead: 0.3 / 1_000_000,    // $0.30 por MTok
+    cacheWrite: 3.75 / 1_000_000,  // $3.75 por MTok
+  }
+  return (
+    usage.input_tokens * PRICE.input +
+    usage.output_tokens * PRICE.output +
+    (usage.cache_read_input_tokens ?? 0) * PRICE.cacheRead +
+    (usage.cache_creation_input_tokens ?? 0) * PRICE.cacheWrite
+  )
+}
+
+// Emitindo o trace (substitua pelo seu sink: Datadog, OpenTelemetry, arquivo, etc.)
+function emitTrace(trace: TurnTrace): void {
+  console.log(JSON.stringify({ level: 'info', event: 'agent.turn', ...trace }))
+}
+```
+
+Uma linha de log estruturado por turn permite:
+
+- Reconstruir a execução completa de um traceId para debugar uma reclamação
+- Agregar custo total por sessão e por usuário
+- Alertar quando um agente excede N turns (loop infinito provável)
+- Calcular P95 de latência por tipo de ferramenta para identificar gargalos
+
+```text
+// Exemplo de log em produção (pretty-printed para legibilidade)
+{
+  "level": "info",
+  "event": "agent.turn",
+  "traceId": "ag_01HZ4K...",
+  "turnIndex": 2,
+  "model": "claude-sonnet-4-5",
+  "inputTokens": 4821,
+  "outputTokens": 312,
+  "cacheReadTokens": 3200,
+  "costUsd": 0.00528,
+  "latencyMs": 1843,
+  "stopReason": "tool_use",
+  "toolCalls": [
+    { "name": "search_documents", "durationMs": 420, "outputSizeBytes": 8192 }
+  ]
+}
+```
+
+**Regra prática:** sempre logue no nível do turn, não apenas no nível da sessão. Um agente que falha no turn 4 de 7 não revela nada nos logs de sessão — você precisa do estado de cada iteração.
+
+## Guardrails: validar input, sanitizar output, limitar ações
+
+Guardrails são verificações que interceptam o fluxo antes que dano seja causado — seja pela entrada do usuário, pela saída do modelo ou pelas ações que o agente toma. Eles operam em três camadas:
+
+**Camada 1 — Validação de input:** bloqueia ou transforma entradas antes que cheguem ao modelo.
+
+```ts
+function validateInput(userMessage: string): { ok: boolean; reason?: string } {
+  const MAX_LENGTH = 8_000  // chars
+
+  if (userMessage.length > MAX_LENGTH) {
+    return { ok: false, reason: 'Mensagem muito longa. Limite: 8 000 caracteres.' }
+  }
+
+  // Detectar tentativa de prompt injection simples
+  const INJECTION_PATTERNS = [
+    /ignore (all |previous )?instructions/i,
+    /you are now/i,
+    /disregard (your |the )?system prompt/i,
+  ]
+  for (const pattern of INJECTION_PATTERNS) {
+    if (pattern.test(userMessage)) {
+      return { ok: false, reason: 'Entrada inválida detectada.' }
+    }
+  }
+
+  return { ok: true }
+}
+```
+
+**Camada 2 — Sanitização de output:** valida o que o modelo gerou antes de exibir ou agir.
+
+```ts
+interface StructuredOutput {
+  action: 'send_email' | 'create_file' | 'search' | 'reply'
+  target?: string
+  content?: string
+}
+
+function sanitizeAgentOutput(raw: string): StructuredOutput {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error(`Agente retornou JSON inválido: ${raw.slice(0, 200)}`)
+  }
+
+  const output = parsed as Record<string, unknown>
+
+  // Validar que a ação está na lista permitida
+  const ALLOWED_ACTIONS = ['send_email', 'create_file', 'search', 'reply'] as const
+  if (!ALLOWED_ACTIONS.includes(output.action as never)) {
+    throw new Error(`Ação não permitida: ${output.action}`)
+  }
+
+  // Sanitizar campo de conteúdo — remover HTML para evitar XSS
+  if (typeof output.content === 'string') {
+    output.content = output.content.replace(/<[^>]*>/g, '')
+  }
+
+  return output as StructuredOutput
+}
+```
+
+**Camada 3 — Limites de ação:** previne que o agente execute operações destrutivas ou excessivas.
+
+```ts
+interface ActionGuardrails {
+  maxTurns: number          // previne loop infinito
+  maxCostUsdPerSession: number
+  allowedTools: Set<string> // whitelist de ferramentas
+  requireConfirmation: Set<string>  // ações que exigem aprovação humana
+}
+
+const GUARDRAILS: ActionGuardrails = {
+  maxTurns: 15,
+  maxCostUsdPerSession: 0.50,
+  allowedTools: new Set(['search', 'read_file', 'send_email']),
+  requireConfirmation: new Set(['delete_file', 'send_email', 'post_to_social']),
+}
+
+function checkActionGuardrail(
+  toolName: string,
+  guardrails: ActionGuardrails,
+  sessionState: { turns: number; costUsd: number },
+): { allowed: boolean; requiresConfirmation: boolean; reason?: string } {
+  if (sessionState.turns >= guardrails.maxTurns) {
+    return { allowed: false, requiresConfirmation: false, reason: 'Limite de turns atingido.' }
+  }
+  if (sessionState.costUsd >= guardrails.maxCostUsdPerSession) {
+    return { allowed: false, requiresConfirmation: false, reason: 'Limite de custo da sessão atingido.' }
+  }
+  if (!guardrails.allowedTools.has(toolName)) {
+    return { allowed: false, requiresConfirmation: false, reason: `Ferramenta '${toolName}' não está na whitelist.` }
+  }
+  if (guardrails.requireConfirmation.has(toolName)) {
+    return { allowed: true, requiresConfirmation: true }
+  }
+  return { allowed: true, requiresConfirmation: false }
+}
+```
+
+**Regra prática:** implemente guardrails em camadas independentes — uma falha em um não deve silenciar os outros. Combine listas de permissão explícitas (whitelist) com limites numéricos (turns, custo) para cobertura abrangente.
+
+## Safety e responsible AI em sistemas agênticos
+
+Guardrails técnicos endereçam falhas mecânicas; safety endereça impacto no mundo real. Em agentes com acesso a ferramentas que modificam estado externo (enviar e-mails, executar código, chamar APIs), os riscos são assimétricos: um erro pode ser irreversível.
+
+Princípios operacionais:
+
+- **Princípio do menor privilégio.** O agente deve ter acesso apenas às ferramentas necessárias para a tarefa — não ao conjunto completo disponível. Escopo restrito limita o blast radius de qualquer falha.
+- **Human-in-the-loop para ações de alto impacto.** Ações destrutivas ou com efeitos externos (deletar dados, enviar comunicações, transferir recursos) devem exigir aprovação explícita humana antes de executar.
+- **Auditabilidade.** Todo trace deve ser armazenado por tempo suficiente para investigação. Em sistemas regulados, isso é requisito legal.
+- **Fail-safe por padrão.** Quando o agente está incerto sobre os limites de uma ação, o comportamento seguro é parar e pedir clareza — não tentar e pedir desculpa depois.
+- **Monitoramento de drift comportamental.** Mudanças de modelo ou prompt podem introduzir comportamentos inesperados mesmo sem alterar o código. Rode evals após cada mudança de configuração.
+
+```text
+Checklist de safety antes de ir para produção:
+[ ] Whitelist de ferramentas definida (não "all tools available")
+[ ] Limite de turns por sessão configurado
+[ ] Limite de custo por sessão configurado
+[ ] Ações destrutivas exigem confirmação humana
+[ ] Logs de trace persistidos (mínimo 30 dias)
+[ ] Evals de regressão rodando em CI
+[ ] Política de dados: o que é logado? O que não deve ser logado (PII)?
+```
+
+## Métricas de qualidade e ciclo de melhoria
+
+Evals, traces e guardrails só têm valor se alimentarem um ciclo de melhoria contínua. O fluxo é:
+
+1. **Coletar** — traces de produção com feedback implícito (thumbs up/down, re-tentativas, abandono)
+2. **Analisar** — identificar padrões de falha nos traces (turns excessivos, ferramentas erradas, respostas truncadas)
+3. **Adicionar ao dataset** — novos casos de falha viram casos de eval
+4. **Corrigir** — ajustar prompt, modelo, lógica ou guardrails
+5. **Validar** — rodar evals completos; score deve subir ou manter
+6. **Deploys** — promover para produção com confiança
+
+```ts
+// Métricas a monitorar em dashboard de produção
+interface AgentHealthMetrics {
+  // Qualidade
+  evalScoreP50: number         // score mediano do juiz nos últimos N dias
+  rateToolCallError: number    // % de tool calls que retornaram erro
+  rateUnintendedRefusal: number // % de recusas detectadas por usuários
+
+  // Performance
+  latencyP50Ms: number
+  latencyP95Ms: number
+  avgTurnsPerSession: number
+
+  // Custo
+  avgCostUsdPerSession: number
+  totalCostUsdToday: number
+
+  // Safety
+  rateGuardrailTrigger: number  // % de sessões que tocaram algum guardrail
+  rateHumanEscalation: number   // % de ações que foram para revisão humana
+}
+```
+
+**Regra prática:** defina SLOs (Service Level Objectives) para `evalScoreP50`, `latencyP95Ms` e `avgCostUsdPerSession` antes de ir para produção. Alertas acionam quando qualquer um deles sai da faixa — não espere reclamação do usuário.
+
+> **Resumo:** agentes em produção exigem uma camada de controle que software tradicional não precisa. Evals contínuos com LLM-as-judge medem qualidade semântica sobre datasets curados — trate-os como CI. Tracing estruturado por turn captura tokens, latência, custo e tool calls para cada iteração do loop, permitindo diagnóstico preciso. Guardrails em três camadas (input, output, ações) impedem que falhas do modelo se tornem danos reais: valide entradas, sanitize saídas, whitelist ferramentas e imponha limites numéricos. Safety vai além do técnico: princípio do menor privilégio, human-in-the-loop para ações de alto impacto e auditabilidade completa são requisitos, não opcionais. Feche o ciclo com métricas de qualidade em dashboard e deixe os dados de produção alimentar o dataset de evals.

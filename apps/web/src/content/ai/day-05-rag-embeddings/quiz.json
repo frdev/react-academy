@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é o principal problema que o RAG (Retrieval-Augmented Generation) resolve?",
+      "options": [
+        "Reduzir o custo de treinamento de modelos grandes",
+        "Permitir que o modelo responda com base em dados privados e atualizados que não faziam parte do seu treino",
+        "Aumentar a velocidade de inferência do modelo em produção",
+        "Eliminar a necessidade de prompt engineering"
+      ],
+      "correctAnswer": 1,
+      "explanation": "RAG resolve o problema de modelos terem conhecimento limitado à data de corte do treino e não terem acesso a dados privados da organização. Em vez de re-treinar o modelo (caro e lento), você indexa os documentos em um banco vetorial e recupera em runtime apenas os trechos relevantes para cada query, injetando-os no contexto antes de gerar a resposta."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "O que é um embedding de texto?",
+      "options": [
+        "Uma compressão do texto em base64 para transmissão eficiente via API",
+        "Um resumo automático gerado pelo modelo de linguagem",
+        "Uma representação numérica do texto em um espaço vetorial de alta dimensão, onde textos semanticamente similares ficam geometricamente próximos",
+        "O processo de dividir um documento longo em pedaços menores"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Um embedding é um vetor de números (tipicamente 256 a 3072 dimensões) que representa o significado semântico do texto. A propriedade fundamental é que textos com significados parecidos ficam próximos nesse espaço vetorial — 'cachorro' e 'cão' têm vetores próximos entre si, distantes de 'contabilidade'. Esse posicionamento geométrico é o que permite a busca por similaridade funcionar."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que a similaridade de cosseno é preferida em vez da distância euclidiana para busca semântica?",
+      "options": [
+        "Porque a distância euclidiana não funciona em espaços de alta dimensão",
+        "Porque a similaridade de cosseno mede o ângulo entre vetores, ignorando a magnitude — textos mais longos produzem vetores de maior magnitude sem ser necessariamente mais relevantes",
+        "Porque o cálculo de cosseno é mais rápido computacionalmente",
+        "Porque é o único método suportado pelos bancos vetoriais modernos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A similaridade de cosseno mede o ângulo entre dois vetores, não a distância entre os pontos. Isso é importante porque um parágrafo e um livro inteiro sobre o mesmo tema terão vetores com magnitudes muito diferentes — o livro produz um vetor maior simplesmente por ter mais conteúdo. A similaridade de cosseno normaliza isso e foca na direção (semântica), não no tamanho. Valores vão de -1 (opostos) a 1 (idênticos), sendo 0 ausência de relação."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é o efeito do 'overlap' na estratégia de chunking por tamanho fixo?",
+      "options": [
+        "Aumenta o número total de chunks, desperdiçando espaço de armazenamento",
+        "Reduz a chance de uma ideia importante ser cortada exatamente na fronteira entre dois chunks consecutivos, duplicando um trecho de texto entre eles",
+        "Permite que o modelo veja o documento inteiro em cada chunk",
+        "É uma técnica de compressão que reduz o tamanho dos vetores gerados"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando você divide um texto em chunks de tamanho fixo sem overlap, uma frase ou parágrafo importante pode ser cortado ao meio — metade no final do chunk N e metade no início do chunk N+1. Com overlap (ex: 10-15% do tamanho do chunk), você repete esse trecho de fronteira nos dois chunks consecutivos. Isso aumenta a chance de que qualquer informação relevante esteja completamente contida em pelo menos um chunk, melhorando o recall do retrieval."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "No pipeline RAG completo, em qual etapa a Messages API da Anthropic é chamada?",
+      "options": [
+        "Na etapa de indexação, para gerar resumos de cada chunk antes de embedar",
+        "Na etapa de embedding, para converter texto em vetores",
+        "Na etapa final de geração, após recuperar os chunks relevantes e montar o contexto com eles",
+        "Na etapa de chunking, para decidir automaticamente onde dividir o documento"
+      ],
+      "correctAnswer": 2,
+      "explanation": "A Messages API da Anthropic é usada apenas no passo final de geração. O pipeline completo é: (1) chunking do documento, (2) embedding de cada chunk via modelo de embedding, (3) armazenamento no banco vetorial, (4) embedding da query do usuário, (5) busca top-k por similaridade de cosseno, (6) montagem do prompt com os chunks recuperados, e finalmente (7) chamada à Messages API com system prompt + chunks + pergunta. Claude então gera a resposta baseada nos trechos fornecidos."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Quando faz sentido usar contexto direto em vez de RAG?",
+      "options": [
+        "Sempre que o corpus tiver mais de 10 documentos",
+        "Apenas quando se usa o modelo Claude Haiku por ser mais barato",
+        "Quando o corpus é pequeno, cabe no context window e muda raramente — a simplicidade compensa a ausência de infraestrutura vetorial",
+        "Quando a precisão das respostas não é importante"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Contexto direto — colocar todo o corpus na mensagem — é a abordagem mais simples e elimina erros de retrieval (o modelo lê tudo). É a escolha certa quando o corpus é pequeno o suficiente para caber no context window (Claude suporta janelas grandes), os custos de tokens por query são aceitáveis, e o corpus não muda constantemente. RAG adiciona complexidade de infraestrutura (banco vetorial, pipeline de indexação) e introduz uma nova fonte de erros: o retrieval pode não encontrar o trecho certo. Para protótipos e corpora pequenos, comece com contexto direto."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é o papel do parâmetro 'k' na busca top-k de um pipeline RAG?",
+      "options": [
+        "Define o número de dimensões dos vetores de embedding",
+        "Define quantos chunks mais similares serão recuperados e injetados no contexto para a geração",
+        "Controla a temperatura do modelo durante a geração da resposta",
+        "Especifica o número máximo de documentos que podem ser indexados no banco vetorial"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O parâmetro k no top-k define quantos chunks serão recuperados do banco vetorial e enviados ao modelo. Um k muito pequeno (ex: 1 ou 2) arrisca não incluir todos os trechos relevantes para responder à pergunta — o retrieval pode errar. Um k muito grande (ex: 20) enche o context window com chunks irrelevantes, aumenta custo e pode confundir o modelo com ruído. Um bom ponto de partida é k entre 3 e 8, combinado com um threshold mínimo de score de similaridade (ex: > 0.75) para descartar chunks com baixa relevância mesmo dentro do top-k."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual campo da resposta da Messages API você deve verificar para saber se a resposta foi truncada antes de terminar?",
+      "options": [
+        "usage.output_tokens — se for igual a max_tokens, a resposta foi truncada",
+        "content[0].truncated — booleano que indica truncamento",
+        "stop_reason — o valor 'max_tokens' indica que o modelo parou por atingir o limite, não por terminar naturalmente",
+        "model — modelos maiores nunca truncam respostas"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O campo `stop_reason` informa por que o modelo parou de gerar. O valor `'end_turn'` significa que o modelo terminou naturalmente; `'max_tokens'` significa que o limite foi atingido antes do fim — a resposta está incompleta. Verificar apenas `usage.output_tokens` é insuficiente porque o modelo pode parar exatamente no limite por coincidência. Os outros valores possíveis de `stop_reason` são `'stop_sequence'` (uma das strings de parada foi gerada) e `'tool_use'` (o modelo quer chamar uma ferramenta)."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Ao usar `client.messages.stream(...)` do SDK TypeScript, qual método você chama para obter o objeto `Message` completo com metadados de uso (tokens) ao final do stream?",
+      "options": [
+        "stream.getText()",
+        "stream.finalMessage()",
+        "stream.complete()",
+        "stream.toMessage()"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`stream.finalMessage()` retorna uma Promise que resolve para o objeto `Message` completo — incluindo `usage`, `stop_reason`, `model` e `content` — após o stream terminar. O método `stream.finalText()` é um helper que retorna apenas o texto concatenado, sem os metadados. Os outros métodos (`getText`, `complete`, `toMessage`) não existem na API do SDK e causariam erros em runtime."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Você está construindo um agente que analisa o mesmo documento de 50 páginas em múltiplas chamadas consecutivas. Qual abordagem reduz custo e latência?",
+      "options": [
+        "Resumir o documento para caber em menos tokens antes de cada chamada",
+        "Usar um modelo menor, pois modelos menores processam contexto mais barato",
+        "Marcar o bloco do documento com `cache_control: { type: 'ephemeral' }` para que a Anthropic reutilize o estado computado entre chamadas",
+        "Dividir o documento em chunks e fazer chamadas paralelas para cada chunk"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Prompt caching com `cache_control: { type: 'ephemeral' }` faz a Anthropic armazenar o estado interno do modelo para aquele prefixo por até 5 minutos. A segunda chamada (e seguintes dentro do TTL) lê do cache a ~10% do custo normal de input — muito mais eficiente do que reprocessar o documento inteiro toda vez. Resumir o documento perde informação. Trocar de modelo pode degradar qualidade. Chunking paralelo não ajuda quando você precisa de análise holística do documento."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a diferença correta entre os parâmetros `temperature` e `top_p` na Messages API?",
+      "options": [
+        "São equivalentes — você pode usar ambos ao mesmo tempo para maior controle",
+        "`temperature` controla a velocidade de geração; `top_p` controla a qualidade",
+        "`temperature` escala as probabilidades de todos os tokens; `top_p` (nucleus sampling) limita o vocabulário aos tokens que somam probabilidade P — são dois eixos alternativos de controle de aleatoriedade",
+        "`top_p` é obrigatório quando `temperature` for 0, para evitar respostas determinísticas"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`temperature` divide os logits pelo valor informado antes do softmax — temperature baixo torna a distribuição mais concentrada (respostas mais previsíveis), temperature alto a achata (mais aleatoriedade). `top_p` filtra o vocabulário mantendo apenas os tokens cujas probabilidades somam P, ignorando os demais. Ambos controlam aleatoriedade mas por mecanismos diferentes. Usar os dois simultaneamente produz efeitos não-intuitivos e não é recomendado — escolha um. `top_p` não tem nenhuma relação com velocidade ou qualidade intrínseca."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é a sintaxe correta para que o Claude pare de gerar ao encontrar a string `'```'` (fim de bloco de código)?",
+      "options": [
+        "Definir `temperature: 0` — isso faz o modelo parar em delimitadores naturais",
+        "Passar `stop_sequences: ['```']` no corpo da chamada `messages.create`",
+        "Usar `stop_tokens: ['```']` — `stop_sequences` só aceita strings de uma palavra",
+        "Incluir a instrução 'pare ao gerar ```' no system prompt"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O parâmetro `stop_sequences` é um array de strings — quando o modelo gera qualquer uma delas, a geração para imediatamente e `stop_reason` retorna `'stop_sequence'`. É a maneira idiomática de extrair saídas estruturadas: por exemplo, `stop_sequences: ['</output>']` para XML ou `stop_sequences: ['}']` para JSON simples. O parâmetro se chama `stop_sequences`, não `stop_tokens` (que não existe). Instruções no system prompt podem ajudar no comportamento geral, mas não garantem parada determinística como o parâmetro."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Para uma tarefa de extração de dados estruturados (ex: parsear um recibo e retornar JSON), qual configuração de `temperature` é mais adequada?",
+      "options": [
+        "temperature: 1.0 — temperatura alta garante que o modelo explore mais possibilidades de formato",
+        "temperature: 0.0 ou próximo de zero — respostas mais determinísticas e fiéis ao dado de entrada",
+        "temperature não afeta extração — só importa o tamanho do max_tokens",
+        "temperature: 0.5 — o ponto de equilíbrio entre criatividade e precisão recomendado pela Anthropic para todos os casos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Para extração de dados, classificação, OCR ou qualquer tarefa em que a resposta correta é objetiva e determinada pela entrada, use `temperature` próximo de zero (0.0–0.2). Isso reduz variação desnecessária — o modelo tende a seguir a instrução com mais rigor e gerar o mesmo JSON para a mesma entrada. Temperature alta aumenta aleatoriedade, o que é útil para escrita criativa ou brainstorming mas prejudicial para extração precisa. O valor 0.5 não é recomendação universal da Anthropic; o padrão varia por modelo e depende do caso de uso."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Ao usar prompt caching, o que `cache_creation_input_tokens` e `cache_read_input_tokens` no campo `usage` da resposta indicam?",
+      "options": [
+        "`cache_creation_input_tokens` são os tokens que criaram o cache (primeira vez, custo ~25% a mais); `cache_read_input_tokens` são os tokens lidos do cache em hits subsequentes (custo ~10% do normal)",
+        "Ambos são apenas informações de diagnóstico e não afetam o custo da chamada",
+        "`cache_creation_input_tokens` são os tokens do system prompt; `cache_read_input_tokens` são os tokens das mensagens do usuário",
+        "`cache_read_input_tokens` indica quantos tokens foram comprimidos para caber no cache"
+      ],
+      "correctAnswer": 0,
+      "explanation": "Prompt caching tem dois momentos: (1) cache miss/criação — o bloco marcado é computado e armazenado; esses tokens aparecem em `cache_creation_input_tokens` e custam ~25% a mais que input normal. (2) cache hit — o bloco é lido do cache sem recomputar; esses tokens aparecem em `cache_read_input_tokens` e custam ~10% do preço normal de input. O campo `input_tokens` contém apenas os tokens que não vieram do cache. O TTL do cache é de 5 minutos, renovado a cada hit. As outras opções confundem nomenclatura ou descrevem comportamentos inexistentes."
+    }
+  ]
+}

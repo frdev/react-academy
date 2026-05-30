@@ -1,0 +1,170 @@
+# Skills
+
+Skills empacotam conhecimento especializado ou procedimentos reutilizáveis que o modelo carrega sob demanda, conforme o contexto da conversa. Diferente de injetar tudo no system prompt de uma vez, essa abordagem de *progressive disclosure* mantém a context window enxuta: apenas o que é relevante para a tarefa atual é carregado. No ecossistema da Anthropic/Claude Code, skills são a forma canônica de modularizar comportamentos, separando "o que o modelo sabe fazer" de "o que está acontecendo agora".
+
+## O problema que Skills resolvem
+
+Projetos reais acumulam múltiplos procedimentos especializados: diretrizes de code review, instruções para criar PRs, workflows de debugging, templates de documentação. Colocar tudo isso em um único system prompt tem custo direto: tokens ocupados em cada chamada, mesmo quando completamente irrelevantes para a tarefa em mãos.
+
+O modelo também sofre com *context dilution*: quanto mais instruções genéricas existem no sistema, menor é a atenção efetiva dada a cada uma delas. Skills resolvem ambos os problemas ao mesmo tempo. O conteúdo fica disponível, mas não ocupa espaço até ser necessário.
+
+**Regra prática:** se uma instrução só faz sentido para uma classe específica de tarefas (ex.: "como fazer deploy"), ela é candidata a virar skill — não a ficar no system prompt permanente.
+
+## Anatomia de um SKILL.md
+
+Uma skill é uma pasta com pelo menos um arquivo `SKILL.md`. A estrutura mínima:
+
+```text
+.claude/skills/
+└── code-review/
+    ├── SKILL.md          ← obrigatório: frontmatter + instruções
+    ├── scripts/
+    │   └── run-lint.sh   ← recursos opcionais referenciados pelo SKILL.md
+    └── references/
+        └── checklist.md  ← documentação de apoio
+```
+
+O arquivo `SKILL.md` tem frontmatter YAML seguido de corpo em markdown:
+
+```markdown
+---
+name: code-review
+description: >
+  Performs a structured code review covering correctness, security,
+  performance, and style. Use when asked to review a PR, diff, or
+  specific file for quality issues.
+---
+
+## Como fazer code review neste projeto
+
+1. Leia o diff completo antes de comentar qualquer linha.
+2. Classifique cada achado como: bug, sugestão, nitpick ou blocker.
+3. Execute `scripts/run-lint.sh` e inclua o output no relatório.
+4. Use o checklist em `references/checklist.md` como guia.
+
+**Nunca** aprove um PR com blocker aberto.
+```
+
+Os campos de frontmatter reconhecidos são:
+
+- `name` — identificador único da skill (sem espaços, kebab-case)
+- `description` — texto em linguagem natural que descreve **quando** a skill deve ser usada; este campo é o gatilho de disparo
+
+O corpo do `SKILL.md` é markdown livre: pode conter cabeçalhos, listas, blocos de código, referências a outros arquivos da pasta. Quando a skill é carregada, todo esse conteúdo é injetado no contexto do modelo como instrução ativa.
+
+## Progressive disclosure: carregamento sob demanda
+
+O mecanismo central de skills é o carregamento seletivo. O harness (Claude Code) mantém um índice das skills disponíveis — apenas `name` e `description` de cada uma. Ao receber uma mensagem do usuário, o modelo avalia quais skills são relevantes e solicita o carregamento completo apenas das selecionadas.
+
+```text
+[índice permanente no contexto]
+skills disponíveis:
+  - name: code-review
+    description: "Performs a structured code review covering ..."
+  - name: deploy-checklist
+    description: "Pre-deployment verification checklist. Use when ..."
+  - name: incident-response
+    description: "Guides through incident triage and resolution ..."
+
+[usuário diz: "pode revisar esse PR?"]
+→ modelo carrega: code-review  ← apenas esta
+→ deploy-checklist e incident-response ficam fora do contexto
+```
+
+O custo de manter o índice é baixo (algumas linhas por skill). O custo de carregar uma skill completa pode ser alto — mas só ocorre quando necessário. Em sessões longas com muitas skills disponíveis, isso representa economia real de tokens.
+
+**Regra prática:** skills grandes (com muitas instruções e referências) se beneficiam mais do lazy loading do que skills pequenas. Se uma skill tem menos de 20 linhas, o overhead do mecanismo pode superar o benefício.
+
+## Criando descriptions que disparam bem
+
+A `description` é o campo mais crítico de qualquer skill. Ela precisa responder com precisão a uma pergunta: *em quais situações o modelo deve carregar este conhecimento?*
+
+Uma description eficaz é:
+
+- **Específica** — menciona contextos concretos ("when asked to review a PR, diff, or specific file"), não abstratos ("when doing quality work")
+- **Orientada ao trigger** — descreve o que o usuário pede ou faz, não o que a skill contém
+- **Em inglês** — o modelo opera melhor em inglês para matching semântico, mesmo em projetos em pt-BR
+
+Compare as duas versões abaixo:
+
+```yaml
+# ❌ Vaga — não indica quando usar
+description: "Contém instruções de qualidade de código."
+
+# ✅ Específica e orientada ao trigger
+description: >
+  Performs a structured code review covering correctness, security,
+  performance, and style. Use when asked to review a PR, diff, or
+  specific file for quality issues.
+```
+
+A segunda versão usa o padrão `Use when <condição>` que o Claude Code reconhece explicitamente. Você pode encadear múltiplas condições:
+
+```yaml
+description: >
+  Pre-deployment verification checklist. Use when about to ship a
+  release, deploying a change with database migrations or feature
+  flags, verifying CI status and approvals before going to
+  production, or documenting rollback triggers ahead of time.
+```
+
+Cada cláusula `Use when ...` expande o conjunto de situações em que a skill será ativada.
+
+## Skills vs. tools vs. prompts do sistema
+
+Os três mecanismos se complementam e não competem. Entender a divisão evita duplicar responsabilidades:
+
+| Mecanismo | O que é | Quando usar |
+|---|---|---|
+| **Tool** | Função executável com schema de input/output | Ação no mundo: buscar dados, rodar código, chamar API |
+| **Skill** | Conhecimento/procedimento carregado sob demanda | Especialização situacional: como fazer X neste projeto |
+| **System prompt** | Instruções sempre presentes | Persona, restrições globais, contexto invariante |
+
+Uma **tool** (`bash`, `read_file`, `search`) expõe capacidade de *agir* — o modelo decide quando chamar e com quais argumentos. Uma **skill** expõe conhecimento de *como proceder* — o modelo carrega e segue as instruções. Um **system prompt** define o que o modelo *é* e *sempre sabe*.
+
+```text
+Exemplo concreto — pipeline de CI/CD:
+
+tool: run_tests        ← executa os testes (ação)
+skill: deploy-checklist ← sabe o ritual de deploy deste projeto (procedimento)
+system prompt: "Você é um engenheiro sênior trabalhando no repo X." (persona)
+```
+
+Tools sem skills podem agir mas sem conhecimento de procedimento. Skills sem tools podem planejar mas não executar. A combinação é o que produz agentes úteis em contextos reais.
+
+**Regra prática:** se você está tentando colocar instruções condicionais no system prompt ("se o usuário pedir review, então faça X, caso contrário faça Y"), provavelmente deveria ser uma skill.
+
+## Organização prática de skills
+
+Skills vivem em `.claude/skills/` (projeto) ou `~/.claude/skills/` (usuário global). A estrutura recomendada para um projeto de médio porte:
+
+```text
+.claude/
+└── skills/
+    ├── code-review/
+    │   ├── SKILL.md
+    │   └── references/
+    │       └── style-guide.md
+    ├── testing-strategy/
+    │   ├── SKILL.md
+    │   └── scripts/
+    │       └── coverage-report.sh
+    ├── deploy-checklist/
+    │   └── SKILL.md
+    └── incident-response/
+        ├── SKILL.md
+        └── references/
+            ├── runbook.md
+            └── escalation-matrix.md
+```
+
+Boas práticas de organização:
+
+- Uma skill por pasta — facilita versionar, revisar e deletar individualmente
+- Nomes descritivos em kebab-case — `code-review`, não `cr` ou `codeReview`
+- Referências relativas dentro da pasta — o harness resolve os paths corretamente
+- Manter `SKILL.md` curto (< 100 linhas) e mover detalhes para `references/` — a skill fica escaneável, os detalhes ficam acessíveis quando necessários
+
+Skills globais (`~/.claude/skills/`) se aplicam a todos os projetos do usuário. Úteis para preferências pessoais de estilo, workflows genéricos de debugging, ou qualquer procedimento que transcende um projeto específico. Skills de projeto têm precedência sobre globais quando há conflito de `name`.
+
+> **Resumo:** Skills são pastas com `SKILL.md` (frontmatter `name`+`description` + corpo markdown) que encapsulam conhecimento/procedimento especializado. O harness as carrega sob demanda via progressive disclosure, mantendo a context window enxuta. A `description` controla o disparo — seja específica e use o padrão `Use when <condição>`. Tools executam ações; skills carregam procedimentos situacionais; system prompts definem o comportamento permanente. A combinação dos três é o que define um agente bem projetado.

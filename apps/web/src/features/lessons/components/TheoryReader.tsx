@@ -118,6 +118,22 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-13': () => import('@/content/algorithms/day-13-backtracking/theory.mdx'),
     'day-14': () => import('@/content/algorithms/day-14-programacao-dinamica/theory.mdx'),
   },
+  ai: {
+    'day-01': () => import('@/content/ai/day-01-intro-ai-moderna/theory.mdx'),
+    'day-02': () => import('@/content/ai/day-02-anthropic-api-sdk/theory.mdx'),
+    'day-03': () => import('@/content/ai/day-03-prompt-context-engineering/theory.mdx'),
+    'day-04': () => import('@/content/ai/day-04-tool-use/theory.mdx'),
+    'day-05': () => import('@/content/ai/day-05-rag-embeddings/theory.mdx'),
+    'day-06': () => import('@/content/ai/day-06-mcp-conceito/theory.mdx'),
+    'day-07': () => import('@/content/ai/day-07-mcp-server/theory.mdx'),
+    'day-08': () => import('@/content/ai/day-08-skills/theory.mdx'),
+    'day-09': () => import('@/content/ai/day-09-agents-loop/theory.mdx'),
+    'day-10': () => import('@/content/ai/day-10-memoria-estado/theory.mdx'),
+    'day-11': () => import('@/content/ai/day-11-agent-sdk/theory.mdx'),
+    'day-12': () => import('@/content/ai/day-12-multi-agentes/theory.mdx'),
+    'day-13': () => import('@/content/ai/day-13-eval-observabilidade-guardrails/theory.mdx'),
+    'day-14': () => import('@/content/ai/day-14-projeto-final-sistema-agentico/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content

@@ -1,0 +1,20 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Introdução ao universo de AI moderna",
+  "slug": "intro-ai-moderna",
+  "topics": [
+    "LLMs e como funcionam",
+    "tokens e tokenização",
+    "context window",
+    "inferência e sampling",
+    "capabilities vs. limites"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

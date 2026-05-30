@@ -1,0 +1,20 @@
+{
+  "id": "day-07",
+  "day": 7,
+  "week": 1,
+  "title": "Construindo um MCP server",
+  "slug": "mcp-server",
+  "topics": [
+    "estrutura de um MCP server",
+    "expor tools",
+    "expor resources",
+    "expor prompts",
+    "testar e conectar o server"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

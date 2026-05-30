@@ -1,0 +1,20 @@
+{
+  "id": "day-09",
+  "day": 9,
+  "week": 2,
+  "title": "Agents — anatomia & loop agêntico",
+  "slug": "agents-loop",
+  "topics": [
+    "anatomia de um agente",
+    "loop agêntico (plan-act-observe)",
+    "planejamento",
+    "condição de parada",
+    "ferramentas no loop"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-08"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

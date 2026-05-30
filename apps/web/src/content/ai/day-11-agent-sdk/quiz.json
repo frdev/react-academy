@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-11",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual é a principal vantagem de usar `query` do Agent SDK em vez de chamar `client.messages.create` diretamente em um loop manual?",
+      "options": [
+        "O SDK usa um modelo mais rápido automaticamente",
+        "O SDK gerencia o loop agêntico, histórico de mensagens e resultados de tools internamente",
+        "O SDK elimina a necessidade de definir um system prompt",
+        "O SDK permite usar qualquer provider de LLM sem alterar o código"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A função `query` encapsula todo o ciclo raciocínio → tool_use → tool_result → raciocínio, mantendo o histórico de mensagens entre os turns sem que você precise gerenciá-lo. As outras alternativas são incorretas: o modelo precisa ser especificado, o system prompt continua sendo necessário para definir comportamento, e o SDK é específico para o Claude da Anthropic."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "No Agent SDK, onde você registra a função TypeScript que executa a lógica de uma tool quando o modelo a invoca?",
+      "options": [
+        "No campo `handler` dentro do objeto de definição da tool",
+        "Em `options.toolExecutors`, mapeando o nome da tool para a função",
+        "Passando as funções diretamente no array `tools` no lugar do `input_schema`",
+        "Em um arquivo de configuração separado referenciado por `toolsConfig`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O Agent SDK separa a *declaração* da tool (campo `tools`, que o modelo lê para entender o que pode fazer) da *implementação* (campo `toolExecutors`, um mapa de nome → função). Essa separação permite que a definição JSON da tool seja legível pelo modelo sem expor a implementação JavaScript/TypeScript."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Você quer que o agente peça confirmação do usuário antes de executar tools que modificam dados, mas execute tools de leitura automaticamente. Qual `permissionMode` usar?",
+      "options": [
+        "`auto`",
+        "`deny`",
+        "`confirmAll`",
+        "`confirmDestructive`"
+      ],
+      "correctAnswer": 3,
+      "explanation": "`confirmDestructive` é exatamente para esse caso: tools marcadas como destrutivas (escrita, deleção, chamadas com efeitos colaterais) geram uma pausa para confirmação, enquanto tools de leitura executam automaticamente. `auto` não pede confirmação para nada; `confirmAll` pede para qualquer tool, incluindo leituras; `deny` bloqueia todas as tool calls, tornando o agente incapaz de usar ferramentas."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O stream assíncrono retornado por `query` emite mensagens com um campo `type`. Qual combinação de tipos você pode encontrar durante uma sessão agêntica?",
+      "options": [
+        "`request`, `response`, `error`",
+        "`input`, `output`, `metadata`",
+        "`user`, `assistant`, `result`",
+        "`system`, `human`, `ai`"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O Agent SDK emite três tipos de mensagens: `user` (mensagem do usuário ou tool_result injetado pelo SDK), `assistant` (resposta ou tool_use do modelo) e `result` (evento final da sessão com metadados como `totalTurns` e `usage`). Os outros pares de nomes não existem na interface do SDK."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é o propósito do parâmetro `maxTurns` na opções de `query`?",
+      "options": [
+        "Limitar o número de tokens gerados por turno",
+        "Definir o tamanho máximo do system prompt",
+        "Impedir que o agente execute mais turnos do que o valor definido, servindo como safety valve de custo e latência",
+        "Controlar quantas tools podem ser definidas na sessão"
+      ],
+      "correctAnswer": 2,
+      "explanation": "`maxTurns` é um limitador de segurança que encerra a sessão agêntica depois do número especificado de turnos, mesmo que o agente não tenha concluído a tarefa. Isso evita loops infinitos e controla custo e latência. Não tem relação com tokens por turno, tamanho do system prompt ou número de tools declaradas."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que é importante retornar mensagens de erro descritivas nas `toolExecutors` em vez de apenas lançar um erro genérico?",
+      "options": [
+        "Porque o SDK ignora erros silenciosamente se não forem descritivos",
+        "Porque o modelo recebe o erro como `tool_result` e pode reagir — uma mensagem descritiva permite que ele tente uma abordagem alternativa",
+        "Porque erros genéricos causam loop infinito no ciclo agêntico",
+        "Porque o TypeScript exige tipagem de erros para compilar o projeto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Quando uma `toolExecutor` lança um erro, o Agent SDK injeta a mensagem de erro como `tool_result` no histórico de mensagens. O modelo lê esse resultado e pode decidir tentar um caminho alternativo, pedir mais informações ao usuário ou encerrar com uma explicação. Se a mensagem for genérica (ex.: 'Error'), o modelo não tem contexto suficiente para reagir de forma inteligente."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Você tem um agente de análise de arquivos e quer que o modelo nunca acesse arquivos fora de `/workspace/project`. Qual é a abordagem mais robusta para implementar isso?",
+      "options": [
+        "Mencionar a restrição apenas no system prompt e confiar que o modelo a seguirá",
+        "Definir `permissionMode: 'deny'` para bloquear todas as tools",
+        "Usar `onToolRequest` para validar o caminho de entrada e lançar um erro se estiver fora do escopo, independentemente do que o modelo passar",
+        "Remover a tool `read_file` das opções quando o caminho for inválido"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O `onToolRequest` é o lugar correto para validar entradas de tools antes da execução: ele intercepta cada chamada e pode lançar um erro antes que a função da tool seja invocada. Apenas mencionar a restrição no system prompt é frágil — o modelo pode errar. `permissionMode: 'deny'` bloquearia todas as tools, tornando o agente inútil. Remover tools dinamicamente é uma interface complexa e propensa a erros. A validação em `onToolRequest` é a defesa mais confiável e direta."
+    }
+  ]
+}

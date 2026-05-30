@@ -1,0 +1,20 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "Prompt & context engineering",
+  "slug": "prompt-context-engineering",
+  "topics": [
+    "estruturação de prompts",
+    "few-shot examples",
+    "gestão da context window",
+    "quando dar mais/menos contexto",
+    "anti-padrões"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

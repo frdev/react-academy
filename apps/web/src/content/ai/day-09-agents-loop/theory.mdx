@@ -1,0 +1,264 @@
+# Agents — anatomia & loop agêntico
+
+Um agente é o Claude operando em loop autônomo: ele recebe um objetivo, decide quais ferramentas usar, executa ações, observa os resultados e repete até concluir — ou reconhecer que não consegue. Tudo que você estudou até aqui (Messages API, tool use, contexto, MCP) converge nesse padrão. Entender a anatomia do loop agêntico é o que permite construir sistemas que resolvem problemas de múltiplos passos de forma confiável.
+
+## O que define um agente
+
+Um agente Claude tem quatro componentes indissociáveis:
+
+- **LLM** — o modelo que raciocina, planeja e decide a próxima ação
+- **Tools** — funções externas que o modelo pode invocar (busca, banco de dados, APIs, sistema de arquivos via MCP)
+- **Loop de execução** — o código do host que detecta `tool_use`, executa a ferramenta e devolve `tool_result` ao modelo
+- **Objetivo** — a tarefa de alto nível que guia todas as decisões até o critério de parada
+
+A diferença entre um chatbot e um agente está no loop: o chatbot responde uma vez e aguarda input humano; o agente continua executando de forma autônoma até atingir o objetivo ou encontrar um bloqueio.
+
+```text
+┌─────────────────────────────────────────────┐
+│                   AGENTE                    │
+│                                             │
+│  Objetivo ──► LLM ──► plan / act            │
+│                │                            │
+│                ▼                            │
+│            tool_use?                        │
+│           /         \                       │
+│         sim          não → end_turn (done)  │
+│          │                                  │
+│          ▼                                  │
+│       Tools (MCP / funções locais)          │
+│          │                                  │
+│          ▼                                  │
+│      tool_result ──► LLM (próxima iteração) │
+└─────────────────────────────────────────────┘
+```
+
+**Regra prática:** um agente sem objetivo claro degenera em loops infinitos ou respostas incoerentes. Codifique o objetivo no system prompt e seja explícito sobre quando a tarefa está concluída.
+
+## O loop agêntico: plan → act → observe → repeat
+
+O loop agêntico é a máquina de estados que mantém o agente em movimento. Cada iteração tem três fases:
+
+1. **Plan** — o LLM raciocina sobre o estado atual e decide a próxima ação (chamar uma tool ou responder ao usuário)
+2. **Act** — o host executa a ferramenta indicada pelo modelo
+3. **Observe** — o resultado da ferramenta é anexado ao histórico de mensagens e enviado de volta ao modelo
+
+```text
+ ┌──────────────────────────────────────────────────────┐
+ │  LOOP AGÊNTICO                                       │
+ │                                                      │
+ │   ┌─────────┐    stop_reason        ┌─────────────┐  │
+ │   │  PLAN   │ ──── end_turn ──────► │    DONE     │  │
+ │   │  (LLM)  │                       └─────────────┘  │
+ │   └────┬────┘                                        │
+ │        │ stop_reason = tool_use                      │
+ │        ▼                                             │
+ │   ┌─────────┐                                        │
+ │   │   ACT   │  (host executa a ferramenta)           │
+ │   └────┬────┘                                        │
+ │        │                                             │
+ │        ▼                                             │
+ │   ┌─────────┐                                        │
+ │   │ OBSERVE │  (tool_result → messages)              │
+ │   └────┬────┘                                        │
+ │        │                                             │
+ │        └──────────────────────► PLAN (próximo turno) │
+ └──────────────────────────────────────────────────────┘
+```
+
+A implementação em TypeScript usando a Messages API é direta. O loop continua enquanto `stop_reason === 'tool_use'` e para quando o modelo emite `end_turn`:
+
+```ts
+import Anthropic from '@anthropic-ai/sdk'
+import type { MessageParam, ToolResultBlockParam } from '@anthropic-ai/sdk/resources'
+
+const client = new Anthropic()
+
+async function runAgent(userGoal: string): Promise<string> {
+  const messages: MessageParam[] = [
+    { role: 'user', content: userGoal },
+  ]
+
+  // Loop agêntico principal
+  while (true) {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4096,
+      system: `Você é um agente que resolve tarefas passo a passo.
+Use as ferramentas disponíveis quantas vezes precisar.
+Quando a tarefa estiver concluída, responda com o resultado final em texto.`,
+      tools: TOOLS_DEFINITION,   // definição das tools (ver seção abaixo)
+      messages,
+    })
+
+    // Adiciona a resposta do assistente ao histórico
+    messages.push({ role: 'assistant', content: response.content })
+
+    // Critério de parada: modelo não quer usar nenhuma tool
+    if (response.stop_reason === 'end_turn') {
+      const textBlock = response.content.find((b) => b.type === 'text')
+      return textBlock?.text ?? ''
+    }
+
+    // Coleta todos os blocos tool_use desta resposta (podem ser vários)
+    const toolUseBlocks = response.content.filter((b) => b.type === 'tool_use')
+
+    // Executa cada tool e coleta os resultados
+    const toolResults: ToolResultBlockParam[] = await Promise.all(
+      toolUseBlocks.map(async (block) => {
+        if (block.type !== 'tool_use') throw new Error('tipo inesperado')
+        const result = await executeTool(block.name, block.input)
+        return {
+          type: 'tool_result' as const,
+          tool_use_id: block.id,
+          content: JSON.stringify(result),
+        }
+      }),
+    )
+
+    // Observação: devolve os resultados ao modelo no próximo turno
+    messages.push({ role: 'user', content: toolResults })
+  }
+}
+```
+
+**Regra prática:** sempre colete **todos** os `tool_use` blocks de uma única resposta antes de devolver os resultados. O Claude pode solicitar múltiplas ferramentas em paralelo na mesma iteração — processar apenas o primeiro bloco e ignorar os demais causa erros de contexto na chamada seguinte.
+
+## Planejamento dentro do loop
+
+O Claude não recebe um plano externo — ele planeja internamente a cada iteração, com base no histórico acumulado. Esse histórico é o estado do agente. Para tarefas complexas, você pode incentivar raciocínio explícito antes das ações com extended thinking ou simplesmente instruindo o modelo a "pensar passo a passo" antes de agir.
+
+```ts
+// Encorajando planejamento explícito no system prompt
+const systemPrompt = `Você é um agente de pesquisa autônomo.
+Antes de cada ação, escreva em uma linha "PLANO: <o que farei agora e por quê>".
+Execute a ferramenta adequada.
+Após receber o resultado, avalie se o objetivo foi atingido ou se há mais passos.`
+```
+
+Para tarefas muito longas, o modelo pode usar a primeira chamada como uma fase de planejamento — gerando um plano estruturado como texto — e em seguida executar as etapas sequencialmente:
+
+```text
+Turno 1 (plan):   usuário: "Pesquise os 3 melhores bancos de vetores open-source"
+                  modelo:  "PLANO: buscar cada opção → comparar → sintetizar"
+                           tool_use: search("pgvector características")
+
+Turno 2 (act):    tool_result: { ... dados do pgvector ... }
+                  modelo: tool_use: search("Weaviate características")
+
+Turno 3 (act):    tool_result: { ... dados do Weaviate ... }
+                  modelo: tool_use: search("Qdrant características")
+
+Turno 4 (act):    tool_result: { ... dados do Qdrant ... }
+                  modelo: end_turn → "Aqui está a comparação: ..."
+```
+
+**Regra prática:** o histórico de mensagens é o único estado persistente do agente durante uma tarefa. Evite truncar o contexto no meio de uma tarefa — se precisar lidar com context window, use sumarização progressiva antes do limite, não descarte mensagens aleatórias.
+
+## Condição de parada
+
+A condição de parada define quando o agente considera a tarefa encerrada. Existem três mecanismos que você precisa controlar:
+
+**1. Parada natural (end_turn):** o modelo avalia que a tarefa está concluída e emite uma resposta de texto final sem solicitar tools. É o caminho ideal.
+
+**2. Limite de iterações (safety guard):** toda implementação de agente em produção deve ter um `maxIterations` explícito para evitar loops infinitos causados por tools com erro persistente ou objetivos mal especificados:
+
+```ts
+const MAX_ITERATIONS = 20
+
+async function runAgent(userGoal: string): Promise<string> {
+  const messages: MessageParam[] = [{ role: 'user', content: userGoal }]
+  let iterations = 0
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++
+    const response = await client.messages.create({ /* ... */ messages })
+    messages.push({ role: 'assistant', content: response.content })
+
+    if (response.stop_reason === 'end_turn') {
+      const textBlock = response.content.find((b) => b.type === 'text')
+      return textBlock?.text ?? ''
+    }
+
+    // ... executar tools e continuar
+  }
+
+  // Chegou no limite: encerrar de forma controlada
+  return '[Agente atingiu o limite de iterações sem concluir a tarefa]'
+}
+```
+
+**3. Parada por erro de tool:** quando uma ferramenta retorna erro repetidamente, o modelo geralmente abandona aquela abordagem e tenta uma alternativa — ou reconhece a impossibilidade e encerra. Codifique erros como strings descritivas no `tool_result.content` em vez de lançar exceções, para que o modelo veja o problema e decida o próximo passo.
+
+```ts
+const result = await executeTool(block.name, block.input)
+  .catch((err: Error) => ({ error: err.message }))
+
+return {
+  type: 'tool_result' as const,
+  tool_use_id: block.id,
+  content: JSON.stringify(result),  // modelo lê o erro e raciocina sobre ele
+  is_error: result.error !== undefined,
+}
+```
+
+**Regra prática:** nunca confie que o `end_turn` sempre chegará. Toda chamada de agente em produção deve ter um limite de iterações, tratamento de erros nas tools e timeout global — o modelo pode entrar em ciclos se as tools não fornecerem informação suficiente para ele progredir.
+
+## Ferramentas dentro do loop
+
+As tools são o braço executor do agente. A definição segue o mesmo schema JSON visto no dia 4, mas no contexto agêntico há algumas boas práticas adicionais:
+
+```ts
+const TOOLS_DEFINITION = [
+  {
+    name: 'search_web',
+    description: `Busca informações na web sobre um tópico.
+Use quando precisar de dados atualizados ou fatos que não estão no seu conhecimento.
+Retorna um array de resultados com título, URL e snippet.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Termo de busca claro e objetivo em português',
+        },
+        max_results: {
+          type: 'number',
+          description: 'Número máximo de resultados (padrão: 5)',
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'read_file',
+    description: `Lê o conteúdo de um arquivo pelo caminho.
+Retorna o conteúdo como string ou um objeto de erro se o arquivo não existir.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        path: { type: 'string', description: 'Caminho absoluto do arquivo' },
+      },
+      required: ['path'],
+    },
+  },
+] satisfies Anthropic.Tool[]
+```
+
+Princípios para tools em contexto agêntico:
+
+- **Descrições precisas** — o modelo usa a descrição para decidir *quando* chamar a tool. Descreva o que ela faz, quando usar e o que ela **não** cobre.
+- **Resultados estruturados** — retorne JSON tipado; o modelo processa melhor dados estruturados do que texto livre.
+- **Idempotência quando possível** — o modelo pode chamar a mesma tool com os mesmos argumentos mais de uma vez (retry interno); garanta que isso não cause efeitos colaterais duplos em operações destrutivas.
+- **MCP como backend** — em produção, tools são frequentemente expostas via MCP servers (dia 6 e 7), desacoplando a lógica de execução do loop do agente.
+
+```text
+Agente Claude
+     │
+     ├── tool_use: search_web  ──► MCP Server: brave-search
+     ├── tool_use: read_file   ──► MCP Server: filesystem
+     └── tool_use: run_query   ──► MCP Server: postgres
+```
+
+**Regra prática:** mantenha o número de tools entre 5 e 15 por sessão. Acima disso, o modelo tem dificuldade em escolher a tool certa e tende a selecionar a mais genérica. Se precisar de muitas capacidades, agrupe-as em tools com parâmetros de `action` ou divida o agente em sub-agentes especializados.
+
+> **Resumo:** um agente é definido pelos quatro componentes — LLM, tools, loop e objetivo. O loop agêntico implementa plan → act → observe → repeat em torno do `stop_reason` da Messages API: enquanto `tool_use`, executar e devolver `tool_result`; quando `end_turn`, a tarefa terminou. O planejamento vive no system prompt e no histórico acumulado de mensagens. A condição de parada deve combinar o `end_turn` natural com um limite de iterações explícito como safety guard. As ferramentas são a interface do agente com o mundo externo — descriptions precisas e resultados estruturados são o que permite ao modelo raciocinar corretamente sobre o que fazer a seguir.

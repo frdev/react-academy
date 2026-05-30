@@ -1,0 +1,20 @@
+{
+  "id": "day-13",
+  "day": 13,
+  "week": 2,
+  "title": "Eval, observabilidade & guardrails",
+  "slug": "eval-observabilidade-guardrails",
+  "topics": [
+    "testar agentes (eval)",
+    "tracing e observabilidade",
+    "guardrails",
+    "safety e responsible AI",
+    "métricas de qualidade"
+  ],
+  "difficulty": "advanced",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-12"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

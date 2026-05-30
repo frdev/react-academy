@@ -1,0 +1,376 @@
+# Projeto final — sistema agêntico
+
+Você chegou ao dia 14 com um arsenal completo: a Messages API, tool use, RAG, MCP servers, skills, o loop agêntico, memória persistente, o Agent SDK, orquestração multi-agente e guardrails. O projeto final não apresenta uma API nova — ele une todas essas peças num único sistema coerente, ponta a ponta. O objetivo é construir um **assistente de pesquisa agêntico**: dado um tema, ele planeja consultas, busca fontes, sintetiza o conhecimento e entrega um relatório estruturado, com rastreabilidade e guardrails operando em cada camada.
+
+## Visão do projeto
+
+O assistente recebe um pedido de pesquisa em linguagem natural ("Pesquise os trade-offs de arquiteturas de memória em sistemas agênticos") e executa de forma autônoma:
+
+1. Decompõe o tema em subperguntas independentes.
+2. Delega cada subpergunta a um agente worker especializado.
+3. Os workers consultam fontes via tools e RAG.
+4. O orquestrador reúne os resultados, avalia qualidade e monta o relatório.
+5. Um guarda-costas de guardrails verifica o output antes de entregar ao usuário.
+
+O fluxo termina apenas quando todas as subperguntas tiverem resposta com confiança mínima — ou quando o limite de iterações for atingido, gerando um relatório parcial com as lacunas explicitadas.
+
+```text
+Usuário → Orquestrador
+             ├── PlannerAgent   → lista de subperguntas
+             ├── WorkerAgent-1  → tools + RAG → resultado-1
+             ├── WorkerAgent-2  → tools + RAG → resultado-2
+             ├── WorkerAgent-N  → tools + RAG → resultado-N
+             ├── SynthesizerAgent → relatório bruto
+             └── GuardrailsLayer → relatório validado → Usuário
+```
+
+O projeto é intencional e pequeno o suficiente para ser concluído em alguns dias, mas real o suficiente para demonstrar cada conceito do curso em contexto de produção.
+
+## Arquitetura: orquestrador, workers, MCP e memória
+
+A arquitetura segue o padrão **orchestrator-worker** estudado no dia 12, com um store de memória compartilhado e um MCP server próprio para acesso a fontes externas.
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│                    ORQUESTRADOR                         │
+│  Modelo: claude-opus-4-5  (raciocínio pesado)           │
+│  Responsabilidades: planejar, delegar, sintetizar        │
+│                                                         │
+│  ┌───────────────┐   ┌────────────────────────────────┐ │
+│  │MemoryStore    │   │   Agent SDK — subagents         │ │
+│  │(KV + vetorial)│   │  WorkerAgent × N               │ │
+│  └───────────────┘   │  Modelo: claude-haiku-4-5       │ │
+│                      │  (rápido, barato, paralelizável) │ │
+│                      └────────────────────────────────┘ │
+└──────────────────────────┬──────────────────────────────┘
+                           │ MCP (stdio)
+                    ┌──────▼──────────────┐
+                    │   research-mcp      │
+                    │  tools:             │
+                    │   search_web        │
+                    │   fetch_document    │
+                    │   store_finding     │
+                    │  resources:         │
+                    │   findings://all    │
+                    └─────────────────────┘
+```
+
+Pontos de decisão arquitetural:
+
+- **Orquestrador usa claude-opus-4-5** para o plano e síntese; workers usam **claude-haiku-4-5** para buscas e extração — reduz custo sem sacrificar qualidade na parte que importa.
+- **MCP server local (stdio)** empacota o acesso a fontes externas: o orquestrador e os workers se comunicam com o mesmo server, garantindo uma única camada de logging e controle de acesso.
+- **MemoryStore** separa memória de curto prazo (contexto da sessão no KV) de memória de longo prazo (vetorial, para consultas futuras).
+
+## Integrando tools e o MCP server
+
+Comece pelo MCP server. Ele expõe três tools e um resource:
+
+```ts
+// research-mcp/src/server.ts
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { z } from 'zod'
+
+const server = new McpServer({ name: 'research-mcp', version: '1.0.0' })
+
+// Tool 1 — busca na web (real: integração com Brave Search ou Tavily)
+server.tool(
+  'search_web',
+  'Busca fontes na web para uma consulta de pesquisa. Use para encontrar artigos, papers e documentação.',
+  { query: z.string().describe('Consulta de busca') },
+  async ({ query }) => {
+    const results = await webSearchClient.search(query)
+    return { content: [{ type: 'text', text: JSON.stringify(results.slice(0, 5)) }] }
+  }
+)
+
+// Tool 2 — lê o conteúdo de uma URL
+server.tool(
+  'fetch_document',
+  'Faz download e extrai o texto de uma URL. Use após search_web para ler um documento específico.',
+  { url: z.string().url() },
+  async ({ url }) => {
+    const text = await extractText(url)
+    return { content: [{ type: 'text', text: text.slice(0, 8000) }] } // respeita context window
+  }
+)
+
+// Tool 3 — persiste um achado no store compartilhado
+server.tool(
+  'store_finding',
+  'Salva um achado relevante no store do projeto. Use quando encontrar informação que responde a uma subpergunta.',
+  {
+    question_id: z.string(),
+    finding: z.string(),
+    source_url: z.string().url().optional(),
+    confidence: z.number().min(0).max(1),
+  },
+  async ({ question_id, finding, source_url, confidence }) => {
+    await memoryStore.set(`finding:${question_id}`, { finding, source_url, confidence })
+    return { content: [{ type: 'text', text: `Achado salvo para ${question_id}` }] }
+  }
+)
+
+// Resource — todos os achados consolidados
+server.resource('findings-all', 'findings://all', { mimeType: 'application/json' }, async () => ({
+  contents: [{ uri: 'findings://all', mimeType: 'application/json', text: JSON.stringify(await memoryStore.getAll('finding:')) }]
+}))
+
+await server.connect(new StdioServerTransport())
+```
+
+**Regra prática:** o MCP server é o único ponto de contato com o mundo externo. Workers nunca fazem chamadas HTTP diretas — apenas chamam tools do server. Isso centraliza logging, rate limiting e possíveis guardrails de entrada.
+
+## Orquestração multi-agente
+
+O orquestrador usa o Agent SDK para criar os workers como subagentes, passando o MCP server como contexto e a memória compartilhada como estado:
+
+```ts
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic()
+
+interface ResearchTask {
+  question_id: string
+  question: string
+}
+
+// Fase 1 — planejar: decompor o tema em subperguntas
+async function planResearch(topic: string): Promise<ResearchTask[]> {
+  const response = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 1024,
+    system: `Você é um planejador de pesquisa. Dado um tema, decomponha em 3-5 subperguntas independentes.
+Retorne JSON: { "tasks": [{ "question_id": "q1", "question": "..." }, ...] }`,
+    messages: [{ role: 'user', content: `Tema: ${topic}` }],
+  })
+  const { tasks } = JSON.parse((response.content[0] as Anthropic.TextBlock).text)
+  return tasks
+}
+
+// Fase 2 — executar workers em paralelo
+async function executeWorker(task: ResearchTask): Promise<void> {
+  // Cada worker é um agente com o loop completo: busca → lê → armazena
+  const messages: Anthropic.MessageParam[] = [
+    {
+      role: 'user',
+      content: `Pesquise a seguinte questão e salve o achado usando store_finding:\n\n${task.question}\nquestion_id: ${task.question_id}`,
+    },
+  ]
+
+  // Loop agêntico — max 5 iterações por worker
+  for (let i = 0; i < 5; i++) {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 2048,
+      system: 'Você é um pesquisador. Use as tools disponíveis para responder a questão e armazene o achado.',
+      tools: mcpToolsForWorker, // tools do research-mcp expostas via MCP client
+      messages,
+    })
+
+    if (response.stop_reason === 'end_turn') break
+
+    if (response.stop_reason === 'tool_use') {
+      // executar tool calls e continuar o loop
+      const toolResults = await executeToolCalls(response.content)
+      messages.push(
+        { role: 'assistant', content: response.content },
+        { role: 'user', content: toolResults },
+      )
+    }
+  }
+}
+
+// Fase 3 — sintetizar
+async function synthesize(topic: string, findings: Record<string, unknown>): Promise<string> {
+  const response = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 4096,
+    system: 'Você é um sintetizador de pesquisa. Monte um relatório estruturado, citando fontes.',
+    messages: [{
+      role: 'user',
+      content: `Tema: ${topic}\n\nAchados:\n${JSON.stringify(findings, null, 2)}`,
+    }],
+  })
+  return (response.content[0] as Anthropic.TextBlock).text
+}
+
+// Orquestrador principal
+export async function runResearchAgent(topic: string): Promise<string> {
+  const tasks = await planResearch(topic)
+  await Promise.all(tasks.map(executeWorker)) // paraleliza os workers
+  const findings = await memoryStore.getAll('finding:')
+  const report = await synthesize(topic, findings)
+  return report
+}
+```
+
+**Regra prática:** use `Promise.all` para workers independentes. Se as subperguntas tiverem dependências entre si (pergunta B depende do achado de A), use execução sequencial e passe o contexto acumulado explicitamente.
+
+## Memória e estado
+
+O projeto usa dois níveis de memória estudados no dia 10:
+
+**Curto prazo (KV em memória):** a `MemoryStore` é um Map simples para achados da sessão atual. Persiste enquanto o processo está rodando; descartada ao encerrar.
+
+**Longo prazo (vetorial):** após a síntese, o relatório é embedado e armazenado no banco vetorial para que sessões futuras possam recuperar pesquisas anteriores sobre temas similares.
+
+```ts
+// store.ts
+class MemoryStore {
+  private kv = new Map<string, unknown>()
+  private vectorDb: VectorDB // pgvector, Qdrant, etc.
+
+  async set(key: string, value: unknown) {
+    this.kv.set(key, value)
+  }
+
+  async getAll(prefix: string): Promise<Record<string, unknown>> {
+    const result: Record<string, unknown> = {}
+    for (const [k, v] of this.kv) {
+      if (k.startsWith(prefix)) result[k] = v
+    }
+    return result
+  }
+
+  // Persiste o relatório final para consultas futuras
+  async persistReport(topic: string, report: string) {
+    const vector = await embed(report)
+    await this.vectorDb.upsert([{ id: crypto.randomUUID(), text: report, vector, metadata: { topic } }])
+  }
+
+  // Recupera pesquisas anteriores relevantes (RAG sobre histórico)
+  async recallSimilar(topic: string, k = 3) {
+    const queryVector = await embed(topic)
+    return this.vectorDb.search(queryVector, k)
+  }
+}
+```
+
+Antes de planejar uma nova pesquisa, o orquestrador consulta `recallSimilar` — se houver relatórios anteriores com alta similaridade, ele pode reutilizá-los como contexto inicial ou evitar retrabalho.
+
+**Regra prática:** separe store de sessão (rápido, efêmero) de store de longo prazo (persistente, consultável semanticamente). Misturar os dois em um só banco dificulta a gestão de TTL e custo de armazenamento.
+
+## Eval e guardrails
+
+Todo output do assistente passa por uma camada de validação antes de chegar ao usuário. O dia 13 introduziu as três dimensões: avaliação de qualidade, observabilidade e segurança.
+
+```ts
+// guardrails.ts
+interface GuardrailResult {
+  passed: boolean
+  issues: string[]
+  report: string // possivelmente reescrito
+}
+
+async function applyGuardrails(report: string, topic: string): Promise<GuardrailResult> {
+  // Guardrail 1 — LLM-as-judge: avalia qualidade e factualidade
+  const judgeResponse = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 512,
+    system: `Você é um avaliador de qualidade de relatórios de pesquisa.
+Avalie o relatório em: factualidade (0-10), cobertura do tema (0-10), clareza (0-10).
+Retorne JSON: { "scores": {...}, "issues": [...], "passed": boolean }
+passed = true se todos os scores >= 7.`,
+    messages: [{ role: 'user', content: `Tema: ${topic}\n\nRelatório:\n${report}` }],
+  })
+  const evaluation = JSON.parse((judgeResponse.content[0] as Anthropic.TextBlock).text)
+
+  // Guardrail 2 — regras determinísticas
+  const hasSourceCitations = /\[Fonte \d+\]/.test(report)
+  if (!hasSourceCitations) {
+    evaluation.issues.push('Relatório não contém citações de fontes')
+    evaluation.passed = false
+  }
+
+  // Guardrail 3 — comprimento mínimo
+  if (report.split(' ').length < 200) {
+    evaluation.issues.push('Relatório muito curto (< 200 palavras)')
+    evaluation.passed = false
+  }
+
+  return { ...evaluation, report }
+}
+```
+
+Para observabilidade, envolva cada chamada ao modelo com um wrapper de tracing:
+
+```ts
+async function traced<T>(
+  name: string,
+  fn: () => Promise<T>,
+  meta?: Record<string, unknown>
+): Promise<T> {
+  const start = Date.now()
+  try {
+    const result = await fn()
+    console.log(JSON.stringify({ event: name, status: 'ok', ms: Date.now() - start, ...meta }))
+    return result
+  } catch (err) {
+    console.error(JSON.stringify({ event: name, status: 'error', ms: Date.now() - start, error: String(err), ...meta }))
+    throw err
+  }
+}
+
+// Uso:
+const tasks = await traced('plan_research', () => planResearch(topic), { topic })
+```
+
+Em produção, substitua `console.log` por um SDK de observabilidade (Langfuse, Helicone, Datadog) que armazena spans, inputs e outputs para análise offline.
+
+## Deploy do agente
+
+O assistente de pesquisa pode ser exposto de três formas, em ordem crescente de complexidade:
+
+**1. CLI local**
+A forma mais simples: o orquestrador como script Node.js. O MCP server roda como processo filho via stdio. Adequado para uso pessoal e testes.
+
+```bash
+node dist/orchestrator.js --topic "Arquiteturas de memória em sistemas agênticos"
+```
+
+**2. API HTTP (Express/Fastify)**
+Exponha o orquestrador como endpoint REST. Jobs de pesquisa rodam em background; o cliente consulta status por polling ou recebe updates via SSE.
+
+```ts
+app.post('/research', async (req, res) => {
+  const { topic } = req.body
+  const jobId = crypto.randomUUID()
+  // inicia job assíncrono — não bloqueia o request
+  runResearchAgent(topic).then(report => jobStore.set(jobId, { status: 'done', report }))
+  res.json({ jobId })
+})
+
+app.get('/research/:jobId', (req, res) => {
+  const job = jobStore.get(req.params.jobId)
+  res.json(job ?? { status: 'running' })
+})
+```
+
+**3. Container + fila de tarefas**
+Para volume, use uma fila (BullMQ, SQS) e workers containerizados. O MCP server pode rodar como sidecar no mesmo pod ou como serviço HTTP separado (transporte HTTP/SSE em vez de stdio).
+
+```text
+API Gateway → Fila (BullMQ) → Worker Container
+                                  ├── research-mcp (sidecar stdio)
+                                  └── MemoryStore (Redis + pgvector)
+```
+
+**Regra prática:** comece com a CLI local para validar o loop completo. Só mova para API HTTP quando o fluxo estiver estável — adicionar networking antes de estabilizar a lógica agêntica introduz debug duplo.
+
+## Critérios de conclusão
+
+O projeto está concluído quando demonstrar todas as peças integradas. Use este checklist:
+
+- [ ] **MCP server** com pelo menos 2 tools funcionais e 1 resource; conectável via stdio
+- [ ] **Tool use** com loop `tool_use → tool_result` correto (sem drops de conteúdo no histórico)
+- [ ] **RAG** consultando pesquisas anteriores similares antes de planejar nova pesquisa
+- [ ] **Skills** extraídas para pelo menos um comportamento reutilizável (ex.: skill de formatação de relatório)
+- [ ] **Orquestrador + workers** com modelos diferentes (Opus para plano/síntese, Haiku para busca)
+- [ ] **Paralelismo** nos workers independentes via `Promise.all`
+- [ ] **Memória de sessão** (KV) e **memória persistente** (vetorial) operando no mesmo fluxo
+- [ ] **Guardrails** com pelo menos 1 verificação LLM-as-judge e 1 regra determinística
+- [ ] **Tracing** com duração e status de cada fase registrados em log estruturado
+- [ ] **Relatório final** com citações de fontes, cobrindo todas as subperguntas planejadas
+
+> **Resumo:** o projeto final conecta todos os 13 dias num sistema agêntico real: um MCP server centraliza o acesso externo; workers em paralelo (Haiku) fazem a busca e extração; um orquestrador (Opus) planeja e sintetiza; memória KV + vetorial persiste achados entre sessões; guardrails garantem qualidade e segurança antes da entrega; tracing dá visibilidade sobre cada passo. A arquitetura é deliberadamente modular — cada camada pode ser substituída ou escalada de forma independente. Esse é o padrão de um sistema agêntico pronto para produção.

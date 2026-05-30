@@ -1,0 +1,256 @@
+# Claude Agent SDK
+
+No dia 9 você construiu o loop agêntico na mão — gerenciando o ciclo `tool_use`/`tool_result`, acumulando mensagens e controlando a parada manualmente. O Agent SDK (`@anthropic-ai/claude-agent-sdk`) elimina esse boilerplate: ele fornece o harness completo de execução agêntica e expõe uma API de alto nível baseada em `query`, deixando você focado no que importa — tools, permissões e instruções do agente.
+
+## O que o Agent SDK oferece
+
+O SDK encapsula três responsabilidades que antes eram suas:
+
+- **Loop agêntico pronto** — a função `query` executa automaticamente o ciclo de raciocínio → tool call → tool result → raciocínio até o modelo encerrar com `end_turn` ou um critério de parada.
+- **Gestão de contexto** — o SDK mantém o histórico de mensagens e resultados de ferramentas entre os turnos, sem que você precise concatenar arrays manualmente.
+- **Modelo de permissões** — cada tool declara explicitamente quais ações são permitidas; o runtime pode exibir confirmações antes de executar operações destrutivas.
+
+A interface central é a função `query`, que retorna um `AsyncIterable` de mensagens do agente. Você itera esse stream e reage a cada evento:
+
+```ts
+import { query } from '@anthropic-ai/claude-agent-sdk'
+
+for await (const message of query({
+  prompt: 'Liste os arquivos em /tmp e mostre o conteúdo do maior.',
+  options: {
+    maxTurns: 10,
+  },
+})) {
+  if (message.type === 'assistant') {
+    console.log('[agente]', message.message.content)
+  }
+}
+```
+
+Ao contrário de `client.messages.create`, você não monta o loop — o SDK faz isso. Você apenas declara intenção e consome o stream.
+
+## Construindo um agente end-to-end
+
+Um agente funcional precisa de três ingredientes: um system prompt que define personalidade e escopo, um conjunto de tools implementadas localmente e a chamada `query` que conecta tudo.
+
+```ts
+import { query } from '@anthropic-ai/claude-agent-sdk'
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
+
+// --- Implementações das tools ---
+async function readFile(filePath: string): Promise<string> {
+  return fs.readFile(filePath, 'utf-8')
+}
+
+async function listDirectory(dirPath: string): Promise<string> {
+  const entries = await fs.readdir(dirPath, { withFileTypes: true })
+  return entries
+    .map((e) => `${e.isDirectory() ? 'd' : 'f'} ${e.name}`)
+    .join('\n')
+}
+
+// --- Execução do agente ---
+async function runFileAgent(userPrompt: string) {
+  for await (const message of query({
+    prompt: userPrompt,
+    options: {
+      model: 'claude-opus-4-5',
+      maxTurns: 15,
+      system: `Você é um assistente de análise de arquivos.
+Responda sempre em português.
+Use as tools disponíveis para ler e listar arquivos antes de responder.
+Nunca invente conteúdo de arquivos — sempre leia antes de reportar.`,
+      tools: [
+        {
+          name: 'read_file',
+          description: 'Lê o conteúdo de um arquivo de texto.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              file_path: { type: 'string', description: 'Caminho absoluto do arquivo.' },
+            },
+            required: ['file_path'],
+          },
+        },
+        {
+          name: 'list_directory',
+          description: 'Lista arquivos e subdiretórios de um diretório.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              dir_path: { type: 'string', description: 'Caminho do diretório.' },
+            },
+            required: ['dir_path'],
+          },
+        },
+      ],
+      // Mapeamento: nome da tool → função local
+      toolExecutors: {
+        read_file: (input: { file_path: string }) => readFile(input.file_path),
+        list_directory: (input: { dir_path: string }) => listDirectory(input.dir_path),
+      },
+    },
+  })) {
+    if (message.type === 'assistant') {
+      for (const block of message.message.content) {
+        if (block.type === 'text') {
+          process.stdout.write(block.text)
+        }
+      }
+    }
+  }
+}
+
+runFileAgent('Qual é o arquivo mais recente em /tmp? Mostre seu conteúdo.')
+```
+
+**Regra prática:** mantenha `toolExecutors` como funções puras sempre que possível. Efeitos colaterais (escrita em disco, chamadas HTTP) devem ser explícitos no `description` da tool — isso ajuda o modelo a tomar decisões melhores sobre quando e como usá-las.
+
+## Configurando tools e permissões
+
+O Agent SDK distingue tools de leitura (seguras, executam sem confirmação) de tools destrutivas (escrita, deleção, chamadas externas). Você controla esse comportamento com a propriedade `permissionMode` e com o callback `onToolRequest`:
+
+```ts
+for await (const message of query({
+  prompt: 'Renomeie todos os arquivos .log em /var/log/app para .log.bak',
+  options: {
+    maxTurns: 20,
+    permissionMode: 'confirmDestructive', // pede confirmação antes de tools destrutivas
+    onToolRequest: async (toolName, input) => {
+      // Intercepta cada chamada de tool antes da execução
+      console.log(`[tool] ${toolName}`, JSON.stringify(input, null, 2))
+
+      // Exemplo: bloquear qualquer operação fora de /var/log/app
+      if ('file_path' in input && !input.file_path.startsWith('/var/log/app')) {
+        throw new Error(`Acesso negado: ${input.file_path} está fora do escopo permitido.`)
+      }
+    },
+    tools: [
+      {
+        name: 'rename_file',
+        description: 'Renomeia um arquivo.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            file_path: { type: 'string' },
+            new_name: { type: 'string' },
+          },
+          required: ['file_path', 'new_name'],
+        },
+      },
+    ],
+    toolExecutors: {
+      rename_file: async ({ file_path, new_name }: { file_path: string; new_name: string }) => {
+        const dir = path.dirname(file_path)
+        await fs.rename(file_path, path.join(dir, new_name))
+        return `Renomeado: ${path.basename(file_path)} → ${new_name}`
+      },
+    },
+  },
+})) {
+  // processar mensagens...
+}
+```
+
+Modos de permissão disponíveis:
+
+| Modo | Comportamento |
+|---|---|
+| `auto` | Executa todas as tools sem confirmação (padrão em scripts) |
+| `confirmDestructive` | Pausa antes de tools marcadas como destrutivas |
+| `confirmAll` | Pede confirmação antes de qualquer tool call |
+| `deny` | Bloqueia todas as tool calls (agente somente-texto) |
+
+**Regra prática:** use `onToolRequest` como camada de validação de entrada — não confie que o modelo sempre passará inputs válidos. Valide paths, tipos e intervalos antes de executar operações reais.
+
+## Ciclo de vida do agente: query e turns
+
+Cada chamada a `query` representa uma *sessão agêntica*. Internamente, o SDK executa uma sequência de *turns*:
+
+```
+Turn 1:  usuário → modelo  →  tool_use (list_directory)
+Turn 2:  tool_result      →  modelo  →  tool_use (read_file)
+Turn 3:  tool_result      →  modelo  →  end_turn (resposta final)
+```
+
+O stream de mensagens emitido por `query` reflete exatamente esses eventos:
+
+```ts
+for await (const message of query({ prompt: '...', options: { maxTurns: 5 } })) {
+  switch (message.type) {
+    case 'user':
+      // mensagem do usuário ou resultado de tool injetado pelo SDK
+      break
+    case 'assistant':
+      // resposta parcial ou final do modelo
+      for (const block of message.message.content) {
+        if (block.type === 'text') console.log('[texto]', block.text)
+        if (block.type === 'tool_use') console.log('[tool call]', block.name, block.input)
+      }
+      break
+    case 'result':
+      // emitido ao final da sessão com metadados
+      console.log('[fim] turns usados:', message.totalTurns)
+      console.log('[fim] tokens totais:', message.usage)
+      break
+  }
+}
+```
+
+O campo `maxTurns` é seu limitador de segurança — o agente nunca executa mais que esse número de turns, mesmo que não tenha terminado a tarefa. Valores típicos:
+
+- Tarefas simples (1-2 tools): `maxTurns: 5`
+- Pipelines médios (múltiplas etapas): `maxTurns: 15`
+- Agentes de longa duração: `maxTurns: 50` com checkpoint manual
+
+**Regra prática:** sempre defina `maxTurns` explicitamente. O padrão interno pode ser generoso demais para o seu contexto de custo e latência. Monitore `message.totalTurns` no evento `result` para ajustar o limite ao longo do tempo.
+
+## Boas práticas com o Agent SDK
+
+**Defina o system prompt como restrição, não como desejo.** Em vez de "tente ser conciso", escreva "responda em no máximo 3 bullet points". O modelo segue restrições objetivas com muito mais consistência.
+
+**Separe ferramentas por responsabilidade.** Não crie uma tool `doEverything` — tools granulares permitem que o modelo componha ações e o SDK consiga reportar claramente o que foi executado.
+
+```ts
+// Evite
+tools: [{ name: 'manage_files', description: 'Lê, escreve e deleta arquivos.' }]
+
+// Prefira
+tools: [
+  { name: 'read_file',   description: 'Lê o conteúdo de um arquivo.' },
+  { name: 'write_file',  description: 'Escreve conteúdo em um arquivo.' },
+  { name: 'delete_file', description: 'Remove um arquivo permanentemente.' },
+]
+```
+
+**Use `description` das tools como documentação para o modelo.** O Claude lê essas strings para decidir qual tool usar e como. Inclua: o que a tool faz, quando usá-la, e limitações conhecidas (ex.: "aceita apenas arquivos menores que 10 MB").
+
+**Trate erros nas `toolExecutors` com mensagens úteis.** Quando uma tool falha, o SDK injeta o erro como `tool_result` e o modelo pode tentar uma abordagem alternativa — mas só se a mensagem de erro for descritiva:
+
+```ts
+toolExecutors: {
+  read_file: async ({ file_path }) => {
+    try {
+      return await fs.readFile(file_path, 'utf-8')
+    } catch (err) {
+      // Erro descritivo → modelo consegue reagir
+      throw new Error(`Não foi possível ler "${file_path}": ${(err as Error).message}`)
+    }
+  },
+}
+```
+
+**Persista sessões longas com `sessionId`.** Para agentes que retomam conversas existentes, passe `sessionId` nas options — o SDK recupera o histórico e continua de onde parou sem você gerenciar serialização:
+
+```ts
+for await (const message of query({
+  prompt: 'Continue a análise do relatório anterior.',
+  options: {
+    sessionId: 'session-usuario-42-relatorio-q1',
+    maxTurns: 10,
+  },
+})) { /* ... */ }
+```
+
+> **Resumo:** o Agent SDK transforma o loop agêntico manual em uma chamada `query` de alto nível — você declara tools com `toolExecutors`, controla permissões com `permissionMode` e `onToolRequest`, e consome um stream assíncrono de eventos tipados (`user`, `assistant`, `result`). O ciclo de turns é gerenciado internamente; `maxTurns` é seu safety valve. Defina system prompts como restrições objetivas, mantenha tools granulares com descriptions ricas, e trate erros com mensagens que permitam ao modelo reagir inteligentemente.

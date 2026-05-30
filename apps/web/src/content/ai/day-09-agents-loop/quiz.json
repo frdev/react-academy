@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-09",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Quais são os quatro componentes indissociáveis que definem um agente Claude?",
+      "options": [
+        "System prompt, histórico, embeddings e banco de vetores",
+        "LLM, tools, loop de execução e objetivo",
+        "Model, temperature, max_tokens e stop_sequences",
+        "Streaming, caching, tool_use e end_turn"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um agente Claude é definido por quatro componentes: o LLM que raciocina e decide; as tools (funções externas que pode invocar); o loop de execução (código do host que detecta tool_use, executa a ferramenta e devolve tool_result); e o objetivo (a tarefa de alto nível). Sem qualquer um desses elementos, o sistema não é um agente no sentido técnico — é apenas um chatbot de único turno ou uma pipeline fixa."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em qual valor de `stop_reason` o loop agêntico deve continuar executando ferramentas?",
+      "options": [
+        "end_turn",
+        "max_tokens",
+        "tool_use",
+        "stop_sequence"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O loop agêntico continua enquanto `stop_reason === 'tool_use'`. Esse valor indica que o modelo quer invocar uma ou mais ferramentas antes de prosseguir. O loop encerra (com sucesso) quando `stop_reason === 'end_turn'`, sinalizando que o modelo avaliou a tarefa como concluída. `max_tokens` indica truncamento e `stop_sequence` indica que uma sequência de parada foi atingida — ambos são situações de erro ou casos especiais que devem ser tratados separadamente."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que é importante coletar TODOS os blocos `tool_use` de uma resposta antes de devolver os resultados ao modelo?",
+      "options": [
+        "Para reduzir o número de chamadas à API e economizar tokens",
+        "Porque o SDK lança exceção se apenas parte dos blocos for processada",
+        "Porque o Claude pode solicitar múltiplas ferramentas em paralelo na mesma resposta, e ignorar blocos causa erros de contexto na chamada seguinte",
+        "Para garantir que o prompt caching funcione corretamente no histórico"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O Claude pode emitir vários blocos `tool_use` em uma única resposta quando identifica que pode paralelizar ações. Se o host processar apenas o primeiro e ignorar os demais, o histórico de mensagens ficará inconsistente — o modelo vai receber `tool_result` para IDs que ele solicitou, mas não encontrará correspondência correta para os outros blocos, gerando um erro ou comportamento imprevisível na próxima iteração do loop."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual é a melhor forma de lidar com erros de ferramentas dentro do loop agêntico?",
+      "options": [
+        "Lançar uma exceção JavaScript para interromper o loop imediatamente",
+        "Retornar o erro como string descritiva no `tool_result.content` e marcar `is_error: true`, para que o modelo veja o problema e decida o próximo passo",
+        "Repetir a chamada à tool automaticamente até 3 vezes antes de falhar",
+        "Omitir o tool_result do histórico e chamar o modelo novamente sem o resultado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Erros de ferramenta devem ser codificados como dados estruturados no `tool_result.content` (por exemplo `{ error: 'arquivo não encontrado' }`) com `is_error: true`. Dessa forma o modelo vê o problema contextualizado no histórico e pode raciocinar sobre alternativas — tentar outra abordagem, comunicar a impossibilidade ao usuário, ou encerrar a tarefa de forma controlada. Lançar exceções interrompe o loop de forma abrupta e impede que o modelo tome uma decisão informada."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual é o papel do histórico de mensagens (`messages`) no contexto de um agente?",
+      "options": [
+        "É apenas um log para auditoria; o modelo não usa mensagens anteriores para planejar",
+        "É o único estado persistente do agente durante uma tarefa — contém o plano implícito, os resultados observados e o contexto acumulado",
+        "É substituído a cada iteração por um novo contexto gerado pelo sistema de caching",
+        "Serve apenas para enviar os tool_results; o raciocínio do modelo é stateless entre turnos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O histórico de mensagens é o estado do agente. A cada iteração, ele acumula: a mensagem inicial do usuário, as respostas do assistente (com raciocínio e tool_use), e os tool_results. O modelo usa todo esse histórico para entender onde está na tarefa, o que já tentou, o que funcionou e o que resta fazer. Truncar ou reorganizar esse histórico de forma descuidada quebra a coerência do agente — o modelo pode repetir ações já executadas ou perder o fio do objetivo."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Por que toda implementação de agente em produção deve ter um limite explícito de iterações (`maxIterations`)?",
+      "options": [
+        "Porque a API da Anthropic cobra por iteração e o custo cresce linearmente",
+        "Porque o modelo esquece o objetivo após 10 iterações devido ao limite de context window",
+        "Para evitar loops infinitos causados por tools com erro persistente ou objetivos mal especificados — o agente precisa de um safety guard externo além do end_turn natural",
+        "Porque o SDK cancela automaticamente chamadas com mais de 10 tool_use consecutivos"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O `end_turn` é o caminho feliz — o modelo avalia que terminou. Mas se uma ferramenta retornar sempre o mesmo erro, se o objetivo for ambíguo ou se houver um ciclo de dependências entre tools, o modelo pode continuar iterando indefinidamente. Um `maxIterations` externo é o safety guard que garante que o loop sempre termine, mesmo no pior caso. Em produção, combine isso com um timeout global de wall clock para proteção adicional."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual é a recomendação de boas práticas para o número de tools disponíveis por sessão agêntica?",
+      "options": [
+        "Quanto mais tools, melhor — o modelo seleciona automaticamente as mais relevantes sem degradação",
+        "Exatamente 1 tool por agente; múltiplas tools causam conflitos de seleção",
+        "Entre 5 e 15 tools; acima disso o modelo tende a escolher tools genéricas e perde precisão na seleção",
+        "Ilimitado, desde que todas as descriptions tenham menos de 50 caracteres"
+      ],
+      "correctAnswer": 2,
+      "explanation": "Com muitas tools disponíveis, o modelo enfrenta um problema de seleção: tende a recorrer às opções mais genéricas ou mais próximas do início da lista, em vez de escolher a mais adequada. O intervalo de 5 a 15 tools mantém o conjunto de opções gerenciável e as descrições eficazes. Se o sistema precisar de mais capacidades, a solução recomendada é criar sub-agentes especializados com conjuntos menores de tools, ou agrupar operações relacionadas em uma única tool com parâmetro de `action`."
+    }
+  ]
+}
