@@ -1,0 +1,91 @@
+# npm na Prática
+
+O **npm** (Node Package Manager) é o gerenciador que já vem instalado junto com o Node.js. É o ponto de partida de todo mundo: por estar embutido, é o denominador comum do ecossistema. Ontem entendemos *o que* um gerenciador gerencia; hoje vamos colocar a mão na massa com os comandos que você vai usar todos os dias. Tudo aqui tem equivalente direto no yarn e no pnpm — domine no npm e você domina os três.
+
+## Instalando dependências
+
+O comando central é o `install` (ou seu apelido `i`):
+
+```bash
+npm install              # instala tudo que está no package.json
+npm install react        # adiciona react às dependencies
+npm install -D vite      # adiciona vite às devDependencies (-D = --save-dev)
+npm install react@18     # instala uma versão/faixa específica
+```
+
+Quando você instala um pacote novo, o npm faz três coisas de uma vez: baixa o pacote (e suas dependências) para `node_modules`, adiciona a linha correspondente no `package.json`, e atualiza o `package-lock.json` com as versões exatas. Por isso você quase nunca edita o `package.json` na mão.
+
+Para remover:
+
+```bash
+npm uninstall react      # remove o pacote e atualiza package.json + lockfile
+```
+
+## `install` vs `ci`: o comando que você vai esquecer (e não devia)
+
+Existe um segundo comando de instalação, o `npm ci` (de *clean install*), feito para **ambientes automatizados** (CI/CD, Docker). A diferença é crucial:
+
+| | `npm install` | `npm ci` |
+|---|---|---|
+| Fonte da verdade | `package.json` (pode atualizar o lockfile) | o **lockfile** (obedece exatamente) |
+| Se lockfile e package.json divergem | ajusta o lockfile | **falha** com erro |
+| `node_modules` existente | reaproveita | apaga e reinstala do zero |
+| Velocidade | mais lento | mais rápido e reprodutível |
+
+Regra mental: **na sua máquina, durante o desenvolvimento, use `npm install`** (você quer adicionar/atualizar pacotes). **No CI e em builds de produção, use `npm ci`** (você quer uma instalação idêntica ao lockfile, sem surpresas). Um `npm ci` que falha geralmente significa que alguém esqueceu de commitar o lockfile atualizado — e isso é um recurso, não um bug.
+
+## Rodando scripts
+
+Os scripts do `package.json` são executados com `npm run`:
+
+```bash
+npm run dev        # roda o script "dev"
+npm run build      # roda o script "build"
+```
+
+Alguns nomes são especiais e dispensam o `run`: `npm test`, `npm start`. Para todo o resto, o `run` é obrigatório. Você também pode encadear scripts chamando um dentro do outro:
+
+```json
+"scripts": {
+  "build": "vite build",
+  "deploy": "npm run build && wrangler deploy"
+}
+```
+
+Scripts são a interface padronizada do projeto: em vez de documentar "rode `vite build --mode production`", você expõe um `npm run build` e esconde a complexidade.
+
+## `npx`: executar sem instalar
+
+E quando você quer rodar uma ferramenta **uma única vez**, sem adicioná-la ao projeto? Para isso existe o **`npx`** (vem junto com o npm):
+
+```bash
+npx create-vite meu-app    # baixa, executa e descarta o create-vite
+```
+
+O `npx` baixa o pacote temporariamente, executa o binário e não deixa rastro no `package.json`. É perfeito para *scaffolding* (criar projetos), rodar uma migração pontual, ou testar uma CLI sem poluir suas dependências. Se o pacote já estiver instalado no projeto, o `npx` usa a versão local.
+
+## Segurança: `npm audit`
+
+Como você depende de código de terceiros, vulnerabilidades nesses pacotes viram suas vulnerabilidades. O npm checa isso automaticamente e você pode auditar a qualquer momento:
+
+```bash
+npm audit          # lista vulnerabilidades conhecidas nas suas dependências
+npm audit fix      # tenta atualizar para versões corrigidas automaticamente
+```
+
+O `audit` compara sua árvore de dependências com um banco de vulnerabilidades conhecidas. Nem todo aviso é urgente (uma falha numa devDependency de testes raramente expõe seu app), mas é um hábito saudável rodar antes de publicar.
+
+## Um gosto de workspaces
+
+Por fim, um conceito que vamos aprofundar amanhã: **workspaces**. Imagine um repositório que contém vários pacotes relacionados — um app web, uma biblioteca de UI compartilhada, um servidor. Em vez de três repositórios separados, você os mantém num só (um **monorepo**), e os workspaces permitem que eles compartilhem dependências e se referenciem entre si.
+
+```json
+{
+  "name": "meu-monorepo",
+  "workspaces": ["apps/*", "packages/*"]
+}
+```
+
+Com isso, um `npm install` na raiz instala as dependências de todos os pacotes de uma vez, e um pacote pode importar o outro como se fosse uma dependência publicada. É exatamente assim que este React Academy é organizado (`apps/web` consome `@academy/ui`). Amanhã veremos por que, em monorepos, a escolha do gerenciador faz uma diferença enorme.
+
+> **Resumo:** O **npm** já vem com o Node e é o gerenciador-base do ecossistema. `npm install` baixa pacotes, atualiza o `package.json` e o lockfile de uma vez (`-D` para devDependencies); `npm uninstall` remove. A distinção-chave é **`install` vs `ci`**: no desenvolvimento use `install` (pode atualizar o lockfile); no **CI/produção** use `ci`, que obedece exatamente ao lockfile, reinstala do zero e **falha** se houver divergência — garantindo reprodutibilidade. Scripts rodam com `npm run <nome>` (com atalhos `test`/`start`) e podem ser encadeados com `&&`. O **`npx`** executa uma ferramenta sem instalá-la (ideal para scaffolding). `npm audit` verifica vulnerabilidades nas dependências. E **workspaces** permitem gerenciar um monorepo (vários pacotes num repositório) com uma instalação única — a base da comparação de amanhã.
