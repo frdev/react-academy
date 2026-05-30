@@ -1,3 +1,93 @@
 # Introdução ao universo de AI moderna
 
-> Conteúdo em breve.
+A AI moderna que você vai construir não é "magia" nem um banco de dados de respostas. No centro está um **Large Language Model (LLM)** — um modelo que aprendeu a prever o próximo token a partir de uma quantidade gigantesca de texto. Tudo o que vem depois (tools, MCP, agents) é construído em cima dessa única primitiva: dado um contexto, prever o que vem a seguir. Entender essa base muda como você projeta sistemas com AI.
+
+## Como um LLM realmente funciona
+
+Um LLM é uma função determinística (dado o mesmo input e os mesmos parâmetros de amostragem) que recebe uma sequência de tokens e devolve uma distribuição de probabilidade sobre o próximo token.
+
+```text
+input:  "O céu é"
+modelo: P("azul")=0.62  P("claro")=0.11  P("limpo")=0.05  ...
+output: escolhe um token → "azul"
+```
+
+O texto completo é gerado **autoregressivamente**: o modelo prevê um token, anexa ao contexto, e repete. Não há "planejamento" embutido — a coerência emerge de prever, repetidamente, o token mais provável dado tudo que veio antes.
+
+Consequência prática: o modelo não "sabe" fatos como uma tabela. Ele aprendeu padrões estatísticos. Por isso ele pode **alucinar** — produzir texto plausível mas falso — quando o padrão mais provável não corresponde à realidade.
+
+## Tokens e tokenização
+
+O modelo não vê letras nem palavras: ele vê **tokens**. Um tokenizer quebra o texto em pedaços (subpalavras) e mapeia cada um para um número.
+
+```text
+"tokenização"  → ["token", "ização"]        (2 tokens)
+"hello world"  → ["hello", " world"]          (2 tokens)
+"antidisestablishmentarianism" → ["anti","dis","establish","ment",...]
+```
+
+Regras de bolso para o inglês: ~1 token ≈ 4 caracteres ≈ 0,75 palavra. Em português, idiomas com acentuação e palavras menos frequentes tendem a gastar **mais** tokens por palavra.
+
+Por que isso importa para você:
+
+- **Custo e limite** são contados em tokens, não em caracteres.
+- Texto "estranho" (JSON denso, código, outros idiomas) muda a contagem.
+- Truncar no meio de um token nunca acontece — mas truncar contexto sim.
+
+## Context window
+
+A **context window** é o número máximo de tokens que o modelo consegue considerar de uma vez — incluindo o system prompt, todo o histórico da conversa, o input atual **e** a resposta que ele vai gerar.
+
+```text
+[ system prompt ][ histórico ][ input do usuário ][ resposta gerada ]
+└──────────────── tudo isso soma para o limite ────────────────────┘
+```
+
+Pontos críticos:
+
+- A janela é um **orçamento compartilhado**. Cada token de contexto é um token a menos disponível para a resposta.
+- O modelo não tem memória entre chamadas. "Lembrar" de algo significa **reenviar** esse algo no contexto.
+- Não é porque a janela é grande que você deve enchê-la. Contexto irrelevante degrada a qualidade — isso é *context engineering*, tema de um dia inteiro depois.
+
+## Inferência e sampling
+
+**Inferência** é o ato de rodar o modelo para gerar tokens. Em cada passo o modelo produz probabilidades, e o **sampling** decide qual token escolher. Os parâmetros mais importantes:
+
+```text
+temperature  → 0.0  determinístico, sempre o token mais provável
+             → 1.0  mais criativo/variado, segue a distribuição
+             → >1.0 mais aleatório (raramente útil)
+
+top_p        → núcleo de probabilidade: considera só os tokens
+               que somam P acumulada até top_p (ex.: 0.9)
+
+max_tokens   → teto de quantos tokens gerar na resposta
+```
+
+Intuição de uso:
+
+- Tarefas determinísticas (extração, classificação, código): `temperature` baixa.
+- Brainstorm, redação criativa: `temperature` mais alta.
+- `temperature: 0` reduz variação, mas **não garante** resultado byte-a-byte idêntico entre execuções por causa de detalhes de hardware/implementação.
+
+## Capabilities vs. limites
+
+LLMs modernos são surpreendentemente bons em algumas coisas e estruturalmente fracos em outras. Saber a fronteira evita projetar sistemas frágeis.
+
+**Bons em:**
+
+- Linguagem: resumir, traduzir, reescrever, extrair estrutura de texto livre.
+- Raciocínio sobre o conteúdo que está **no contexto**.
+- Gerar e transformar código.
+- Seguir formatos e instruções quando bem especificados.
+
+**Estruturalmente limitados em:**
+
+- **Fatos fora do treino:** não conhecem dados após o corte de treinamento nem informações privadas — daí *tools* e *RAG*.
+- **Aritmética exata e contagem:** previsão de tokens não é uma calculadora.
+- **Estado e memória:** nada persiste entre chamadas sem você reenviar.
+- **Calibração:** podem soar igualmente confiantes ao acertar e ao alucinar.
+
+A grande virada da AI moderna é o **padrão agêntico**: em vez de pedir tudo a uma única previsão, damos ao modelo **ferramentas** (tools), **conhecimento externo** (RAG/MCP) e um **loop** para agir, observar e corrigir. Cada limite acima vira um ponto de integração — e é exatamente isso que os próximos dias constroem.
+
+> **Resumo:** Um LLM prevê o próximo **token** autoregressivamente; ele não armazena fatos, prevê padrões. Tudo (system prompt, histórico, input, resposta) divide a mesma **context window**, e o modelo não tem memória entre chamadas. **Sampling** (`temperature`, `top_p`, `max_tokens`) controla a geração. LLMs brilham em linguagem e raciocínio sobre o contexto presente, mas falham em fatos externos, aritmética exata e estado — e são esses limites que tools, RAG, MCP e agents existem para resolver.

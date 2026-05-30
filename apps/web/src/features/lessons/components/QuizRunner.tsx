@@ -117,6 +117,9 @@ const QUIZ_IMPORTS: Record<string, Record<string, () => Promise<{ default: unkno
     'day-13': () => import('@/content/algorithms/day-13-backtracking/quiz.json'),
     'day-14': () => import('@/content/algorithms/day-14-programacao-dinamica/quiz.json'),
   },
+  ai: {
+    'day-01': () => import('@/content/ai/day-01-intro-ai-moderna/quiz.json'),
+  },
 }
 
 interface QuizQuestion {
