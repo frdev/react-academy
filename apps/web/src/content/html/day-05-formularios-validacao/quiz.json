@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-05",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que todo campo de formulário precisa de um `<label>` associado?",
+      "options": [
+        "Para deixar o formulário mais bonito",
+        "Porque clicar no rótulo foca o campo e o leitor de tela anuncia o rótulo ao chegar nele",
+        "Porque sem label o campo não envia dados",
+        "Porque o label define o tipo do campo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um `label` associado (via `for`/`id` ou envolvendo o input) cumpre dois papéis: aumenta a área clicável — tocar no texto foca o campo, ótimo no celular — e faz o leitor de tela anunciar o rótulo quando o usuário chega ao campo. Sem ele, o campo fica 'mudo' para tecnologias assistivas."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Um `placeholder` pode substituir o `<label>`?",
+      "options": [
+        "Sim, é a forma moderna de rotular campos",
+        "Não — o placeholder some ao digitar, tem contraste fraco e não é um rótulo de verdade",
+        "Sim, desde que esteja em maiúsculas",
+        "Apenas em campos de senha"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `placeholder` é uma dica que desaparece assim que o usuário começa a digitar, costuma ter contraste baixo e nem sempre é anunciado de forma confiável por leitores de tela. Ele complementa, mas **não substitui** o `label`. Todo campo ainda precisa do seu rótulo associado."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que o atributo `required` faz em um `<input>`?",
+      "options": [
+        "Deixa o campo somente leitura",
+        "Faz o navegador bloquear o envio do formulário se o campo estiver vazio, sem precisar de JavaScript",
+        "Marca o campo como senha",
+        "Envia o campo automaticamente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`required` é uma validação **nativa**: se o campo estiver vazio, o navegador impede o envio e exibe uma mensagem, tudo sem JavaScript. Junto de `pattern`, `min`/`max` e `minlength`/`maxlength`, ele cobre boa parte das validações comuns diretamente no HTML."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Para que servem `<fieldset>` e `<legend>`?",
+      "options": [
+        "Para desenhar uma borda decorativa",
+        "Para agrupar campos relacionados (como um grupo de botões de rádio) e dar um título a esse grupo",
+        "Para validar e-mails",
+        "Para criar abas no formulário"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`fieldset` agrupa controles relacionados e `legend` dá um título a esse grupo. É especialmente importante para grupos de rádio/checkbox: leitores de tela anunciam o `legend` ('Escolha um plano') junto de cada opção, dando o contexto que um título solto não forneceria. Há um efeito visual de borda, mas o valor real é semântico."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Dentro de um `<form>`, qual o `type` padrão de um `<button>` sem `type` declarado?",
+      "options": [
+        "`button` (não faz nada por padrão)",
+        "`submit` (envia o formulário)",
+        "`reset` (limpa o formulário)",
+        "Depende do navegador"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um `button` sem `type` dentro de um `form` é, por padrão, `type=\"submit\"` — ao ser clicado, ele envia o formulário. Isso pega muita gente: se o botão deveria fazer outra coisa (mostrar a senha, abrir um menu), você precisa declarar `type=\"button\"` explicitamente para evitar um envio acidental."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Qual a vantagem de usar `type=\"email\"` em vez de `type=\"text\"` num campo de e-mail?",
+      "options": [
+        "Nenhuma, são idênticos",
+        "Mostra um teclado adequado no celular e ativa validação básica de formato de e-mail",
+        "Criptografa o e-mail",
+        "Esconde o que é digitado"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`type=\"email\"` faz o celular exibir um teclado com `@` e `.`, e ativa uma validação nativa básica do formato (precisa parecer um e-mail). Escolher o `type` certo — `email`, `tel`, `number`, `date` — melhora a usabilidade no mobile e habilita validações específicas, sem nenhum JavaScript."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que o atributo `pattern` permite?",
+      "options": [
+        "Aplicar um tema visual ao campo",
+        "Exigir que o valor case com uma expressão regular, validado nativamente pelo navegador",
+        "Repetir o campo várias vezes",
+        "Definir a cor do texto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`pattern` recebe uma expressão regular e faz o navegador exigir que o valor digitado case com ela antes de permitir o envio — por exemplo, um CEP no formato `[0-9]{5}-?[0-9]{3}`. É validação nativa, sem JavaScript. Combine com um `title` explicativo para que a mensagem de erro oriente o usuário sobre o formato esperado."
+    }
+  ]
+}

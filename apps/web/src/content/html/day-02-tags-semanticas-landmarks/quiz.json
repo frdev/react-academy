@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual o principal problema de usar `<div>` para estruturar a página inteira?",
+      "options": [
+        "Divs deixam a página mais lenta",
+        "Divs não têm significado — o navegador, o leitor de tela e o próximo dev não sabem o papel de cada bloco",
+        "Divs não aceitam classes CSS",
+        "Divs não podem ter filhos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um `div` é um container genérico, sem semântica. `<div class=\"top\">` é só 'uma caixa' para o navegador e para tecnologias assistivas. Tags semânticas como `header`, `nav` e `main` carregam significado, permitindo navegação por landmarks, melhor SEO e código mais legível. O problema não é performance nem CSS — é a ausência de significado."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Quantos elementos `<main>` deve haver em uma página?",
+      "options": [
+        "Quantos forem necessários",
+        "Exatamente um",
+        "Um por seção",
+        "Nenhum, main é opcional e raro"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Deve haver apenas **um** `main` por página: ele marca o conteúdo central e único daquele documento, e não deve conter cabeçalho, menu ou rodapé repetidos. Leitores de tela oferecem um atalho 'ir para o conteúdo principal' que depende desse landmark único. Vários `main` quebrariam essa expectativa."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Quando usar `<article>` em vez de `<section>`?",
+      "options": [
+        "article é sempre maior que section",
+        "Quando o bloco é autossuficiente e faria sentido sozinho, fora do contexto (post, card, comentário)",
+        "article só serve para textos de jornal",
+        "Não há diferença, são sinônimos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`article` é para conteúdo **autossuficiente** — algo que faz sentido isolado, como um post de blog, um card de produto ou um comentário. `section` é um **agrupamento temático** dentro de um fluxo maior, geralmente com seu próprio título. A regra prática: se dá pra imaginar aquilo isolado num feed, é `article`; se é um pedaço de algo maior, é `section`."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Para que serve o elemento `<nav>`?",
+      "options": [
+        "Para qualquer link individual na página",
+        "Para marcar um bloco de navegação com links importantes, como o menu principal",
+        "Para criar a barra de rolagem",
+        "Para envolver o conteúdo principal"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`nav` marca um bloco de **navegação** — tipicamente o menu principal ou um índice de links importantes. Não envolva cada link solto em `nav`: ele é para conjuntos de navegação significativos. Leitores de tela listam as regiões `nav` para que o usuário pule rápido entre os menus."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a regra correta para a hierarquia de títulos `h1`–`h6`?",
+      "options": [
+        "Escolher o nível pelo tamanho de fonte desejado",
+        "Descer em ordem, sem pular níveis, com um único `h1` por página",
+        "Usar vários `h1` para destacar mais coisas",
+        "Sempre começar do `h3` para sobrar espaço"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os títulos formam o índice da página e devem descer em ordem (`h1` → `h2` → `h3`), sem saltar níveis, com um único `h1` representando o assunto principal. O nível se escolhe pelo **significado**, não pelo tamanho — tamanho é trabalho do CSS. Leitores de tela geram uma lista de títulos; pular de `h1` para `h4` confunde quem navega por ela."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "Que vantagem os landmarks (header, nav, main, footer) dão a quem usa leitor de tela?",
+      "options": [
+        "Deixam a página colorida",
+        "Permitem pular diretamente para regiões da página (ex.: 'ir para o main')",
+        "Aumentam a fonte automaticamente",
+        "Traduzem o conteúdo"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Landmarks criam pontos de referência navegáveis. Leitores de tela oferecem comandos para saltar entre eles — pular o menu e ir direto ao `main`, por exemplo. Com uma 'sopa de divs' isso é impossível, porque não há regiões nomeadas. É um dos maiores ganhos práticos da marcação semântica."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "O que o elemento `<aside>` representa?",
+      "options": [
+        "O conteúdo mais importante da página",
+        "Conteúdo tangencial — relacionado, mas não essencial, como uma barra lateral ou um box 'leia também'",
+        "O rodapé da página",
+        "Um tipo de botão lateral"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`aside` marca conteúdo **tangencial**: relacionado ao conteúdo principal, mas que poderia ser removido sem prejudicá-lo — barras laterais, boxes de 'leia também', propagandas, notas complementares. Não é o conteúdo central (isso é o `main`) nem o rodapé (`footer`)."
+    }
+  ]
+}

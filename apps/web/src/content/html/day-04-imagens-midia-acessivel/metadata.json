@@ -1,0 +1,14 @@
+{
+  "id": "day-04",
+  "day": 4,
+  "week": 1,
+  "title": "Imagens & Mídia Acessível",
+  "slug": "imagens-midia-acessivel",
+  "topics": ["img e alt", "picture e srcset", "figure e figcaption", "video e audio", "legendas e lazy loading"],
+  "difficulty": "beginner",
+  "estimatedMinutes": 40,
+  "prerequisites": ["day-03"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

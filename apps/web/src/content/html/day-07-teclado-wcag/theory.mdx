@@ -1,0 +1,76 @@
+# Teclado & WCAG na Prática
+
+Chegamos ao último dia: amarrar tudo em torno de quem **não usa o mouse** e dos padrões que medem acessibilidade. Muita gente navega só pelo teclado — por deficiência motora, por usar leitor de tela, ou por preferência. Se o seu site funciona bem no teclado, ele funciona bem para quase todo mundo. E o WCAG é a régua oficial que organiza isso tudo.
+
+## Navegação por teclado
+
+A tecla **Tab** move o foco de um elemento interativo para o próximo; **Shift+Tab** volta; **Enter** e **Espaço** ativam. Aqui o trabalho dos dias anteriores se paga: elementos nativos (`a`, `button`, `input`) já entram na ordem de tabulação e respondem ao teclado de graça. Um `div` clicável, não.
+
+A **ordem do foco** segue a ordem do DOM. Por isso, escreva o HTML na ordem lógica de leitura — e evite `tabindex` com valores positivos (`tabindex="3"`), que bagunçam a sequência. No máximo use:
+
+```html
+<!-- Torna focável algo que não é por natureza (raro) -->
+<div tabindex="0">...</div>
+
+<!-- Remove da ordem de tabulação -->
+<button tabindex="-1">...</button>
+```
+
+## Foco visível: nunca remova o contorno
+
+Quando você navega por Tab, um contorno (outline) mostra **onde** o foco está. É comum ver gente "limpando" isso com `outline: none` no CSS — e com isso quebra a navegação por teclado, porque o usuário perde o rastro de onde está.
+
+```css
+/* NÃO faça isso sem repor o foco de outra forma */
+:focus { outline: none; }
+
+/* Faça isso: um foco visível e bonito */
+:focus-visible { outline: 3px solid royalblue; outline-offset: 2px; }
+```
+
+Se for redesenhar o foco, tudo bem — mas **sempre** deixe um indicador claro.
+
+## Skip links
+
+Em toda página, o teclado começa no topo e precisa passar por todo o menu antes de chegar ao conteúdo. Um **skip link** é um atalho — o primeiro elemento focável da página — que pula direto para o `main`:
+
+```html
+<body>
+  <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
+  <header>...menu longo...</header>
+  <main id="conteudo">...</main>
+</body>
+```
+
+Normalmente ele fica escondido e aparece só quando recebe foco. É um enorme alívio para quem usa teclado todo dia.
+
+## Contraste de cor
+
+Texto com contraste fraco (cinza-claro no branco) é ilegível para muita gente. O WCAG define mínimos: **4.5:1** para texto normal e **3:1** para texto grande. Não dá pra confiar no olho — use um verificador de contraste. Isso vale também para ícones e bordas que transmitem informação.
+
+## Os quatro princípios do WCAG: POUR
+
+O WCAG (Web Content Accessibility Guidelines) organiza tudo em quatro princípios, o acrônimo **POUR**:
+
+- **P**erceptível — o conteúdo pode ser percebido (`alt` nas imagens, legendas nos vídeos, contraste).
+- **O**perável — dá para usar por teclado (foco visível, skip links, sem armadilhas).
+- **U**nderstandable (compreensível) — texto claro, `lang` correto, erros explicados.
+- **R**obusto — funciona com diferentes navegadores e tecnologias assistivas (HTML válido e semântico).
+
+## Checklist prático
+
+Boa parte da acessibilidade vem do que você já aprendeu nesta semana:
+
+```text
+[ ] Um h1, hierarquia de headings em ordem
+[ ] Landmarks (header, nav, main, footer)
+[ ] Todo input com label; grupos com fieldset/legend
+[ ] Toda imagem com alt (vazio se decorativa)
+[ ] a para navegar, button para agir (nunca div clicável)
+[ ] Foco visível; navegação por Tab funciona
+[ ] Skip link para o conteúdo
+[ ] Contraste de texto de pelo menos 4.5:1
+[ ] lang no elemento html
+```
+
+> **Resumo:** Acessibilidade por teclado é a base que serve quase todo mundo. **Tab/Shift+Tab** movem o foco e **Enter/Espaço** ativam — e elementos nativos (`a`, `button`, `input`) já entram nessa ordem de graça, enquanto um `div` clicável não. A ordem de foco segue o DOM, então escreva o HTML na ordem lógica e evite `tabindex` positivo. **Nunca remova o foco visível** (`outline: none`) sem repô-lo — prefira estilizar `:focus-visible`. Um **skip link** no topo pula o menu e leva ao `main`. Garanta **contraste** mínimo (4.5:1 para texto normal). Tudo se organiza nos quatro princípios do WCAG — **POUR**: Perceptível, Operável, Compreensível e Robusto. E o melhor: a maior parte desse checklist é simplesmente o HTML semântico bem feito que você praticou a semana toda.

@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `(abc)` e `(?:abc)` numa regex?",
+      "options": [
+        "Nenhuma, são sinônimos",
+        "`(abc)` captura o trecho para reuso/extração; `(?:abc)` apenas agrupa sem capturar",
+        "`(?:abc)` é mais rápido porque casa menos caracteres",
+        "`(abc)` torna o grupo opcional"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os dois agrupam (por exemplo, para aplicar um quantificador), mas `(...)` também captura o trecho — acessível por índice em `match` — enquanto `(?:...)` agrupa sem criar um grupo numerado. Use o sem-captura quando só precisa agrupar para quantificar."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Depois de `const m = '2026-05-30'.match(/(?<ano>\\d{4})-(?<mes>\\d{2})-(?<dia>\\d{2})/)`, como você lê o ano?",
+      "options": [
+        "m.ano",
+        "m.groups.ano",
+        "m[ano]",
+        "m.match('ano')"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Grupos nomeados com `(?<nome>...)` ficam disponíveis no objeto `.groups` do resultado: `m.groups.ano`. Nomear evita depender de contar índices (`m[1]`), o que torna o código mais legível e resistente a mudanças no padrão."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "O que o lookahead em `'12px'.match(/\\d+(?=px)/)` produz, e por quê?",
+      "options": [
+        "\"12px\" — o lookahead inclui o texto verificado",
+        "\"12\" — o `(?=px)` exige que venha \"px\" depois, mas não o inclui no casamento",
+        "null — porque lookahead não funciona com dígitos",
+        "\"px\" — o lookahead casa o que está dentro dele"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Lookarounds são asserções de contexto: `(?=px)` verifica que existe \"px\" logo após os dígitos, mas esse \"px\" não é consumido nem incluído no resultado. Por isso o casamento é apenas \"12\"."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Para extrair TODAS as ocorrências de `/#(\\d+)/` (com seus grupos) num texto, qual a melhor escolha?",
+      "options": [
+        "`str.match(regex)` sem flags",
+        "`str.matchAll(regex)` com a flag `g`",
+        "`regex.test(str)` num laço",
+        "`str.indexOf(regex)`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`matchAll` (que exige a flag `g`) devolve um iterador com todos os casamentos, cada um já com seus grupos de captura. `match` com `g` devolveria só as strings inteiras, sem os grupos; sem `g`, devolveria apenas o primeiro casamento."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual `replace` transforma `\"2026-05-30\"` em `\"30/05/2026\"`?",
+      "options": [
+        "`.replace(/(\\d{4})-(\\d{2})-(\\d{2})/, '$1/$2/$3')`",
+        "`.replace(/(\\d{4})-(\\d{2})-(\\d{2})/, '$3/$2/$1')`",
+        "`.replace(/\\d+/, '30/05/2026')`",
+        "`.replace('-', '/')`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Os grupos capturam ano (`$1`), mês (`$2`) e dia (`$3`). Para inverter a ordem na saída, o texto de reposição é `'$3/$2/$1'` — dia, mês, ano separados por barra."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que a flag `m` (multilinha) muda?",
+      "options": [
+        "Faz `.` casar quebras de linha",
+        "Faz `^` e `$` casarem o início/fim de cada linha, não só da string inteira",
+        "Permite vários padrões separados por linha",
+        "Ignora maiúsculas e minúsculas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Com `m`, as âncoras `^` e `$` passam a casar nos limites de cada linha do texto, em vez de apenas no começo e fim da string toda. (Fazer `.` casar quebras de linha é a flag `s`/dotall; ignorar caixa é a flag `i`.)"
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "O padrão `/^gato|cachorro$/` casa apenas as strings exatas \"gato\" e \"cachorro\".",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Sem parênteses, o `|` separa o padrão inteiro: ele significa \"começa com gato\" OU \"termina com cachorro\". Para casar exatamente as duas palavras você precisa agrupar e ancorar: `/^(gato|cachorro)$/`."
+    }
+  ]
+}

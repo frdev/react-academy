@@ -1,0 +1,14 @@
+{
+  "id": "day-07",
+  "day": 7,
+  "week": 1,
+  "title": "Teclado & WCAG na Prática",
+  "slug": "teclado-wcag",
+  "topics": ["navegação por teclado", "foco visível", "skip links", "contraste", "checklist WCAG"],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-06"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 150
+}

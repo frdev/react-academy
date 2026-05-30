@@ -1,0 +1,92 @@
+{
+  "lessonId": "day-03",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Qual prática NÃO ajuda na legibilidade de uma regex?",
+      "options": [
+        "Nomear a constante que guarda o padrão",
+        "Comentar o intuito do padrão",
+        "Usar grupos nomeados em vez de contar índices",
+        "Escrever o padrão mais compacto possível, sem espaços nem nome"
+      ],
+      "correctAnswer": 3,
+      "explanation": "Compactar ao máximo é o oposto de legível — é o que dá à regex a fama de \"write-only\". Nomear a constante, comentar o intuito e usar grupos nomeados tornam o padrão sustentável. E, quando um `if` simples for mais claro, prefira o `if`."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que NÃO se deve usar regex para parsear HTML?",
+      "options": [
+        "Porque regex é lenta demais para qualquer texto",
+        "Porque HTML tem estrutura aninhada/recursiva, que regex (que casa padrões planos) não modela bem; use um parser de DOM",
+        "Porque regex não consegue casar o caractere `<`",
+        "Porque HTML não é texto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Regex casa padrões planos e não lida bem com balanceamento (abre/fecha que aninha arbitrariamente), como tags HTML, JSON ou código. Para esses formatos, use um parser apropriado (DOM, JSON.parse, AST)."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Você vai montar uma `new RegExp()` a partir de um termo digitado pelo usuário. Por que escapar esse termo antes?",
+      "options": [
+        "Para a regex ficar mais curta",
+        "Porque metacaracteres no input (como `(` ou `.`) seriam interpretados como sintaxe de padrão, quebrando a busca ou gerando comportamento imprevisível",
+        "Porque `new RegExp` não aceita strings",
+        "Não é necessário escapar nunca"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem escape, um termo como `preço (R$)` teria seus parênteses e `$` tratados como grupo e âncora. Escapar os metacaracteres (`s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')`) garante que o input seja tratado como texto literal."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que torna o padrão `/^(a+)+$/` perigoso?",
+      "options": [
+        "Ele nunca casa nada",
+        "Ele é um quantificador aninhado: numa string que quase casa, o motor faz backtracking exponencial (ReDoS), podendo travar",
+        "Ele só funciona com a flag `g`",
+        "Ele captura grupos demais e estoura a memória sempre"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`(a+)+` é quantificador sobre quantificador: há um número astronômico de formas de dividir os `a`s. Numa entrada que quase casa (ex.: muitos 'a' seguidos de '!'), o backtracking explode — isso é ReDoS. Reescreva para um padrão linear como `/^a+$/`."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Como reescrever `/^(a+)+$/` para evitar o backtracking catastrófico, mantendo a intenção de \"uma ou mais letras 'a'\"?",
+      "options": [
+        "`/^(a*)*$/`",
+        "`/^a+$/`",
+        "`/^(a|a)+$/`",
+        "`/^(a+)+?$/`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`/^a+$/` é linear: casa uma ou mais letras 'a' sem nenhum quantificador aninhado para o motor explorar. As outras opções mantêm (ou criam) a sobreposição de quantificadores/alternativas que causa o problema."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "No cheatsheet, qual a diferença entre `*` e `*?`?",
+      "options": [
+        "São idênticos",
+        "`*` é guloso (casa o máximo); `*?` é a versão preguiçosa (casa o mínimo)",
+        "`*?` casa zero ocorrências e `*` casa uma ou mais",
+        "`*?` só funciona dentro de grupos"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Acrescentar `?` a um quantificador o torna preguiçoso: `*` casa o máximo possível (guloso), enquanto `*?` casa o mínimo. O mesmo vale para `+?`, `??` e `{n,m}?`."
+    },
+    {
+      "id": "q7",
+      "type": "true-false",
+      "question": "Para validação de e-mail em produção, a melhor abordagem é escrever uma única regex enorme que cubra todos os casos do RFC.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. A regex \"completa\" de e-mail do RFC é monstruosa, ilegível e ainda assim não garante que o endereço exista. Na prática usa-se uma regex simples (ex.: `^\\S+@\\S+\\.\\S+$`) só para pegar erros grosseiros e confirma-se de verdade enviando um e-mail de verificação."
+    }
+  ]
+}

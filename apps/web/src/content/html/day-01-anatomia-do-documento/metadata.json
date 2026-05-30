@@ -1,0 +1,14 @@
+{
+  "id": "day-01",
+  "day": 1,
+  "week": 1,
+  "title": "Anatomia do Documento HTML",
+  "slug": "anatomia-do-documento",
+  "topics": ["estrutura do documento", "doctype", "head e metadados", "charset e viewport", "DOM"],
+  "difficulty": "beginner",
+  "estimatedMinutes": 40,
+  "prerequisites": [],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

@@ -1,0 +1,79 @@
+{
+  "lessonId": "day-02",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "O que `npm install -D vite` faz?",
+      "options": [
+        "Instala o vite globalmente na máquina",
+        "Adiciona o vite às `devDependencies` do projeto",
+        "Remove o vite das dependências",
+        "Instala o vite apenas para produção"
+      ],
+      "correctAnswer": 1,
+      "explanation": "A flag `-D` (apelido de `--save-dev`) adiciona o pacote às `devDependencies` — ferramentas usadas só no desenvolvimento, como o bundler. Sem a flag, ele iria para `dependencies`. O comando também baixa o pacote para `node_modules` e atualiza o lockfile."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Em qual situação você deve preferir `npm ci` em vez de `npm install`?",
+      "options": [
+        "Ao adicionar um pacote novo ao projeto na sua máquina",
+        "Em ambientes de CI/CD e builds de produção, para uma instalação idêntica ao lockfile",
+        "Sempre que quiser atualizar as dependências para versões mais novas",
+        "Apenas quando o `node_modules` ainda não existe"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`npm ci` (clean install) é feito para automação: ele obedece exatamente ao lockfile, apaga e reinstala o `node_modules` do zero, e falha se o lockfile divergir do `package.json`. Isso o torna mais rápido e reprodutível para CI/produção. No desenvolvimento, quando você quer adicionar ou atualizar pacotes, use `npm install`."
+    },
+    {
+      "id": "q3",
+      "type": "true-false",
+      "question": "Se o `package.json` e o lockfile estiverem divergentes, `npm ci` tenta corrigir o lockfile automaticamente.",
+      "options": ["Verdadeiro", "Falso"],
+      "correctAnswer": 1,
+      "explanation": "Falso. Diferente do `npm install` (que ajusta o lockfile), o `npm ci` **falha** com erro quando há divergência. Isso é proposital: uma falha de `ci` normalmente indica que alguém esqueceu de commitar o lockfile atualizado, e travar o build é mais seguro do que instalar versões inesperadas."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Como você roda um script chamado `build` definido no `package.json`?",
+      "options": [
+        "`npm build`",
+        "`npm run build`",
+        "`npm exec build`",
+        "`node build`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Scripts customizados são executados com `npm run <nome>`, portanto `npm run build`. Apenas alguns nomes especiais (como `test` e `start`) podem ser chamados sem o `run`. Para todo o resto, o `run` é obrigatório."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a principal vantagem do `npx`?",
+      "options": [
+        "Instala pacotes mais rápido que o `npm install`",
+        "Executa uma ferramenta sem adicioná-la permanentemente às dependências do projeto",
+        "Atualiza todas as dependências de uma vez",
+        "Roda os testes do projeto"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `npx` baixa um pacote temporariamente, executa seu binário e não deixa rastro no `package.json`. É ideal para scaffolding (`npx create-vite`), tarefas pontuais ou testar uma CLI sem poluir as dependências. Se o pacote já estiver instalado localmente, o `npx` usa a versão do projeto."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que são workspaces no contexto de um gerenciador de pacotes?",
+      "options": [
+        "Uma área de trabalho do editor de código",
+        "Um recurso que permite gerenciar vários pacotes de um monorepo com uma instalação única, referenciando-se entre si",
+        "Um servidor remoto onde os pacotes são publicados",
+        "Uma forma de isolar variáveis de ambiente"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Workspaces permitem manter vários pacotes relacionados (ex.: um app e uma lib de UI) em um único repositório — um monorepo. Um install na raiz instala as dependências de todos, e um pacote pode importar o outro como se fosse publicado. É assim que este projeto organiza `apps/web` e `@academy/ui`."
+    }
+  ]
+}

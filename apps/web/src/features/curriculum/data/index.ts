@@ -4,6 +4,9 @@ import { TS_LESSONS } from './typescript-lessons'
 import { ALGORITHMS_LESSONS } from './algorithms-lessons'
 import { AI_LESSONS } from './ai-lessons'
 import { CSS_LESSONS } from './css-lessons'
+import { HTML_LESSONS } from './html-lessons'
+import { REGEX_LESSONS } from './regex-lessons'
+import { PACKAGE_MANAGERS_LESSONS } from './package-managers-lessons'
 import type { LessonMetadata } from '@/features/curriculum/types'
 
 export function getLessonsForStack(stackId: string): LessonMetadata[] {
@@ -12,5 +15,8 @@ export function getLessonsForStack(stackId: string): LessonMetadata[] {
   if (stackId === 'algorithms') return ALGORITHMS_LESSONS
   if (stackId === 'ai') return AI_LESSONS
   if (stackId === 'css') return CSS_LESSONS
+  if (stackId === 'html') return HTML_LESSONS
+  if (stackId === 'regex') return REGEX_LESSONS
+  if (stackId === 'package-managers') return PACKAGE_MANAGERS_LESSONS
   return LESSONS
 }

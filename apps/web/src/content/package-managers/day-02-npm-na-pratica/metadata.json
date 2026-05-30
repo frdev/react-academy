@@ -1,0 +1,21 @@
+{
+  "id": "day-02",
+  "day": 2,
+  "week": 1,
+  "title": "npm na Prática",
+  "slug": "npm-na-pratica",
+  "topics": [
+    "npm install, ci e uninstall",
+    "install vs ci",
+    "package-lock.json",
+    "scripts e npx",
+    "npm audit",
+    "intro a workspaces"
+  ],
+  "difficulty": "foundational",
+  "estimatedMinutes": 45,
+  "prerequisites": ["day-01"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

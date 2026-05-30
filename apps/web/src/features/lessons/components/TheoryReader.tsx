@@ -150,6 +150,25 @@ const MDX_IMPORTS: Record<string, Record<string, () => Promise<{ default: React.
     'day-13': () => import('@/content/css/day-13-view-transitions/theory.mdx'),
     'day-14': () => import('@/content/css/day-14-projeto-final-design-system/theory.mdx'),
   },
+  html: {
+    'day-01': () => import('@/content/html/day-01-anatomia-do-documento/theory.mdx'),
+    'day-02': () => import('@/content/html/day-02-tags-semanticas-landmarks/theory.mdx'),
+    'day-03': () => import('@/content/html/day-03-texto-listas-links/theory.mdx'),
+    'day-04': () => import('@/content/html/day-04-imagens-midia-acessivel/theory.mdx'),
+    'day-05': () => import('@/content/html/day-05-formularios-validacao/theory.mdx'),
+    'day-06': () => import('@/content/html/day-06-aria-quando-necessario/theory.mdx'),
+    'day-07': () => import('@/content/html/day-07-teclado-wcag/theory.mdx'),
+  },
+  regex: {
+    'day-01': () => import('@/content/regex/day-01-o-que-e-por-que/theory.mdx'),
+    'day-02': () => import('@/content/regex/day-02-regex-na-pratica/theory.mdx'),
+    'day-03': () => import('@/content/regex/day-03-boas-praticas-cheatsheet/theory.mdx'),
+  },
+  'package-managers': {
+    'day-01': () => import('@/content/package-managers/day-01-o-que-e/theory.mdx'),
+    'day-02': () => import('@/content/package-managers/day-02-npm-na-pratica/theory.mdx'),
+    'day-03': () => import('@/content/package-managers/day-03-npm-yarn-pnpm/theory.mdx'),
+  },
 }
 
 // Prose styles for MDX content

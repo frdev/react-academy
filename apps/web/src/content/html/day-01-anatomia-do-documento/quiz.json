@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-01",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Para que serve a declaração `<!DOCTYPE html>` no início de um documento?",
+      "options": [
+        "Importa a biblioteca padrão do HTML",
+        "Diz ao navegador para interpretar a página com os padrões modernos, evitando o quirks mode",
+        "Define o idioma da página",
+        "Cria o elemento raiz do documento"
+      ],
+      "correctAnswer": 1,
+      "explanation": "`<!DOCTYPE html>` não é uma tag — é uma instrução que ativa o modo padrão (standards mode) do navegador. Sem ela, o navegador cai no quirks mode, um modo de compatibilidade antigo que reproduz bugs de layout de navegadores dos anos 90. A forma moderna é sempre essa, curta, e nunca muda."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Qual o principal benefício de declarar `<html lang=\"pt-BR\">`?",
+      "options": [
+        "Deixa a página carregar mais rápido",
+        "Traduz a página automaticamente para português",
+        "Ajuda leitores de tela a usar a pronúncia correta e navegadores a oferecer tradução",
+        "É obrigatório para o CSS funcionar"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O atributo `lang` informa o idioma do conteúdo. Leitores de tela usam essa informação para escolher a voz e a pronúncia corretas — um leitor em português soa muito diferente de um em inglês. Navegadores também a usam para oferecer tradução. Ele não traduz nada sozinho nem afeta performance, mas é um detalhe de acessibilidade que deve estar sempre presente."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Por que `<meta charset=\"UTF-8\">` deve ser uma das primeiras linhas do `head`?",
+      "options": [
+        "Porque define a codificação de caracteres, garantindo que acentos e emojis apareçam corretamente",
+        "Porque carrega as fontes da página",
+        "Porque define o título da aba",
+        "Porque ativa o modo responsivo"
+      ],
+      "correctAnswer": 0,
+      "explanation": "`charset=\"UTF-8\"` diz ao navegador como decodificar os bytes do arquivo em caracteres. UTF-8 cobre praticamente todos os idiomas e símbolos. Se vier tarde ou faltar, o navegador pode adivinhar errado e acentos viram caracteres quebrados (`Ã§` em vez de `ç`). Por isso ela aparece logo no começo do `head`, antes de qualquer texto."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "O que a meta tag de viewport (`width=device-width, initial-scale=1.0`) faz?",
+      "options": [
+        "Define a largura máxima do conteúdo em pixels",
+        "Faz a página usar a largura real da tela do dispositivo, base para layouts responsivos",
+        "Bloqueia o zoom em celulares",
+        "Esconde a página em telas pequenas"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Sem essa meta tag, navegadores de celular fingem ter uma tela larga (~980px) e encolhem a página, forçando o usuário a dar zoom. Com `width=device-width`, a página passa a usar a largura real do dispositivo, e `initial-scale=1.0` define o zoom inicial em 100%. É o pré-requisito para qualquer design responsivo funcionar no mobile."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "Qual a diferença entre `head` e `body`?",
+      "options": [
+        "head fica no topo da tela e body no rodapé",
+        "head guarda metadados invisíveis sobre a página; body guarda todo o conteúdo visível",
+        "head é para desktop e body para mobile",
+        "Não há diferença prática"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `head` contém informações sobre a página que não são renderizadas: codificação, viewport, título, descrição, links para CSS, etc. O `body` contém tudo que o usuário vê e com que interage: textos, imagens, botões, formulários. Os dois são filhos diretos do `html`."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "O que é o DOM?",
+      "options": [
+        "Um arquivo de configuração do navegador",
+        "Uma linguagem de estilo parecida com CSS",
+        "A árvore de objetos que o navegador constrói a partir do HTML, e que CSS e JavaScript usam",
+        "Um servidor que hospeda a página"
+      ],
+      "correctAnswer": 2,
+      "explanation": "DOM (Document Object Model) é a representação em árvore que o navegador cria ao ler o HTML: cada elemento vira um nó, com a hierarquia espelhando o aninhamento das tags. É essa árvore que o CSS seleciona para estilizar e que o JavaScript percorre e manipula. Um HTML bem estruturado gera um DOM limpo, facilitando estilo, script e acessibilidade."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual elemento define o texto que aparece na aba do navegador e como título nos resultados de busca?",
+      "options": [
+        "`<h1>`",
+        "`<title>`",
+        "`<meta name=\"description\">`",
+        "`<header>`"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O `<title>`, dentro do `head`, define o nome da página exibido na aba do navegador, nos favoritos e como o título clicável nos resultados de busca. Não confunda com `<h1>` (um título visível dentro do conteúdo) nem com `<meta name=\"description\">` (o resumo que aparece abaixo do título na busca)."
+    }
+  ]
+}

@@ -20,7 +20,7 @@ interface StepperProps {
 function Stepper({ steps, currentStep }: StepperProps) {
   const currentIndex = steps.indexOf(currentStep)
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-center gap-1 shrink-0 overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
       {steps.map((step, index) => {
         const isDone = index < currentIndex
         const isCurrent = step === currentStep
@@ -67,13 +67,13 @@ export function LessonLayout() {
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Header */}
       <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link to={`/${stackId}`} className="text-gray-500 hover:text-gray-300 text-sm">← Dashboard</Link>
-            <div className="h-4 w-px bg-gray-700" />
-            <div>
+        <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link to={`/${stackId}`} className="text-gray-500 hover:text-gray-300 text-sm shrink-0 whitespace-nowrap">← Dashboard</Link>
+            <div className="h-4 w-px bg-gray-700 shrink-0" />
+            <div className="min-w-0">
               <span className="text-xs text-gray-500 font-mono">DIA {String(lesson.day).padStart(2, '0')}</span>
-              <h1 className="text-sm font-semibold text-white leading-tight">{lesson.title}</h1>
+              <h1 className="text-sm font-semibold text-white leading-tight truncate">{lesson.title}</h1>
             </div>
           </div>
           <Stepper steps={steps} currentStep={currentStep} dayId={dayId ?? ''} />

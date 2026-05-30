@@ -1,0 +1,21 @@
+{
+  "id": "day-03",
+  "day": 3,
+  "week": 1,
+  "title": "npm vs yarn vs pnpm",
+  "slug": "npm-yarn-pnpm",
+  "topics": [
+    "história: por que yarn e pnpm surgiram",
+    "node_modules flat e phantom dependencies",
+    "o content-addressable store do pnpm",
+    "symlinks e estritude",
+    "workspaces e monorepos",
+    "qual escolher"
+  ],
+  "difficulty": "intermediate",
+  "estimatedMinutes": 50,
+  "prerequisites": ["day-02"],
+  "hasVisualizer": false,
+  "hasChallenge": false,
+  "xpReward": 100
+}

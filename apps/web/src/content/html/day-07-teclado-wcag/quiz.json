@@ -1,0 +1,97 @@
+{
+  "lessonId": "day-07",
+  "passingScore": 70,
+  "questions": [
+    {
+      "id": "q1",
+      "type": "multiple-choice",
+      "question": "Por que usar elementos nativos como `<a>`, `<button>` e `<input>` ajuda a navegação por teclado?",
+      "options": [
+        "Eles são mais bonitos",
+        "Eles já entram na ordem de tabulação e respondem a Tab/Enter/Espaço de graça",
+        "Eles carregam mais rápido",
+        "Eles não precisam de CSS"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Elementos interativos nativos já são focáveis (entram na sequência do Tab) e já respondem às teclas certas (Enter/Espaço para ativar). Um `div` clicável não faz nada disso sem código extra. Por isso, usar o elemento certo — o tema da semana inteira — entrega acessibilidade por teclado automaticamente."
+    },
+    {
+      "id": "q2",
+      "type": "multiple-choice",
+      "question": "Por que `outline: none` em `:focus` é um problema de acessibilidade?",
+      "options": [
+        "Deixa a página mais lenta",
+        "Remove o indicador visual de foco, fazendo quem navega por teclado perder onde está",
+        "Desativa o mouse",
+        "Quebra o JavaScript"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O contorno de foco mostra onde o teclado está na página. Removê-lo com `outline: none` deixa usuários de teclado completamente perdidos — eles tabulam às cegas. Se quiser um foco mais bonito, redesenhe-o (por exemplo com `:focus-visible`), mas nunca o elimine sem repor um indicador claro."
+    },
+    {
+      "id": "q3",
+      "type": "multiple-choice",
+      "question": "Qual o propósito de um skip link?",
+      "options": [
+        "Pular para a próxima página",
+        "Oferecer um atalho, no topo da página, para pular a navegação repetitiva e ir direto ao conteúdo principal",
+        "Pular anúncios",
+        "Aumentar a fonte"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Um skip link é o primeiro elemento focável da página e leva direto ao `main` (`href=\"#conteudo\"`). Sem ele, quem usa teclado precisa tabular por todo o menu em cada página antes de chegar ao conteúdo. Costuma ficar escondido e aparecer apenas quando recebe foco. É um grande ganho para usuários de teclado."
+    },
+    {
+      "id": "q4",
+      "type": "multiple-choice",
+      "question": "Qual a razão de contraste mínima do WCAG para texto normal?",
+      "options": [
+        "1:1",
+        "2:1",
+        "4.5:1",
+        "10:1"
+      ],
+      "correctAnswer": 2,
+      "explanation": "O WCAG exige no mínimo **4.5:1** de contraste entre texto normal e fundo (e 3:1 para texto grande). Contraste fraco torna o texto ilegível para muitas pessoas, inclusive com baixa visão. Não confie no olho — use uma ferramenta de verificação de contraste, e aplique o cuidado também a ícones e bordas que carregam informação."
+    },
+    {
+      "id": "q5",
+      "type": "multiple-choice",
+      "question": "O que significa o acrônimo POUR, os quatro princípios do WCAG?",
+      "options": [
+        "Performance, Open, Usable, Responsive",
+        "Perceptível, Operável, Compreensível (Understandable) e Robusto",
+        "Public, Online, Universal, Reliable",
+        "Portable, Optimized, Updated, Readable"
+      ],
+      "correctAnswer": 1,
+      "explanation": "POUR resume os quatro princípios do WCAG: **Perceptível** (o conteúdo pode ser percebido — alt, legendas, contraste), **Operável** (usável por teclado — foco, skip links), **Compreensível** (texto claro, lang, erros explicados) e **Robusto** (funciona em diferentes navegadores e tecnologias assistivas, via HTML válido e semântico)."
+    },
+    {
+      "id": "q6",
+      "type": "multiple-choice",
+      "question": "A ordem em que o foco percorre a página por Tab segue o quê?",
+      "options": [
+        "A ordem alfabética dos elementos",
+        "A ordem do DOM (a ordem do HTML), por isso deve-se evitar `tabindex` positivo",
+        "A posição visual definida pelo CSS",
+        "A ordem aleatória do navegador"
+      ],
+      "correctAnswer": 1,
+      "explanation": "Por padrão, o foco segue a ordem dos elementos no DOM — a ordem em que aparecem no HTML. Por isso, escrever o HTML na ordem lógica de leitura já entrega uma boa sequência de Tab. Valores positivos de `tabindex` (como `tabindex=\"3\"`) sobrescrevem essa ordem natural e quase sempre criam uma navegação confusa — evite-os."
+    },
+    {
+      "id": "q7",
+      "type": "multiple-choice",
+      "question": "Qual a principal lição que conecta a semana inteira de HTML com acessibilidade?",
+      "options": [
+        "Acessibilidade exige sempre muito JavaScript e ARIA",
+        "A maior parte da acessibilidade vem de graça do HTML semântico bem feito — elemento certo, alt, label, headings, landmarks",
+        "Acessibilidade é responsabilidade só do designer",
+        "Basta aumentar a fonte para um site ser acessível"
+      ],
+      "correctAnswer": 1,
+      "explanation": "O fio condutor da semana: escrever HTML semântico correto — o elemento certo para cada papel, `alt` nas imagens, `label` nos campos, hierarquia de headings, landmarks, `a` vs `button` — já resolve a maior parte da acessibilidade, antes de qualquer ARIA ou JavaScript. ARIA e CSS entram só para preencher o que o HTML nativo não cobre. Boa base de HTML é boa base de acessibilidade."
+    }
+  ]
+}

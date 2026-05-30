@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import mdx from '@mdx-js/rollup'
 import rehypePrettyCode from 'rehype-pretty-code'
+import remarkGfm from 'remark-gfm'
 import path from 'path'
 
 export default defineConfig({
@@ -10,6 +11,7 @@ export default defineConfig({
     {
       enforce: 'pre',
       ...mdx({
+        remarkPlugins: [remarkGfm],
         rehypePlugins: [
           [rehypePrettyCode, {
             theme: 'one-dark-pro',

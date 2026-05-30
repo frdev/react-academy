@@ -1,0 +1,100 @@
+# Anatomia do Documento HTML
+
+Toda página da web — não importa quão complexa — começa como um documento HTML. O HTML (HyperText Markup Language) é o **esqueleto**: ele descreve *o que* cada parte do conteúdo é (um título, um parágrafo, uma imagem), enquanto o CSS cuida da aparência e o JavaScript do comportamento. Antes de estilizar ou programar qualquer coisa, você precisa entender a estrutura que sustenta tudo. Hoje vamos dissecar esse documento do topo ao fim.
+
+## O doctype: avisando o navegador
+
+Todo documento HTML começa com uma declaração de tipo:
+
+```html
+<!DOCTYPE html>
+```
+
+Ela não é uma tag de verdade — é uma instrução que diz ao navegador: "interprete esta página com os padrões modernos". Sem ela, o navegador entra no *quirks mode*, um modo de compatibilidade antigo que reproduz bugs de layout dos anos 90. A forma é sempre essa, curta, e nunca muda.
+
+## O elemento raiz: `html`
+
+Logo depois do doctype vem o elemento que envolve a página inteira:
+
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+  ...
+</html>
+```
+
+O atributo `lang` informa o idioma do conteúdo. Parece pequeno, mas importa: leitores de tela usam o `lang` para escolher a **pronúncia** correta (uma voz em português soa muito diferente de uma em inglês), e navegadores o usam para oferecer tradução. Sempre declare.
+
+## A cabeça invisível: `head`
+
+O `html` tem dois filhos diretos: `head` e `body`. O `head` guarda **metadados** — informações sobre a página que não aparecem na tela:
+
+```html
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minha Página</title>
+  <meta name="description" content="Uma breve descrição da página." />
+</head>
+```
+
+Cada linha tem um papel:
+
+- `<meta charset="UTF-8">` define a codificação de caracteres. Sem isso, acentos e emojis podem virar caracteres quebrados (`Ã§` em vez de `ç`). UTF-8 cobre quase todos os idiomas — use sempre, e como **primeira** linha do `head`.
+- `<meta name="viewport">` controla como a página se ajusta em telas de celular. Sem ela, o celular finge ser uma tela larga e o usuário precisa dar zoom. É o que torna o site "responsivo-ready".
+- `<title>` é o texto que aparece na aba do navegador e como título nos resultados de busca. É obrigatório.
+- `<meta name="description">` não aparece na página, mas mecanismos de busca costumam usá-la como o resumo do site.
+
+## O corpo visível: `body`
+
+Tudo que o usuário vê fica dentro do `body`:
+
+```html
+<body>
+  <h1>Olá, mundo!</h1>
+  <p>Este é o conteúdo visível da página.</p>
+</body>
+```
+
+Texto, imagens, botões, formulários — todo o conteúdo renderizado mora aqui. Nos próximos dias vamos preencher o `body` com elementos semânticos de verdade.
+
+## Como o navegador monta a página
+
+Quando você abre uma página, o navegador lê o HTML de cima para baixo e constrói uma árvore de objetos chamada **DOM** (Document Object Model). Cada elemento vira um "nó" nessa árvore, com pais e filhos espelhando o aninhamento das suas tags:
+
+```text
+document
+└── html
+    ├── head
+    │   ├── meta
+    │   └── title
+    └── body
+        ├── h1
+        └── p
+```
+
+É essa árvore que o CSS estiliza e o JavaScript manipula. Por isso um HTML bem aninhado é a fundação de tudo: facilita o estilo, o script e o acesso por tecnologias assistivas.
+
+## O documento mínimo completo
+
+Juntando tudo, este é o esqueleto que serve de ponto de partida para qualquer página:
+
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minha Página</title>
+    <meta name="description" content="Uma breve descrição da página." />
+  </head>
+  <body>
+    <h1>Olá, mundo!</h1>
+    <p>Bem-vindo à minha primeira página.</p>
+  </body>
+</html>
+```
+
+Decore essa estrutura: doctype, `html` com `lang`, `head` com charset/viewport/title, e `body`. Você vai escrevê-la centenas de vezes.
+
+> **Resumo:** Todo documento HTML segue o mesmo esqueleto. `<!DOCTYPE html>` ativa os padrões modernos (evita o quirks mode); `<html lang="pt-BR">` envolve a página e declara o idioma (importante para leitores de tela e tradução); o `head` guarda metadados invisíveis — `charset="UTF-8"` (sempre primeiro, evita acentos quebrados), `viewport` (responsivo no celular), `title` (aba e busca) e `description` (resumo na busca); e o `body` guarda todo o conteúdo visível. O navegador lê esse HTML e constrói o **DOM**, a árvore de elementos que o CSS estiliza e o JavaScript manipula — por isso uma estrutura bem aninhada é a base de tudo.
